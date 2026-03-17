@@ -8,7 +8,9 @@
       "Bash(jj describe:*)",
       "Bash(jj bookmark set:*)",
       "Bash(jj git push:*)",
-      "Bash(jj log:*)"
+      "Bash(jj log:*)",
+      "WebFetch(domain:docs.google.com)",
+      "WebFetch(domain:doc-0g-14-sheets.googleusercontent.com)"
     ]
   },
   "enabledPlugins": {
