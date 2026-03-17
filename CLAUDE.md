@@ -10,6 +10,7 @@ A starter for building apps with TanStack Start, Radix UI, and capsize typograph
 - No `export VAR=value` - use `set -x VAR value`
 - **No Homebrew**: Never use `brew` commands on this computer.
 - **Jujutsu Only**: Use `jj` for version control, not `git` commands.
+- **No New Shells**: Never open tmux, screen, or new shell sessions. Run all commands directly in the current fish shell.
 
 ## Workflow Orchestration
 
