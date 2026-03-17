@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(jj status:*)",
+      "Bash(jj git init:*)",
+      "Bash(jj bookmark track:*)",
+      "Bash(jj diff:*)",
+      "Bash(jj describe:*)",
+      "Bash(jj bookmark set:*)",
+      "Bash(jj git push:*)"
+    ]
+  },
+  "enabledPlugins": {
+    "elixir-phoenix-guide@elixir-phoenix-guide": true
+  }
+}
