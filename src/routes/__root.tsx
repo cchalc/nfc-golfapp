@@ -8,6 +8,8 @@ import { Theme, Container, Heading, Text, Flex } from '@radix-ui/themes'
 
 import { Header } from '../components/Header'
 import { ThemeProvider } from '../contexts/ThemeContext'
+import { DataLoader } from '../components/DataLoader'
+import { ClientOnly } from '../components/ClientOnly'
 
 import radixCss from '@radix-ui/themes/styles.css?url'
 import interCss from '@fontsource/inter/latin.css?url'
@@ -67,10 +69,14 @@ function RootComponent() {
       </head>
       <body>
         <Theme accentColor="blue" grayColor="slate" radius="medium">
-          <ThemeProvider>
-            <Header />
-            <Outlet />
-          </ThemeProvider>
+          <ClientOnly>
+            <ThemeProvider>
+              <DataLoader>
+                <Header />
+                <Outlet />
+              </DataLoader>
+            </ThemeProvider>
+          </ClientOnly>
         </Theme>
         <Scripts />
       </body>

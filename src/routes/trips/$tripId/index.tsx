@@ -1,0 +1,232 @@
+import { createFileRoute, Link } from '@tanstack/react-router'
+import {
+  Container,
+  Flex,
+  Heading,
+  Text,
+  Card,
+  Grid,
+  Button,
+  Badge,
+} from '@radix-ui/themes'
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Trophy,
+  Flag,
+  ChevronRight,
+} from 'lucide-react'
+import { useLiveQuery, eq, count } from '@tanstack/react-db'
+import {
+  tripCollection,
+  tripGolferCollection,
+  roundCollection,
+  courseCollection,
+} from '../../../db/collections'
+import { StatCard } from '../../../components/ui/StatCard'
+
+export const Route = createFileRoute('/trips/$tripId/')({
+  ssr: false,
+  component: TripDashboard,
+})
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function TripDashboard() {
+  const { tripId } = Route.useParams()
+
+  const { data: trips } = useLiveQuery(
+    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
+    [tripId]
+  )
+  const trip = trips?.[0]
+
+  const { data: golferStats } = useLiveQuery(
+    (q) =>
+      q
+        .from({ tg: tripGolferCollection })
+        .where(({ tg }) => eq(tg.tripId, tripId))
+        .select(({ tg }) => ({
+          total: count(tg.id),
+        })),
+    [tripId]
+  )
+
+  const { data: rounds } = useLiveQuery(
+    (q) =>
+      q
+        .from({ round: roundCollection })
+        .where(({ round }) => eq(round.tripId, tripId))
+        .orderBy(({ round }) => round.roundNumber, 'asc'),
+    [tripId]
+  )
+
+  const { data: courses } = useLiveQuery(
+    (q) => q.from({ course: courseCollection }),
+    []
+  )
+
+  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
+
+  if (!trip) {
+    return (
+      <Container size="2" py="6">
+        <Text>Trip not found</Text>
+      </Container>
+    )
+  }
+
+  const golferCount = golferStats?.[0]?.total ?? 0
+  const roundCount = rounds?.length ?? 0
+
+  return (
+    <Container size="2" py="6">
+      <Flex direction="column" gap="6">
+        {/* Header */}
+        <Flex direction="column" gap="2">
+          <Heading size="8">{trip.name}</Heading>
+          {trip.description && (
+            <Text size="3" color="gray">
+              {trip.description}
+            </Text>
+          )}
+          <Flex gap="4" wrap="wrap">
+            <Flex align="center" gap="1">
+              <Calendar size={16} />
+              <Text size="2">
+                {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
+              </Text>
+            </Flex>
+            {trip.location && (
+              <Flex align="center" gap="1">
+                <MapPin size={16} />
+                <Text size="2">{trip.location}</Text>
+              </Flex>
+            )}
+          </Flex>
+        </Flex>
+
+        {/* Stats */}
+        <Grid columns="3" gap="3">
+          <StatCard label="Golfers" value={golferCount} />
+          <StatCard label="Rounds" value={roundCount} />
+          <StatCard label="Courses" value={new Set(rounds?.map((r) => r.courseId)).size} />
+        </Grid>
+
+        {/* Quick Links */}
+        <Flex direction="column" gap="3">
+          <Heading size="4">Manage</Heading>
+          <Grid columns="2" gap="3">
+            <Link to="/trips/$tripId/golfers" params={{ tripId }}>
+              <Card asChild>
+                <Flex justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Users size={20} />
+                    <Text weight="medium">Golfers</Text>
+                  </Flex>
+                  <ChevronRight size={16} />
+                </Flex>
+              </Card>
+            </Link>
+
+            <Link to="/trips/$tripId/leaderboards" params={{ tripId }}>
+              <Card asChild>
+                <Flex justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Trophy size={20} />
+                    <Text weight="medium">Leaderboards</Text>
+                  </Flex>
+                  <ChevronRight size={16} />
+                </Flex>
+              </Card>
+            </Link>
+
+            <Link to="/trips/$tripId/teams" params={{ tripId }}>
+              <Card asChild>
+                <Flex justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Flag size={20} />
+                    <Text weight="medium">Teams</Text>
+                  </Flex>
+                  <ChevronRight size={16} />
+                </Flex>
+              </Card>
+            </Link>
+
+            <Link to="/trips/$tripId/rounds" params={{ tripId }}>
+              <Card asChild>
+                <Flex justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Calendar size={20} />
+                    <Text weight="medium">All Rounds</Text>
+                  </Flex>
+                  <ChevronRight size={16} />
+                </Flex>
+              </Card>
+            </Link>
+          </Grid>
+        </Flex>
+
+        {/* Rounds */}
+        <Flex direction="column" gap="3">
+          <Flex justify="between" align="center">
+            <Heading size="4">Rounds</Heading>
+            <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+              <Button variant="soft" size="1">
+                Add Round
+              </Button>
+            </Link>
+          </Flex>
+
+          {rounds && rounds.length > 0 ? (
+            <Flex direction="column" gap="2">
+              {rounds.map((round) => {
+                const course = courseMap.get(round.courseId)
+                return (
+                  <Link
+                    key={round.id}
+                    to="/trips/$tripId/rounds/$roundId"
+                    params={{ tripId, roundId: round.id }}
+                  >
+                    <Card asChild>
+                      <Flex justify="between" align="center">
+                        <Flex direction="column" gap="1">
+                          <Flex align="center" gap="2">
+                            <Badge>Round {round.roundNumber}</Badge>
+                            <Text weight="medium">{course?.name || 'Unknown Course'}</Text>
+                          </Flex>
+                          <Text size="2" color="gray">
+                            {formatDate(round.roundDate)}
+                          </Text>
+                        </Flex>
+                        <ChevronRight size={16} />
+                      </Flex>
+                    </Card>
+                  </Link>
+                )
+              })}
+            </Flex>
+          ) : (
+            <Card>
+              <Flex direction="column" align="center" gap="2" py="4">
+                <Text color="gray">No rounds yet</Text>
+                <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+                  <Button variant="soft" size="1">
+                    Add First Round
+                  </Button>
+                </Link>
+              </Flex>
+            </Card>
+          )}
+        </Flex>
+      </Flex>
+    </Container>
+  )
+}

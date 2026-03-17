@@ -10,7 +10,21 @@
       "Bash(jj git push:*)",
       "Bash(jj log:*)",
       "WebFetch(domain:docs.google.com)",
-      "WebFetch(domain:doc-0g-14-sheets.googleusercontent.com)"
+      "WebFetch(domain:doc-0g-14-sheets.googleusercontent.com)",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:tanstack.com)",
+      "WebFetch(domain:electric-sql.com)",
+      "Bash(tree:*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm install:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(npx tsc:*)",
+      "Bash(lsof:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(jj bookmark list:*)"
     ]
   },
   "enabledPlugins": {
