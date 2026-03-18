@@ -55,7 +55,7 @@ function TripsPage() {
         <Flex justify="between" align="center">
           <Heading size="7">Trips</Heading>
           <Link to="/trips/new">
-            <Button>
+            <Button color="grass">
               <Plus size={16} />
               New Trip
             </Button>
@@ -78,7 +78,7 @@ function TripsPage() {
             description="Create your first golf trip to get started"
             action={
               <Link to="/trips/new">
-                <Button>
+                <Button color="grass">
                   <Plus size={16} />
                   Create Trip
                 </Button>

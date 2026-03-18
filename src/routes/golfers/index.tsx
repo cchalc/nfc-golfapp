@@ -39,7 +39,7 @@ function GolfersPage() {
           <Heading size="7">Golfers</Heading>
           <Dialog.Root>
             <Dialog.Trigger>
-              <Button>
+              <Button color="grass">
                 <Plus size={16} />
                 Add Golfer
               </Button>
@@ -77,7 +77,7 @@ function GolfersPage() {
             action={
               <Dialog.Root>
                 <Dialog.Trigger>
-                  <Button>
+                  <Button color="grass">
                     <Plus size={16} />
                     Add Golfer
                   </Button>

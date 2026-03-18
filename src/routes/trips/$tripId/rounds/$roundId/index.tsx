@@ -156,7 +156,7 @@ function RoundOverview() {
                   >
                     <Card asChild>
                       <Flex justify="between" align="center">
-                        <Flex direction="column" gap="1">
+                        <Flex direction="column" gap="2">
                           <Text weight="medium">{golfer.name}</Text>
                           <Text size="2" color="gray">
                             HCP {golfer.handicap.toFixed(1)}

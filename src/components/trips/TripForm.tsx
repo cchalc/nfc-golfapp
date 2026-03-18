@@ -118,7 +118,9 @@ export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
           />
         </Flex>
 
-        <Button type="submit">{isEditing ? 'Save Changes' : 'Create Trip'}</Button>
+        <Button type="submit" color="grass" size="3">
+          {isEditing ? 'Save Changes' : 'Create Trip'}
+        </Button>
       </Flex>
     </form>
   )

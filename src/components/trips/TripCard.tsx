@@ -28,14 +28,14 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
   const isPast = trip.endDate < now
 
   return (
-    <Link to="/trips/$tripId" params={{ tripId: trip.id }}>
-      <Card asChild>
+    <Link to="/trips/$tripId" params={{ tripId: trip.id }} style={{ textDecoration: 'none' }}>
+      <Card asChild className="card-gold-hover">
         <Flex direction="column" gap="3">
           <Flex justify="between" align="start">
             <Heading size="4">{trip.name}</Heading>
-            {isUpcoming && <Badge color="blue">Upcoming</Badge>}
-            {isActive && <Badge color="green">Active</Badge>}
-            {isPast && <Badge color="gray">Completed</Badge>}
+            {isUpcoming && <Badge color="grass">Upcoming</Badge>}
+            {isActive && <Badge color="amber">Active</Badge>}
+            {isPast && <Badge variant="soft" color="gray">Completed</Badge>}
           </Flex>
 
           {trip.description && (
@@ -46,7 +46,7 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
 
           <Flex gap="4">
             <Flex align="center" gap="1">
-              <Calendar size={14} />
+              <Calendar size={14} style={{ color: 'var(--grass-9)' }} />
               <Text size="2" color="gray">
                 {formatDateRange(trip.startDate, trip.endDate)}
               </Text>
@@ -54,7 +54,7 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
 
             {trip.location && (
               <Flex align="center" gap="1">
-                <MapPin size={14} />
+                <MapPin size={14} style={{ color: 'var(--grass-9)' }} />
                 <Text size="2" color="gray">
                   {trip.location}
                 </Text>
@@ -62,7 +62,7 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
             )}
 
             <Flex align="center" gap="1">
-              <Users size={14} />
+              <Users size={14} style={{ color: 'var(--grass-9)' }} />
               <Text size="2" color="gray">
                 {golferCount} golfers
               </Text>

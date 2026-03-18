@@ -106,7 +106,7 @@ export function Scorecard({
   return (
     <Flex direction="column" gap="4">
       <Flex justify="between" align="center">
-        <Flex direction="column">
+        <Flex direction="column" gap="2">
           <Heading size="4">{golfer.name}</Heading>
           <Text size="2" color="gray">
             HCP {golfer.handicap.toFixed(1)} → Playing {playingHandicap}
@@ -115,7 +115,7 @@ export function Scorecard({
       </Flex>
 
       {/* Front 9 */}
-      <Flex direction="column" gap="1">
+      <Flex direction="column" gap="2">
         <Flex justify="between" align="center">
           <Text size="2" weight="medium">
             Front 9
@@ -137,13 +137,13 @@ export function Scorecard({
         ))}
         <Flex justify="end" gap="4" py="2">
           <Text size="2">
-            <Text color="gray">Gross:</Text> {frontTotals.gross || '-'}
+            <span style={{ color: 'var(--gray-11)' }}>Gross:</span> {frontTotals.gross || '-'}
           </Text>
           <Text size="2">
-            <Text color="gray">Net:</Text> {frontTotals.net || '-'}
+            <span style={{ color: 'var(--gray-11)' }}>Net:</span> {frontTotals.net || '-'}
           </Text>
           <Text size="2">
-            <Text color="gray">Pts:</Text> {frontTotals.stableford || '-'}
+            <span style={{ color: 'var(--gray-11)' }}>Pts:</span> {frontTotals.stableford || '-'}
           </Text>
         </Flex>
       </Flex>
@@ -151,7 +151,7 @@ export function Scorecard({
       <Separator size="4" />
 
       {/* Back 9 */}
-      <Flex direction="column" gap="1">
+      <Flex direction="column" gap="2">
         <Flex justify="between" align="center">
           <Text size="2" weight="medium">
             Back 9
@@ -173,13 +173,13 @@ export function Scorecard({
         ))}
         <Flex justify="end" gap="4" py="2">
           <Text size="2">
-            <Text color="gray">Gross:</Text> {backTotals.gross || '-'}
+            <span style={{ color: 'var(--gray-11)' }}>Gross:</span> {backTotals.gross || '-'}
           </Text>
           <Text size="2">
-            <Text color="gray">Net:</Text> {backTotals.net || '-'}
+            <span style={{ color: 'var(--gray-11)' }}>Net:</span> {backTotals.net || '-'}
           </Text>
           <Text size="2">
-            <Text color="gray">Pts:</Text> {backTotals.stableford || '-'}
+            <span style={{ color: 'var(--gray-11)' }}>Pts:</span> {backTotals.stableford || '-'}
           </Text>
         </Flex>
       </Flex>

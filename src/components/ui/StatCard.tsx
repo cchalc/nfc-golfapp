@@ -3,13 +3,14 @@ import { Card, Flex, Text, Heading } from '@radix-ui/themes'
 interface StatCardProps {
   label: string
   value: string | number
-  color?: 'gray' | 'blue' | 'green' | 'red' | 'amber'
+  color?: 'gray' | 'grass' | 'green' | 'red' | 'amber'
+  goldAccent?: boolean
 }
 
-export function StatCard({ label, value, color = 'gray' }: StatCardProps) {
+export function StatCard({ label, value, color = 'gray', goldAccent = false }: StatCardProps) {
   return (
-    <Card>
-      <Flex direction="column" gap="1">
+    <Card className={goldAccent ? 'card-gold-hover' : undefined}>
+      <Flex direction="column" gap="2">
         <Text size="1" color="gray">
           {label}
         </Text>

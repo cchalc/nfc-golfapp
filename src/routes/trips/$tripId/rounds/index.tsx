@@ -59,7 +59,7 @@ function RoundsPage() {
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
         <Flex justify="between" align="center">
-          <Flex direction="column" gap="1">
+          <Flex direction="column" gap="2">
             <Heading size="7">Rounds</Heading>
             <Text color="gray">{trip.name}</Text>
           </Flex>
@@ -83,7 +83,7 @@ function RoundsPage() {
                 >
                   <Card asChild>
                     <Flex justify="between" align="center">
-                      <Flex direction="column" gap="1">
+                      <Flex direction="column" gap="2">
                         <Flex align="center" gap="2">
                           <Badge>Round {round.roundNumber}</Badge>
                           <Text weight="medium">

@@ -20,7 +20,7 @@ export function ThemePicker() {
             onClick={() => setTheme(theme.id)}
           >
             <Flex justify="between" align="center" gap="5" minWidth="200px">
-              <Flex direction="column" gap="1">
+              <Flex direction="column" gap="2">
                 <Text size="2" weight="medium">{theme.name}</Text>
                 <Text size="1" color="gray">{theme.description}</Text>
               </Flex>
