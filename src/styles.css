@@ -141,6 +141,15 @@ body {
   color: var(--amber-7);
 }
 
+/* Golfer link hover in leaderboards */
+.golfer-link {
+  transition: color 0.15s ease;
+}
+
+.golfer-link:hover {
+  color: var(--amber-9);
+}
+
 /* Fix capsize text overlap on large headings */
 .rt-Heading.rt-r-size-8,
 .rt-Heading.rt-r-size-9 {

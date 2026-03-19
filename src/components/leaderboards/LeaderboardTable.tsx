@@ -1,4 +1,5 @@
 import { Table, Text, Badge, Flex, Avatar } from '@radix-ui/themes'
+import { Link } from '@tanstack/react-router'
 import { Trophy } from 'lucide-react'
 
 export interface LeaderboardEntry {
@@ -65,17 +66,26 @@ export function LeaderboardTable({
               )}
             </Table.Cell>
             <Table.Cell>
-              <Flex align="center" gap="2">
-                <Avatar
-                  size="1"
-                  fallback={getInitials(entry.name)}
-                  radius="full"
-                  color={entry.rank === 1 ? 'amber' : undefined}
-                />
-                <Text weight={entry.rank <= highlightTop ? 'medium' : 'regular'}>
-                  {entry.name}
-                </Text>
-              </Flex>
+              <Link
+                to="/golfers/$golferId"
+                params={{ golferId: entry.golferId }}
+                style={{ textDecoration: 'none' }}
+              >
+                <Flex align="center" gap="2">
+                  <Avatar
+                    size="1"
+                    fallback={getInitials(entry.name)}
+                    radius="full"
+                    color={entry.rank === 1 ? 'amber' : undefined}
+                  />
+                  <Text
+                    weight={entry.rank <= highlightTop ? 'medium' : 'regular'}
+                    className="golfer-link"
+                  >
+                    {entry.name}
+                  </Text>
+                </Flex>
+              </Link>
             </Table.Cell>
             {showRounds && (
               <Table.Cell>
