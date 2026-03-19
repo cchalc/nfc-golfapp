@@ -12,7 +12,7 @@ import {
   Separator,
   Grid,
 } from '@radix-ui/themes'
-import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
   golferCollection,
@@ -20,6 +20,7 @@ import {
   tripCollection,
   roundSummaryCollection,
   roundCollection,
+  courseCollection,
 } from '../../db/collections'
 import { GolferForm } from '../../components/golfers/GolferForm'
 
@@ -66,19 +67,26 @@ function GolferDetailPage() {
     [golferId]
   )
 
-  // Get round summaries for this golfer
+  // Get round summaries for this golfer with trip and course info
   const { data: roundSummaries } = useLiveQuery(
     (q) =>
       q
         .from({ rs: roundSummaryCollection })
         .where(({ rs }) => eq(rs.golferId, golferId))
         .join({ round: roundCollection }, ({ rs, round }) => eq(rs.roundId, round!.id))
-        .select(({ rs, round }) => ({
+        .join({ trip: tripCollection }, ({ round, trip }) => eq(round!.tripId, trip!.id))
+        .join({ course: courseCollection }, ({ round, course }) => eq(round!.courseId, course!.id))
+        .select(({ rs, round, trip, course }) => ({
           roundId: rs.roundId,
+          tripId: round!.tripId,
+          tripName: trip!.name,
+          courseId: round!.courseId,
+          courseName: course!.name,
           totalGross: rs.totalGross,
           totalNet: rs.totalNet,
           totalStableford: rs.totalStableford,
           birdiesOrBetter: rs.birdiesOrBetter,
+          kps: rs.kps,
           roundDate: round!.roundDate,
           roundNumber: round!.roundNumber,
         }))
@@ -321,37 +329,66 @@ function GolferDetailPage() {
 
             <Flex direction="column" gap="2">
               {rounds.slice(0, 5).map((round) => (
-                <Card key={round.roundId}>
-                  <Flex justify="between" align="center">
-                    <Flex direction="column" gap="3">
-                      <Text size="2" color="gray">
-                        {round.roundDate.toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </Text>
-                      <Flex gap="4">
-                        <Text size="2">
-                          <span style={{ color: 'var(--gray-11)' }}>Gross:</span> {round.totalGross}
-                        </Text>
-                        <Text size="2">
-                          <span style={{ color: 'var(--gray-11)' }}>Net:</span> {round.totalNet}
-                        </Text>
+                <Link
+                  key={round.roundId}
+                  to="/trips/$tripId/rounds/$roundId/scorecard"
+                  params={{ tripId: round.tripId, roundId: round.roundId }}
+                  search={{ golferId }}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Card>
+                    <Flex justify="between" align="center">
+                      <Flex direction="column" gap="3">
+                        <Flex align="center" gap="2">
+                          <Badge variant="soft">Round {round.roundNumber}</Badge>
+                          <Text weight="medium">{round.courseName}</Text>
+                        </Flex>
+                        <Flex align="center" gap="3" wrap="wrap">
+                          <Flex align="center" gap="1">
+                            <Calendar size={12} />
+                            <Text size="1" color="gray">
+                              {round.roundDate.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </Text>
+                          </Flex>
+                          <Flex align="center" gap="1">
+                            <Flag size={12} />
+                            <Text size="1" color="gray">
+                              {round.tripName}
+                            </Text>
+                          </Flex>
+                        </Flex>
+                        <Flex gap="4">
+                          <Text size="2">
+                            <span style={{ color: 'var(--gray-11)' }}>Gross:</span> {round.totalGross}
+                          </Text>
+                          <Text size="2">
+                            <span style={{ color: 'var(--gray-11)' }}>Net:</span> {round.totalNet}
+                          </Text>
+                          {round.birdiesOrBetter > 0 && (
+                            <Text size="2" color="grass">
+                              {round.birdiesOrBetter} birdies
+                            </Text>
+                          )}
+                          {round.kps > 0 && (
+                            <Text size="2" color="blue">
+                              {round.kps} KP{round.kps > 1 ? 's' : ''}
+                            </Text>
+                          )}
+                        </Flex>
+                      </Flex>
+                      <Flex align="center" gap="2">
+                        <Badge color="amber" size="2">
+                          {round.totalStableford} pts
+                        </Badge>
+                        <ChevronRight size={16} style={{ color: 'var(--gray-9)' }} />
                       </Flex>
                     </Flex>
-                    <Flex direction="column" align="end" gap="1">
-                      <Badge color="amber" size="2">
-                        {round.totalStableford} pts
-                      </Badge>
-                      {round.birdiesOrBetter > 0 && (
-                        <Text size="1" color="grass">
-                          {round.birdiesOrBetter} birdies+
-                        </Text>
-                      )}
-                    </Flex>
-                  </Flex>
-                </Card>
+                  </Card>
+                </Link>
               ))}
             </Flex>
           </Flex>
