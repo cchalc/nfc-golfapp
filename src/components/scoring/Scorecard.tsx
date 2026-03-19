@@ -106,7 +106,7 @@ export function Scorecard({
   return (
     <Flex direction="column" gap="4">
       <Flex justify="between" align="center">
-        <Flex direction="column" gap="2">
+        <Flex direction="column" gap="3">
           <Heading size="4">{golfer.name}</Heading>
           <Text size="2" color="gray">
             HCP {golfer.handicap.toFixed(1)} → Playing {playingHandicap}

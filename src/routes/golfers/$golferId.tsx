@@ -138,9 +138,9 @@ function GolferDetailPage() {
               radius="full"
               color="amber"
             />
-            <Flex direction="column" gap="2" style={{ flex: 1 }}>
+            <Flex direction="column" gap="3" style={{ flex: 1 }}>
               <Flex justify="between" align="start">
-                <Flex direction="column" gap="2">
+                <Flex direction="column" gap="3">
                   <Heading size="6">{golfer.name}</Heading>
                   <Badge size="2" color="grass" variant="soft">
                     HCP {golfer.handicap.toFixed(1)}
@@ -203,7 +203,7 @@ function GolferDetailPage() {
         {totalRounds > 0 && (
           <Grid columns="4" gap="3">
             <Card>
-              <Flex direction="column" align="center" gap="1">
+              <Flex direction="column" align="center" gap="2">
                 <Heading size="5" style={{ color: 'var(--amber-9)' }}>
                   {totalRounds}
                 </Heading>
@@ -213,7 +213,7 @@ function GolferDetailPage() {
               </Flex>
             </Card>
             <Card>
-              <Flex direction="column" align="center" gap="1">
+              <Flex direction="column" align="center" gap="2">
                 <Heading size="5" style={{ color: 'var(--amber-9)' }}>
                   {avgGross}
                 </Heading>
@@ -223,7 +223,7 @@ function GolferDetailPage() {
               </Flex>
             </Card>
             <Card>
-              <Flex direction="column" align="center" gap="1">
+              <Flex direction="column" align="center" gap="2">
                 <Heading size="5" style={{ color: 'var(--amber-9)' }}>
                   {avgStableford}
                 </Heading>
@@ -233,7 +233,7 @@ function GolferDetailPage() {
               </Flex>
             </Card>
             <Card>
-              <Flex direction="column" align="center" gap="1">
+              <Flex direction="column" align="center" gap="2">
                 <Heading size="5" style={{ color: 'var(--amber-9)' }}>
                   {totalBirdies}
                 </Heading>
@@ -265,7 +265,7 @@ function GolferDetailPage() {
                 >
                   <Card>
                     <Flex justify="between" align="center">
-                      <Flex direction="column" gap="2">
+                      <Flex direction="column" gap="3">
                         <Text weight="medium">{trip.tripName}</Text>
                         <Flex align="center" gap="2">
                           <Calendar size={12} />
@@ -323,7 +323,7 @@ function GolferDetailPage() {
               {rounds.slice(0, 5).map((round) => (
                 <Card key={round.roundId}>
                   <Flex justify="between" align="center">
-                    <Flex direction="column" gap="2">
+                    <Flex direction="column" gap="3">
                       <Text size="2" color="gray">
                         {round.roundDate.toLocaleDateString('en-US', {
                           month: 'short',

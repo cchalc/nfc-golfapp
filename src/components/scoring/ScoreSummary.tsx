@@ -26,7 +26,7 @@ export function ScoreSummary({
   return (
     <Card>
       <Grid columns="4" gap="3">
-        <Flex direction="column" align="center">
+        <Flex direction="column" align="center" gap="2">
           <Text size="1" color="gray">
             Gross
           </Text>
@@ -38,7 +38,7 @@ export function ScoreSummary({
           </Text>
         </Flex>
 
-        <Flex direction="column" align="center">
+        <Flex direction="column" align="center" gap="2">
           <Text size="1" color="gray">
             Net
           </Text>
@@ -50,7 +50,7 @@ export function ScoreSummary({
           </Text>
         </Flex>
 
-        <Flex direction="column" align="center">
+        <Flex direction="column" align="center" gap="2">
           <Text size="1" color="gray">
             Stableford
           </Text>
@@ -62,7 +62,7 @@ export function ScoreSummary({
           </Text>
         </Flex>
 
-        <Flex direction="column" align="center">
+        <Flex direction="column" align="center" gap="2">
           <Text size="1" color="gray">
             Birdies
           </Text>

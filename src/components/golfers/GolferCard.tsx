@@ -29,7 +29,7 @@ export function GolferCard({ golfer, showHandicap = true, linkToDetail = true }:
           radius="full"
           color="amber"
         />
-        <Flex direction="column" gap="2" style={{ flex: 1 }}>
+        <Flex direction="column" gap="3" style={{ flex: 1 }}>
           <Text weight="medium">{golfer.name}</Text>
           {golfer.email && (
             <Text size="1" color="gray">

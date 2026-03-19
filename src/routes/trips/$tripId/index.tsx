@@ -90,7 +90,7 @@ function TripDashboard() {
     <Container size="2" py="6">
       <Flex direction="column" gap="6">
         {/* Header */}
-        <Flex direction="column" gap="2">
+        <Flex direction="column" gap="3">
           <Heading size="8">{trip.name}</Heading>
           {trip.description && (
             <Text size="3" color="gray">
@@ -197,7 +197,7 @@ function TripDashboard() {
                   >
                     <Card asChild>
                       <Flex justify="between" align="center">
-                        <Flex direction="column" gap="2">
+                        <Flex direction="column" gap="3">
                           <Flex align="center" gap="2">
                             <Badge>Round {round.roundNumber}</Badge>
                             <Text weight="medium">{course?.name || 'Unknown Course'}</Text>

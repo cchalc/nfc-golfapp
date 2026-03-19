@@ -83,24 +83,45 @@ TanStack DB's query builder has IVM constraints:
 
 ## Capsize Typography + Radix Gap
 
-**Issue**: Capsize generates aggressive negative margins via `::before`/`::after` pseudo-elements to trim leading/descender space from text. When combined with small Radix gaps (`gap="1"` = 4px), vertically stacked text elements can overlap.
+**Issue**: Capsize generates aggressive negative margins via `::before`/`::after` pseudo-elements to trim leading/descender space from text. When combined with small Radix gaps, vertically stacked text elements can appear crowded or overlap.
 
-**Solution**: Use `gap="2"` (8px) minimum for text-on-text column stacks:
+**Guidelines**:
+
+| Context | Recommended Gap | Example |
+|---------|-----------------|---------|
+| Page headers (title + subtitle) | `gap="3"` or `gap="4"` | Heading + description text |
+| Stat displays (label + value) | `gap="2"` | "Golfers" + "10" |
+| Card content with multiple sections | `gap="4"` | Title + description + metadata row |
+| Form fields (label + input) | `gap="1"` | Label + TextField (OK - inputs aren't capsize-trimmed) |
+| List items between cards | `gap="2"` or `gap="3"` | Card list spacing |
+
+**Examples**:
 ```tsx
-// ❌ DON'T - will cause text overlap
+// ❌ DON'T - will cause text overlap/crowding
 <Flex direction="column" gap="1">
   <Heading size="6">{title}</Heading>
   <Text size="2" color="gray">{subtitle}</Text>
 </Flex>
 
-// ✅ DO - adequate spacing for capsize
-<Flex direction="column" gap="2">
-  <Heading size="6">{title}</Heading>
-  <Text size="2" color="gray">{subtitle}</Text>
+// ✅ DO - page headers need gap="3"
+<Flex direction="column" gap="3">
+  <Heading size="7">{title}</Heading>
+  <Text color="gray">{subtitle}</Text>
+</Flex>
+
+// ✅ DO - stat cards need gap="2" minimum
+<Flex direction="column" align="center" gap="2">
+  <Text size="1" color="gray">Label</Text>
+  <Text size="5" weight="bold">{value}</Text>
+</Flex>
+
+// ✅ DO - cards with multiple text sections need gap="4"
+<Flex direction="column" gap="4">
+  <Heading size="4">{title}</Heading>
+  <Text color="gray">{description}</Text>
+  <Flex gap="4">{metadata}</Flex>
 </Flex>
 ```
-
-**Note**: Form fields (label + TextField) are fine with `gap="1"` since TextField is not a capsize-trimmed text element. Only text-to-text stacks need the larger gap.
 
 **Don't**: Override `line-height` in CSS - capsize computes precise line-heights based on font metrics.
 
@@ -130,3 +151,37 @@ export const startInstance = undefined
 ```
 
 **Symptom**: Black screen, no console errors, React never hydrates, SSR HTML is rendered but client JS fails silently.
+
+## Radix Card asChild + Flex Gap
+
+**Issue**: When using `<Card asChild>` with a direct `<Flex direction="column">` child, the gap property doesn't work. The Card's `display: block` overrides the Flex's `display: flex`, causing the gap to be ignored even though the CSS classes are merged correctly.
+
+**Diagnosis**: Use browser DevTools to inspect the element:
+```javascript
+// Check computed styles
+getComputedStyle(cardElement).display  // "block" - problem!
+getComputedStyle(cardElement).gap      // "48px" - set but ignored
+```
+
+**Root cause**: The `asChild` pattern merges classes but CSS specificity causes the Card's `display: block` to win over Flex's `display: flex`.
+
+**Solution**: Don't use `asChild` when you need Flex gap. Nest the Flex inside the Card instead:
+```tsx
+// ❌ DON'T - gap won't work
+<Card asChild>
+  <Flex direction="column" gap="5">
+    <Heading>{title}</Heading>
+    <Text>{description}</Text>
+  </Flex>
+</Card>
+
+// ✅ DO - gap works correctly
+<Card>
+  <Flex direction="column" gap="5">
+    <Heading>{title}</Heading>
+    <Text>{description}</Text>
+  </Flex>
+</Card>
+```
+
+**When asChild IS okay**: For horizontal Flex layouts where you just need `justify-between` and `align-center` without vertical stacking gaps.
