@@ -78,7 +78,7 @@ function TripGolfersPage() {
   return (
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
-        <Flex direction="column" gap="2">
+        <Flex direction="column" gap="3">
           <Heading size="7">Trip Golfers</Heading>
           <Text color="gray">{trip.name}</Text>
         </Flex>

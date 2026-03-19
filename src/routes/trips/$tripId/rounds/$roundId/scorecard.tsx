@@ -195,7 +195,7 @@ function ScorecardPage() {
   return (
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
-        <Flex direction="column" gap="2">
+        <Flex direction="column" gap="3">
           <Heading size="6">{course.name}</Heading>
           <Text color="gray">Round {round.roundNumber}</Text>
         </Flex>

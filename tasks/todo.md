@@ -20,6 +20,13 @@
 - [x] **Cleaned up debug logs**: Removed console.log statements from ClientOnly.tsx and __root.tsx
 - [x] **Updated lessons.md**: Documented both the capsize gap issue and startInstance requirement
 
+### Session 2026-03-18: Additional Spacing Fixes
+
+- [x] **ScoreSummary.tsx**: Added `gap="2"` to all stat columns (Gross, Net, Stableford, Birdies)
+- [x] **$golferId.tsx**: Fixed stat cards (Rounds, Avg Gross, Avg Points, Birdies+) with `gap="2"`
+- [x] **$roundId/index.tsx**: Fixed course info cards (Par, Rating, Slope) with `gap="2"`
+- [x] **leaderboards.tsx**: Fixed team leaderboard text stacking with `gap="2"`
+
 ---
 
 ## Completed - Phase 1: Foundation

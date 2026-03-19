@@ -29,8 +29,8 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
 
   return (
     <Link to="/trips/$tripId" params={{ tripId: trip.id }} style={{ textDecoration: 'none' }}>
-      <Card asChild className="card-gold-hover">
-        <Flex direction="column" gap="3">
+      <Card className="card-gold-hover">
+        <Flex direction="column" gap="5">
           <Flex justify="between" align="start">
             <Heading size="4">{trip.name}</Heading>
             {isUpcoming && <Badge color="grass">Upcoming</Badge>}

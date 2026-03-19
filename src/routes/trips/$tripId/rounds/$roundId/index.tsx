@@ -98,7 +98,7 @@ function RoundOverview() {
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
         {/* Header */}
-        <Flex direction="column" gap="2">
+        <Flex direction="column" gap="3">
           <Flex align="center" gap="2">
             <Badge size="2">Round {round.roundNumber}</Badge>
           </Flex>
@@ -111,7 +111,7 @@ function RoundOverview() {
         {course && (
           <Card>
             <Grid columns="3" gap="3">
-              <Flex direction="column" align="center">
+              <Flex direction="column" align="center" gap="2">
                 <Text size="1" color="gray">
                   Par
                 </Text>
@@ -119,7 +119,7 @@ function RoundOverview() {
                   {course.totalPar}
                 </Text>
               </Flex>
-              <Flex direction="column" align="center">
+              <Flex direction="column" align="center" gap="2">
                 <Text size="1" color="gray">
                   Rating
                 </Text>
@@ -127,7 +127,7 @@ function RoundOverview() {
                   {course.courseRating ?? '-'}
                 </Text>
               </Flex>
-              <Flex direction="column" align="center">
+              <Flex direction="column" align="center" gap="2">
                 <Text size="1" color="gray">
                   Slope
                 </Text>
@@ -156,7 +156,7 @@ function RoundOverview() {
                   >
                     <Card asChild>
                       <Flex justify="between" align="center">
-                        <Flex direction="column" gap="2">
+                        <Flex direction="column" gap="3">
                           <Text weight="medium">{golfer.name}</Text>
                           <Text size="2" color="gray">
                             HCP {golfer.handicap.toFixed(1)}
