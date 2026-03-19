@@ -35,6 +35,11 @@ export function Header() {
                 Golfers
               </Text>
             </Link>
+            <Link to="/courses" className="nav-link">
+              <Text size="2" color="gray">
+                Courses
+              </Text>
+            </Link>
           </Flex>
         </Flex>
         <Flex gap="4" align="center">

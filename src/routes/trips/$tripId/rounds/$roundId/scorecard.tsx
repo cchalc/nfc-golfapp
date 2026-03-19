@@ -1,5 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { Container, Flex, Heading, Text } from '@radix-ui/themes'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { Container, Flex, Heading, Text, Button, Badge, Select, Card } from '@radix-ui/themes'
+import { ArrowLeft, Trophy, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
   roundCollection,
@@ -8,6 +9,8 @@ import {
   golferCollection,
   scoreCollection,
   roundSummaryCollection,
+  tripCollection,
+  tripGolferCollection,
 } from '../../../../../db/collections'
 import { Scorecard } from '../../../../../components/scoring/Scorecard'
 import {
@@ -28,8 +31,15 @@ export const Route = createFileRoute('/trips/$tripId/rounds/$roundId/scorecard')
 })
 
 function ScorecardPage() {
-  const { roundId } = Route.useParams()
+  const { tripId, roundId } = Route.useParams()
   const { golferId } = Route.useSearch()
+  const navigate = useNavigate()
+
+  const { data: trips } = useLiveQuery(
+    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
+    [tripId]
+  )
+  const trip = trips?.[0]
 
   const { data: rounds } = useLiveQuery(
     (q) =>
@@ -60,14 +70,35 @@ function ScorecardPage() {
     [course?.id]
   )
 
-  const { data: golfers } = useLiveQuery(
+  // Get all golfers in this trip
+  const { data: tripGolfers } = useLiveQuery(
     (q) =>
       q
-        .from({ golfer: golferCollection })
-        .where(({ golfer }) => eq(golfer.id, golferId)),
-    [golferId]
+        .from({ tg: tripGolferCollection })
+        .where(({ tg }) => eq(tg.tripId, tripId))
+        .where(({ tg }) => eq(tg.status, 'accepted')),
+    [tripId]
   )
-  const golfer = golfers?.[0]
+  const tripGolferIds = (tripGolfers || []).map((tg) => tg.golferId)
+
+  const { data: allGolfers } = useLiveQuery(
+    (q) => q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
+    []
+  )
+  const golferMap = new Map((allGolfers || []).map((g) => [g.id, g]))
+
+  // Get golfers in this trip, sorted by name
+  const playingGolfers = tripGolferIds
+    .map((id) => golferMap.get(id))
+    .filter((g): g is NonNullable<typeof g> => !!g)
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  const golfer = golferMap.get(golferId)
+
+  // Find current golfer index for prev/next navigation
+  const currentGolferIndex = playingGolfers.findIndex((g) => g.id === golferId)
+  const prevGolfer = currentGolferIndex > 0 ? playingGolfers[currentGolferIndex - 1] : null
+  const nextGolfer = currentGolferIndex < playingGolfers.length - 1 ? playingGolfers[currentGolferIndex + 1] : null
 
   const { data: scores } = useLiveQuery(
     (q) =>
@@ -77,6 +108,14 @@ function ScorecardPage() {
         .where(({ score }) => eq(score.golferId, golferId)),
     [roundId, golferId]
   )
+
+  function navigateToGolfer(newGolferId: string) {
+    navigate({
+      to: '/trips/$tripId/rounds/$roundId/scorecard',
+      params: { tripId, roundId },
+      search: { golferId: newGolferId },
+    })
+  }
 
   function handleScoreChange(holeId: string, grossScore: number) {
     if (!golfer || !holes || !course) return
@@ -195,10 +234,83 @@ function ScorecardPage() {
   return (
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
-        <Flex direction="column" gap="3">
-          <Heading size="6">{course.name}</Heading>
-          <Text color="gray">Round {round.roundNumber}</Text>
+        {/* Navigation breadcrumb */}
+        <Flex justify="between" align="center" wrap="wrap" gap="2">
+          <Link to="/trips/$tripId/rounds/$roundId" params={{ tripId, roundId }}>
+            <Button variant="ghost" size="1">
+              <ArrowLeft size={16} />
+              Back to Round
+            </Button>
+          </Link>
+          <Flex gap="2">
+            <Link to="/trips/$tripId/leaderboards" params={{ tripId }}>
+              <Button variant="soft" size="1">
+                <Trophy size={14} />
+                Leaderboard
+              </Button>
+            </Link>
+            <Link to="/trips/$tripId" params={{ tripId }}>
+              <Button variant="soft" size="1">
+                {trip?.name || 'Trip'}
+              </Button>
+            </Link>
+          </Flex>
         </Flex>
+
+        {/* Header with course and round info */}
+        <Flex direction="column" gap="2">
+          <Flex align="center" gap="2">
+            <Badge size="2">Round {round.roundNumber}</Badge>
+            <Heading size="6">{course.name}</Heading>
+          </Flex>
+          <Text size="2" color="gray">{trip?.name}</Text>
+        </Flex>
+
+        {/* Golfer selector with prev/next */}
+        <Card>
+          <Flex justify="between" align="center">
+            <Button
+              variant="ghost"
+              size="1"
+              disabled={!prevGolfer}
+              onClick={() => prevGolfer && navigateToGolfer(prevGolfer.id)}
+            >
+              <ChevronLeft size={16} />
+              {prevGolfer?.name.split(' ')[0] || 'Prev'}
+            </Button>
+
+            <Flex direction="column" align="center" gap="1">
+              <Select.Root value={golferId} onValueChange={navigateToGolfer}>
+                <Select.Trigger>
+                  <Flex align="center" gap="2">
+                    <Users size={14} />
+                    {golfer?.name}
+                  </Flex>
+                </Select.Trigger>
+                <Select.Content>
+                  {playingGolfers.map((g) => (
+                    <Select.Item key={g.id} value={g.id}>
+                      {g.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select.Root>
+              <Text size="1" color="gray">
+                HCP {golfer?.handicap.toFixed(1)}
+              </Text>
+            </Flex>
+
+            <Button
+              variant="ghost"
+              size="1"
+              disabled={!nextGolfer}
+              onClick={() => nextGolfer && navigateToGolfer(nextGolfer.id)}
+            >
+              {nextGolfer?.name.split(' ')[0] || 'Next'}
+              <ChevronRight size={16} />
+            </Button>
+          </Flex>
+        </Card>
 
         {holes && (
           <Scorecard

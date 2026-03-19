@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import {
   Container,
   Flex,
@@ -7,12 +7,19 @@ import {
   Tabs,
   Card,
   Badge,
+  Dialog,
+  Button,
+  Switch,
 } from '@radix-ui/themes'
-import { useLiveQuery, eq, sum, count, min } from '@tanstack/react-db'
+import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
+import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useState } from 'react'
 import {
   tripCollection,
   golferCollection,
   tripGolferCollection,
+  roundCollection,
+  courseCollection,
   roundSummaryCollection,
   teamCollection,
   teamMemberCollection,
@@ -53,66 +60,128 @@ function LeaderboardsPage() {
   )
 
   const tripGolferIds = new Set((tripGolfers || []).map((tg) => tg.golferId))
+  const includedGolferIds = new Set(
+    (tripGolfers || []).filter((tg) => tg.includedInScoring).map((tg) => tg.golferId)
+  )
+  const tripGolferMap = new Map((tripGolfers || []).map((tg) => [tg.golferId, tg]))
 
-  // Stableford Leaderboard (total points)
-  const { data: stablefordData } = useLiveQuery(
+  function toggleGolferScoring(golferId: string) {
+    const tg = tripGolferMap.get(golferId)
+    if (tg) {
+      tripGolferCollection.update(tg.id, (draft) => {
+        draft.includedInScoring = !draft.includedInScoring
+      })
+    }
+  }
+
+  // State for round selection dialog
+  const [selectedGolferId, setSelectedGolferId] = useState<string | null>(null)
+
+  // Get all rounds for this trip
+  const { data: allRounds } = useLiveQuery(
     (q) =>
       q
-        .from({ summary: roundSummaryCollection })
-        .groupBy(({ summary }) => summary.golferId)
-        .select(({ summary }) => ({
-          golferId: summary.golferId,
-          totalPoints: sum(summary.totalStableford),
-          rounds: count(summary.id),
-        }))
-        .orderBy(({ $selected }) => $selected.totalPoints, 'desc'),
+        .from({ round: roundCollection })
+        .where(({ round }) => eq(round.tripId, tripId))
+        .orderBy(({ round }) => round.roundNumber, 'asc'),
+    [tripId]
+  )
+  const roundMap = new Map((allRounds || []).map((r) => [r.id, r]))
+
+  // Get included rounds (trip-level)
+  const includedRoundIds = new Set(
+    (allRounds || []).filter((r) => r.includedInScoring).map((r) => r.id)
+  )
+
+  // Get courses for round names
+  const { data: courses } = useLiveQuery(
+    (q) => q.from({ course: courseCollection }),
+    []
+  )
+  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
+
+  // Get all round summaries
+  const { data: allSummaries } = useLiveQuery(
+    (q) => q.from({ summary: roundSummaryCollection }),
     []
   )
 
-  // Net Leaderboard (average net)
-  const { data: netData } = useLiveQuery(
-    (q) =>
-      q
-        .from({ summary: roundSummaryCollection })
-        .groupBy(({ summary }) => summary.golferId)
-        .select(({ summary }) => ({
-          golferId: summary.golferId,
-          bestNet: min(summary.totalNet),
-          rounds: count(summary.id),
-        }))
-        .orderBy(({ $selected }) => $selected.bestNet, 'asc'),
-    []
+  // Filter summaries to only included rounds from this trip AND where summary.includedInScoring is true
+  const tripSummaries = (allSummaries || []).filter(
+    (s) => includedRoundIds.has(s.roundId) && s.includedInScoring !== false
   )
 
-  // Birdies Leaderboard
-  const { data: birdiesData } = useLiveQuery(
-    (q) =>
-      q
-        .from({ summary: roundSummaryCollection })
-        .groupBy(({ summary }) => summary.golferId)
-        .select(({ summary }) => ({
-          golferId: summary.golferId,
-          totalBirdies: sum(summary.birdiesOrBetter),
-          rounds: count(summary.id),
-        }))
-        .orderBy(({ $selected }) => $selected.totalBirdies, 'desc'),
-    []
-  )
+  // Get summaries for selected golfer (for round selection dialog)
+  const selectedGolferSummaries = selectedGolferId
+    ? (allSummaries || []).filter(
+        (s) => s.golferId === selectedGolferId && includedRoundIds.has(s.roundId)
+      )
+    : []
 
-  // KPs Leaderboard
-  const { data: kpsData } = useLiveQuery(
-    (q) =>
-      q
-        .from({ summary: roundSummaryCollection })
-        .groupBy(({ summary }) => summary.golferId)
-        .select(({ summary }) => ({
-          golferId: summary.golferId,
-          totalKps: sum(summary.kps),
-          rounds: count(summary.id),
-        }))
-        .orderBy(({ $selected }) => $selected.totalKps, 'desc'),
-    []
-  )
+  function toggleRoundForGolfer(summaryId: string, currentValue: boolean) {
+    roundSummaryCollection.update(summaryId, (draft) => {
+      draft.includedInScoring = !currentValue
+    })
+  }
+
+  // Aggregate Stableford data
+  const stablefordByGolfer = new Map<string, { totalPoints: number; rounds: number }>()
+  for (const summary of tripSummaries) {
+    const existing = stablefordByGolfer.get(summary.golferId) || { totalPoints: 0, rounds: 0 }
+    stablefordByGolfer.set(summary.golferId, {
+      totalPoints: existing.totalPoints + summary.totalStableford,
+      rounds: existing.rounds + 1,
+    })
+  }
+  const stablefordData = Array.from(stablefordByGolfer.entries())
+    .map(([golferId, data]) => ({ golferId, ...data }))
+    .sort((a, b) => b.totalPoints - a.totalPoints)
+
+  // Aggregate Net data (best net)
+  const netByGolfer = new Map<string, { bestNet: number; rounds: number }>()
+  for (const summary of tripSummaries) {
+    const existing = netByGolfer.get(summary.golferId)
+    if (!existing || summary.totalNet < existing.bestNet) {
+      netByGolfer.set(summary.golferId, {
+        bestNet: summary.totalNet,
+        rounds: (existing?.rounds || 0) + 1,
+      })
+    } else {
+      netByGolfer.set(summary.golferId, {
+        ...existing,
+        rounds: existing.rounds + 1,
+      })
+    }
+  }
+  const netData = Array.from(netByGolfer.entries())
+    .map(([golferId, data]) => ({ golferId, ...data }))
+    .sort((a, b) => a.bestNet - b.bestNet)
+
+  // Aggregate Birdies data
+  const birdiesByGolfer = new Map<string, { totalBirdies: number; rounds: number }>()
+  for (const summary of tripSummaries) {
+    const existing = birdiesByGolfer.get(summary.golferId) || { totalBirdies: 0, rounds: 0 }
+    birdiesByGolfer.set(summary.golferId, {
+      totalBirdies: existing.totalBirdies + summary.birdiesOrBetter,
+      rounds: existing.rounds + 1,
+    })
+  }
+  const birdiesData = Array.from(birdiesByGolfer.entries())
+    .map(([golferId, data]) => ({ golferId, ...data }))
+    .sort((a, b) => b.totalBirdies - a.totalBirdies)
+
+  // Aggregate KPs data
+  const kpsByGolfer = new Map<string, { totalKps: number; rounds: number }>()
+  for (const summary of tripSummaries) {
+    const existing = kpsByGolfer.get(summary.golferId) || { totalKps: 0, rounds: 0 }
+    kpsByGolfer.set(summary.golferId, {
+      totalKps: existing.totalKps + summary.kps,
+      rounds: existing.rounds + 1,
+    })
+  }
+  const kpsData = Array.from(kpsByGolfer.entries())
+    .map(([golferId, data]) => ({ golferId, ...data }))
+    .sort((a, b) => b.totalKps - a.totalKps)
 
   // Teams
   const { data: teams } = useLiveQuery(
@@ -129,19 +198,21 @@ function LeaderboardsPage() {
     [tripId]
   )
 
-  function filterTripGolfers<T extends { golferId: string }>(data: T[] | undefined): T[] {
-    if (!data) return []
-    return data.filter((d) => tripGolferIds.has(d.golferId))
-  }
-
   function buildLeaderboard<T extends { golferId: string; rounds: number }>(
     data: T[],
     getValue: (d: T) => number,
     formatValue: (d: T) => string,
     sortAsc: boolean = false
   ): LeaderboardEntry[] {
-    const filtered = filterTripGolfers(data)
-    const sorted = [...filtered].sort((a, b) => {
+    // Filter to trip golfers only
+    const tripData = data.filter((d) => tripGolferIds.has(d.golferId))
+
+    // Separate included and excluded golfers
+    const includedData = tripData.filter((d) => includedGolferIds.has(d.golferId))
+    const excludedData = tripData.filter((d) => !includedGolferIds.has(d.golferId))
+
+    // Sort included golfers for ranking
+    const sortedIncluded = [...includedData].sort((a, b) => {
       const diff = getValue(a) - getValue(b)
       return sortAsc ? diff : -diff
     })
@@ -149,7 +220,7 @@ function LeaderboardsPage() {
     let rank = 0
     let lastValue: number | null = null
 
-    return sorted.map((d, idx) => {
+    const includedEntries: LeaderboardEntry[] = sortedIncluded.map((d, idx) => {
       const value = getValue(d)
       if (value !== lastValue) {
         rank = idx + 1
@@ -164,31 +235,48 @@ function LeaderboardsPage() {
         value,
         displayValue: formatValue(d),
         rounds: d.rounds,
+        included: true,
       }
     })
+
+    // Add excluded golfers at the end with no rank
+    const excludedEntries: LeaderboardEntry[] = excludedData.map((d) => {
+      const golfer = golferMap.get(d.golferId)
+      return {
+        rank: 0,
+        golferId: d.golferId,
+        name: golfer?.name || 'Unknown',
+        value: getValue(d),
+        displayValue: formatValue(d),
+        rounds: d.rounds,
+        included: false,
+      }
+    })
+
+    return [...includedEntries, ...excludedEntries]
   }
 
   const stablefordLeaderboard = buildLeaderboard(
-    stablefordData || [],
+    stablefordData,
     (d) => d.totalPoints,
     (d) => `${d.totalPoints} pts`
   )
 
   const netLeaderboard = buildLeaderboard(
-    netData || [],
+    netData,
     (d) => d.bestNet,
     (d) => `${d.bestNet}`,
     true
   )
 
   const birdiesLeaderboard = buildLeaderboard(
-    birdiesData || [],
+    birdiesData,
     (d) => d.totalBirdies,
     (d) => `${d.totalBirdies}`
   )
 
   const kpsLeaderboard = buildLeaderboard(
-    kpsData || [],
+    kpsData,
     (d) => d.totalKps,
     (d) => `${d.totalKps}`
   )
@@ -224,6 +312,36 @@ function LeaderboardsPage() {
   return (
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
+        {/* Navigation */}
+        <Flex justify="between" align="center" wrap="wrap" gap="2">
+          <Link to="/trips/$tripId" params={{ tripId }}>
+            <Button variant="ghost" size="1">
+              <ArrowLeft size={16} />
+              Back to Trip
+            </Button>
+          </Link>
+          <Flex gap="2">
+            <Link to="/trips/$tripId/golfers" params={{ tripId }}>
+              <Button variant="soft" size="1">
+                <Users size={14} />
+                Golfers
+              </Button>
+            </Link>
+            <Link to="/trips/$tripId/teams" params={{ tripId }}>
+              <Button variant="soft" size="1">
+                <Flag size={14} />
+                Teams
+              </Button>
+            </Link>
+            <Link to="/trips/$tripId/challenges" params={{ tripId }}>
+              <Button variant="soft" size="1">
+                <Target size={14} />
+                Challenges
+              </Button>
+            </Link>
+          </Flex>
+        </Flex>
+
         <Flex direction="column" gap="3">
           <Heading size="7">Leaderboards</Heading>
           <Text color="gray">{trip.name}</Text>
@@ -247,6 +365,8 @@ function LeaderboardsPage() {
                   entries={stablefordLeaderboard}
                   valueLabel="Total Points"
                   showRounds
+                  onToggleGolfer={toggleGolferScoring}
+                  onClickRounds={setSelectedGolferId}
                 />
               </Card>
             </Tabs.Content>
@@ -257,6 +377,8 @@ function LeaderboardsPage() {
                   entries={netLeaderboard}
                   valueLabel="Best Net"
                   showRounds
+                  onToggleGolfer={toggleGolferScoring}
+                  onClickRounds={setSelectedGolferId}
                 />
               </Card>
             </Tabs.Content>
@@ -267,6 +389,8 @@ function LeaderboardsPage() {
                   entries={birdiesLeaderboard}
                   valueLabel="Total Birdies"
                   showRounds
+                  onToggleGolfer={toggleGolferScoring}
+                  onClickRounds={setSelectedGolferId}
                 />
               </Card>
             </Tabs.Content>
@@ -277,6 +401,8 @@ function LeaderboardsPage() {
                   entries={kpsLeaderboard}
                   valueLabel="Total KPs"
                   showRounds
+                  onToggleGolfer={toggleGolferScoring}
+                  onClickRounds={setSelectedGolferId}
                 />
               </Card>
             </Tabs.Content>
@@ -320,6 +446,66 @@ function LeaderboardsPage() {
           />
         )}
       </Flex>
+
+      {/* Round Selection Dialog */}
+      <Dialog.Root open={!!selectedGolferId} onOpenChange={(open) => !open && setSelectedGolferId(null)}>
+        <Dialog.Content maxWidth="400px">
+          <Dialog.Title>
+            Select Rounds for {selectedGolferId ? golferMap.get(selectedGolferId)?.name : ''}
+          </Dialog.Title>
+          <Dialog.Description size="2" color="gray">
+            Choose which rounds to include in scoring calculations
+          </Dialog.Description>
+          <Flex direction="column" gap="3" pt="4">
+            {selectedGolferSummaries.map((summary) => {
+              const round = roundMap.get(summary.roundId)
+              const course = round ? courseMap.get(round.courseId) : null
+              const isIncluded = summary.includedInScoring !== false
+
+              return (
+                <Card key={summary.id} size="1">
+                  <Flex justify="between" align="center">
+                    <Flex direction="column" gap="1">
+                      <Flex align="center" gap="2">
+                        <Badge size="1">R{round?.roundNumber}</Badge>
+                        <Text size="2" weight="medium">
+                          {course?.name || 'Unknown Course'}
+                        </Text>
+                      </Flex>
+                      <Flex gap="3">
+                        <Text size="1" color="gray">
+                          Gross: {summary.totalGross}
+                        </Text>
+                        <Text size="1" color="gray">
+                          Net: {summary.totalNet}
+                        </Text>
+                        <Text size="1" color="gray">
+                          Pts: {summary.totalStableford}
+                        </Text>
+                      </Flex>
+                    </Flex>
+                    <Switch
+                      size="1"
+                      checked={isIncluded}
+                      onCheckedChange={() => toggleRoundForGolfer(summary.id, isIncluded)}
+                    />
+                  </Flex>
+                </Card>
+              )
+            })}
+            {selectedGolferSummaries.length === 0 && (
+              <Text size="2" color="gray" align="center">
+                No rounds found for this golfer
+              </Text>
+            )}
+          </Flex>
+          <Flex justify="end" pt="4">
+            <Button variant="soft" onClick={() => setSelectedGolferId(null)}>
+              Done
+            </Button>
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
     </Container>
   )
 }

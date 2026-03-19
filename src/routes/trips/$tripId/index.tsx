@@ -8,6 +8,8 @@ import {
   Grid,
   Button,
   Badge,
+  Switch,
+  Tooltip,
 } from '@radix-ui/themes'
 import {
   Calendar,
@@ -17,6 +19,7 @@ import {
   Flag,
   ChevronRight,
   Target,
+  Calculator,
 } from 'lucide-react'
 import { useLiveQuery, eq, count } from '@tanstack/react-db'
 import {
@@ -97,6 +100,13 @@ function TripDashboard() {
 
   const golferCount = golferStats?.[0]?.total ?? 0
   const roundCount = rounds?.length ?? 0
+  const includedRoundCount = rounds?.filter((r) => r.includedInScoring).length ?? 0
+
+  function toggleRoundScoring(roundId: string, currentValue: boolean) {
+    roundCollection.update(roundId, (draft) => {
+      draft.includedInScoring = !currentValue
+    })
+  }
 
   return (
     <Container size="2" py="6">
@@ -128,7 +138,10 @@ function TripDashboard() {
         {/* Stats */}
         <Grid columns="3" gap="3">
           <StatCard label="Golfers" value={golferCount} />
-          <StatCard label="Rounds" value={roundCount} />
+          <StatCard
+            label="Rounds"
+            value={includedRoundCount === roundCount ? roundCount : `${includedRoundCount}/${roundCount}`}
+          />
           <StatCard label="Courses" value={new Set(rounds?.map((r) => r.courseId)).size} />
         </Grid>
 
@@ -219,13 +232,13 @@ function TripDashboard() {
               {rounds.map((round) => {
                 const course = courseMap.get(round.courseId)
                 return (
-                  <Link
-                    key={round.id}
-                    to="/trips/$tripId/rounds/$roundId"
-                    params={{ tripId, roundId: round.id }}
-                  >
-                    <Card asChild>
-                      <Flex justify="between" align="center">
+                  <Card key={round.id}>
+                    <Flex justify="between" align="center">
+                      <Link
+                        to="/trips/$tripId/rounds/$roundId"
+                        params={{ tripId, roundId: round.id }}
+                        style={{ flex: 1 }}
+                      >
                         <Flex direction="column" gap="3">
                           <Flex align="center" gap="2">
                             <Badge>Round {round.roundNumber}</Badge>
@@ -235,10 +248,38 @@ function TripDashboard() {
                             {formatDate(round.roundDate)}
                           </Text>
                         </Flex>
-                        <ChevronRight size={16} />
+                      </Link>
+                      <Flex align="center" gap="3">
+                        <Tooltip content={round.includedInScoring ? 'Included in scoring' : 'Excluded from scoring'}>
+                          <Flex
+                            align="center"
+                            gap="2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Calculator
+                              size={14}
+                              style={{
+                                color: round.includedInScoring ? 'var(--grass-9)' : 'var(--gray-8)',
+                              }}
+                            />
+                            <Switch
+                              size="1"
+                              checked={round.includedInScoring}
+                              onCheckedChange={() =>
+                                toggleRoundScoring(round.id, round.includedInScoring)
+                              }
+                            />
+                          </Flex>
+                        </Tooltip>
+                        <Link
+                          to="/trips/$tripId/rounds/$roundId"
+                          params={{ tripId, roundId: round.id }}
+                        >
+                          <ChevronRight size={16} />
+                        </Link>
                       </Flex>
-                    </Card>
-                  </Link>
+                    </Flex>
+                  </Card>
                 )
               })}
             </Flex>

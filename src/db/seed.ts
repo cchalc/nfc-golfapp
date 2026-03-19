@@ -233,6 +233,7 @@ export function seedData() {
     status: 'accepted' as const,
     invitedAt: now,
     acceptedAt: now,
+    includedInScoring: true,
   }))
   tripGolferCollection.insert(tripGolfers)
 
@@ -246,8 +247,16 @@ export function seedData() {
 
     const course: Course = {
       id: courseId,
+      apiId: null,
       name: c.name,
+      clubName: c.name,
       location: c.location,
+      address: '',
+      city: '',
+      state: '',
+      country: 'USA',
+      latitude: null,
+      longitude: null,
       courseRating: c.courseRating,
       slopeRating: c.slopeRating,
       totalPar: c.totalPar,
@@ -276,6 +285,7 @@ export function seedData() {
       roundDate: roundDates[courseIdx],
       roundNumber: courseIdx + 1,
       notes: '',
+      includedInScoring: true,
     }
     roundCollection.insert(round)
 
@@ -342,6 +352,7 @@ export function seedData() {
         totalStableford,
         birdiesOrBetter: birdies,
         kps,
+        includedInScoring: true,
       }
       roundSummaryCollection.insert(summary)
     })
