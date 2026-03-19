@@ -50,7 +50,11 @@
       "Bash(jj git remote:*)",
       "Bash(gh pr edit:*)",
       "Bash(jj new:*)",
-      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__click"
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__click",
+      "Bash(jj bookmark delete:*)",
+      "Bash(gh pr list:*)",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__press_key",
+      "Bash(pnpm build:*)"
     ]
   },
   "enabledPlugins": {

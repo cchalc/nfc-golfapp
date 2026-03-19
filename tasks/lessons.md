@@ -185,3 +185,58 @@ getComputedStyle(cardElement).gap      // "48px" - set but ignored
 ```
 
 **When asChild IS okay**: For horizontal Flex layouts where you just need `justify-between` and `align-center` without vertical stacking gaps.
+
+## Radix Dialog Closing Pattern
+
+**Issue**: Using `document.querySelector('[data-radix-dialog-close]')?.click()` to close dialogs fails when no `<Dialog.Close>` element exists in the dialog. The selector returns `null` and the dialog stays open after form submission.
+
+**Root cause**: The pattern assumes a `<Dialog.Close>` button exists, but many dialogs only have action buttons (Save, Submit) without an explicit close button.
+
+**Solution**: Use controlled dialog state via TanStack DB collection:
+
+```tsx
+// src/hooks/useDialogState.ts
+import { useLiveQuery, eq } from '@tanstack/react-db'
+import { uiStateCollection } from '../db/collections'
+
+export function useDialogState(dialogId: string): [boolean, (open: boolean) => void] {
+  const { data: uiStates } = useLiveQuery(
+    (q) => q.from({ ui: uiStateCollection }).where(({ ui }) => eq(ui.dialogId, dialogId)),
+    [dialogId]
+  )
+  const isOpen = uiStates?.[0]?.isOpen ?? false
+
+  const setOpen = (open: boolean) => {
+    const existing = uiStates?.[0]
+    if (existing) {
+      uiStateCollection.update(existing.id, (d) => { d.isOpen = open })
+    } else {
+      uiStateCollection.insert({ id: crypto.randomUUID(), dialogId, isOpen: open })
+    }
+  }
+
+  return [isOpen, setOpen]
+}
+
+// Usage in component
+function MyPage() {
+  const [dialogOpen, setDialogOpen] = useDialogState('edit-item-123')
+
+  return (
+    <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog.Trigger>
+        <Button>Edit</Button>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <MyForm onSuccess={() => setDialogOpen(false)} />
+      </Dialog.Content>
+    </Dialog.Root>
+  )
+}
+```
+
+**Benefits**:
+- Works with any dialog, no `<Dialog.Close>` element required
+- Follows TanStack DB state management pattern (no useState)
+- Dialog state persists correctly through re-renders
+- Clean separation between form logic and dialog control
