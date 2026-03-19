@@ -16,6 +16,7 @@ import {
   Trophy,
   Flag,
   ChevronRight,
+  Target,
 } from 'lucide-react'
 import { useLiveQuery, eq, count } from '@tanstack/react-db'
 import {
@@ -23,6 +24,7 @@ import {
   tripGolferCollection,
   roundCollection,
   courseCollection,
+  challengeCollection,
 } from '../../../db/collections'
 import { StatCard } from '../../../components/ui/StatCard'
 
@@ -74,6 +76,16 @@ function TripDashboard() {
   )
 
   const courseMap = new Map((courses || []).map((c) => [c.id, c]))
+
+  // Fetch challenges for badge count
+  const { data: challenges } = useLiveQuery(
+    (q) =>
+      q
+        .from({ challenge: challengeCollection })
+        .where(({ challenge }) => eq(challenge.tripId, tripId)),
+    [tripId]
+  )
+  const challengeCount = challenges?.length ?? 0
 
   if (!trip) {
     return (
@@ -154,6 +166,23 @@ function TripDashboard() {
                   <Flex align="center" gap="2">
                     <Flag size={20} />
                     <Text weight="medium">Teams</Text>
+                  </Flex>
+                  <ChevronRight size={16} />
+                </Flex>
+              </Card>
+            </Link>
+
+            <Link to="/trips/$tripId/challenges" params={{ tripId }}>
+              <Card asChild>
+                <Flex justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Target size={20} />
+                    <Text weight="medium">Challenges</Text>
+                    {challengeCount > 0 && (
+                      <Badge size="1" color="amber">
+                        {challengeCount}
+                      </Badge>
+                    )}
                   </Flex>
                   <ChevronRight size={16} />
                 </Flex>

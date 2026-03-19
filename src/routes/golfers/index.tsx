@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Container, Flex, Heading, Button, Dialog } from '@radix-ui/themes'
 import { Plus } from 'lucide-react'
 import { useLiveQuery } from '@tanstack/react-db'
+import { useDialogState } from '../../hooks/useDialogState'
 import { golferCollection } from '../../db/collections'
 import { GolferCard } from '../../components/golfers/GolferCard'
 import { GolferForm } from '../../components/golfers/GolferForm'
@@ -13,6 +14,8 @@ export const Route = createFileRoute('/golfers/')({
 })
 
 function GolfersPage() {
+  const [addDialogOpen, setAddDialogOpen] = useDialogState('add-golfer')
+
   const { data: golfers, isLoading } = useLiveQuery(
     (q) =>
       q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
@@ -37,7 +40,7 @@ function GolfersPage() {
       <Flex direction="column" gap="4">
         <Flex justify="between" align="center">
           <Heading size="7">Golfers</Heading>
-          <Dialog.Root>
+          <Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <Dialog.Trigger>
               <Button color="grass">
                 <Plus size={16} />
@@ -50,15 +53,7 @@ function GolfersPage() {
                 Add a new golfer to your directory
               </Dialog.Description>
               <Flex direction="column" gap="4" pt="4">
-                <GolferForm
-                  onSuccess={() => {
-                    // Dialog will close automatically via form reset
-                    const closeButton = document.querySelector(
-                      '[data-radix-dialog-close]'
-                    ) as HTMLButtonElement
-                    closeButton?.click()
-                  }}
-                />
+                <GolferForm onSuccess={() => setAddDialogOpen(false)} />
               </Flex>
             </Dialog.Content>
           </Dialog.Root>
@@ -75,7 +70,7 @@ function GolfersPage() {
             title="No golfers yet"
             description="Add golfers to start tracking scores"
             action={
-              <Dialog.Root>
+              <Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                 <Dialog.Trigger>
                   <Button color="grass">
                     <Plus size={16} />
@@ -85,7 +80,7 @@ function GolfersPage() {
                 <Dialog.Content maxWidth="400px">
                   <Dialog.Title>Add Golfer</Dialog.Title>
                   <Flex direction="column" gap="4" pt="4">
-                    <GolferForm />
+                    <GolferForm onSuccess={() => setAddDialogOpen(false)} />
                   </Flex>
                 </Dialog.Content>
               </Dialog.Root>

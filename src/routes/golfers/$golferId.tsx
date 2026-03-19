@@ -14,6 +14,7 @@ import {
 } from '@radix-ui/themes'
 import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useDialogState } from '../../hooks/useDialogState'
 import {
   golferCollection,
   tripGolferCollection,
@@ -39,6 +40,7 @@ function getInitials(name: string): string {
 
 function GolferDetailPage() {
   const { golferId } = Route.useParams()
+  const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-golfer-${golferId}`)
 
   const { data: golfers } = useLiveQuery(
     (q) =>
@@ -146,7 +148,7 @@ function GolferDetailPage() {
                     HCP {golfer.handicap.toFixed(1)}
                   </Badge>
                 </Flex>
-                <Dialog.Root>
+                <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <Dialog.Trigger>
                     <Button variant="soft" size="1">
                       <Edit size={14} />
@@ -164,12 +166,7 @@ function GolferDetailPage() {
                           phone: golfer.phone,
                           handicap: golfer.handicap,
                         }}
-                        onSuccess={() => {
-                          const closeButton = document.querySelector(
-                            '[data-radix-dialog-close]'
-                          ) as HTMLButtonElement
-                          closeButton?.click()
-                        }}
+                        onSuccess={() => setEditDialogOpen(false)}
                       />
                     </Flex>
                   </Dialog.Content>

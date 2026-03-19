@@ -13,6 +13,7 @@ import {
 } from '@radix-ui/themes'
 import { Plus, X } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useDialogState } from '../../../hooks/useDialogState'
 import {
   tripCollection,
   golferCollection,
@@ -47,6 +48,7 @@ const TEAM_COLORS = [
 
 function TeamsPage() {
   const { tripId } = Route.useParams()
+  const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState(`add-team-${tripId}`)
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -116,10 +118,7 @@ function TeamsPage() {
     })
 
     // Close dialog
-    const closeButton = document.querySelector(
-      '[data-radix-dialog-close]'
-    ) as HTMLButtonElement
-    closeButton?.click()
+    setAddTeamDialogOpen(false)
   }
 
   function addToTeam(teamId: string, golferId: string) {
@@ -164,7 +163,7 @@ function TeamsPage() {
             <Text color="gray">{trip.name}</Text>
           </Flex>
 
-          <Dialog.Root>
+          <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
             <Dialog.Trigger>
               <Button>
                 <Plus size={16} />
@@ -308,7 +307,7 @@ function TeamsPage() {
             title="No teams yet"
             description="Create teams to track team competitions"
             action={
-              <Dialog.Root>
+              <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
                 <Dialog.Trigger>
                   <Button>
                     <Plus size={16} />

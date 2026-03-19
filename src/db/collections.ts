@@ -142,6 +142,13 @@ export const challengeResultSchema = z.object({
   isWinner: z.boolean().default(false),
 })
 
+// UI State collection for managing dialog open states (local-only)
+export const uiStateSchema = z.object({
+  id: z.string(),
+  dialogId: z.string(),
+  isOpen: z.boolean(),
+})
+
 // ============================================================================
 // Type exports
 // ============================================================================
@@ -158,6 +165,7 @@ export type Team = z.output<typeof teamSchema>
 export type TeamMember = z.output<typeof teamMemberSchema>
 export type Challenge = z.output<typeof challengeSchema>
 export type ChallengeResult = z.output<typeof challengeResultSchema>
+export type UIState = z.output<typeof uiStateSchema>
 
 // ============================================================================
 // Collections
@@ -244,5 +252,12 @@ export const challengeResultCollection = createCollection(
   localOnlyCollectionOptions({
     getKey: (item) => item.id,
     schema: challengeResultSchema,
+  })
+)
+
+export const uiStateCollection = createCollection(
+  localOnlyCollectionOptions({
+    getKey: (item) => item.id,
+    schema: uiStateSchema,
   })
 )

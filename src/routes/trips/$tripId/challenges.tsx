@@ -1,0 +1,404 @@
+import { createFileRoute } from '@tanstack/react-router'
+import {
+  Container,
+  Flex,
+  Heading,
+  Text,
+  Button,
+  Dialog,
+} from '@radix-ui/themes'
+import { Plus, Trophy } from 'lucide-react'
+import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useDialogState } from '../../../hooks/useDialogState'
+import {
+  tripCollection,
+  challengeCollection,
+  challengeResultCollection,
+  golferCollection,
+  tripGolferCollection,
+  roundCollection,
+  holeCollection,
+  roundSummaryCollection,
+  type Challenge,
+  type ChallengeResult,
+} from '../../../db/collections'
+import { EmptyState } from '../../../components/ui/EmptyState'
+import { ChallengeCard } from '../../../components/challenges/ChallengeCard'
+import { ChallengeForm } from '../../../components/challenges/ChallengeForm'
+import { ChallengeResultEntry } from '../../../components/challenges/ChallengeResultEntry'
+import { isAutoCalculatedChallenge } from '../../../lib/challenges'
+
+export const Route = createFileRoute('/trips/$tripId/challenges')({
+  ssr: false,
+  component: ChallengesPage,
+})
+
+function ChallengesPage() {
+  const { tripId } = Route.useParams()
+  const [addChallengeDialogOpen, setAddChallengeDialogOpen] = useDialogState(`add-challenge-${tripId}`)
+
+  // Fetch trip
+  const { data: trips } = useLiveQuery(
+    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
+    [tripId]
+  )
+  const trip = trips?.[0]
+
+  // Fetch all challenges for this trip
+  const { data: challenges } = useLiveQuery(
+    (q) =>
+      q
+        .from({ challenge: challengeCollection })
+        .where(({ challenge }) => eq(challenge.tripId, tripId)),
+    [tripId]
+  )
+
+  // Fetch all challenge results
+  const { data: allResults } = useLiveQuery(
+    (q) => q.from({ result: challengeResultCollection }),
+    []
+  )
+
+  // Fetch golfers for result entry
+  const { data: golfers } = useLiveQuery(
+    (q) => q.from({ golfer: golferCollection }),
+    []
+  )
+  const golferMap = new Map((golfers || []).map((g) => [g.id, g]))
+
+  // Fetch trip golfers (accepted only)
+  const { data: tripGolfers } = useLiveQuery(
+    (q) =>
+      q
+        .from({ tg: tripGolferCollection })
+        .where(({ tg }) => eq(tg.tripId, tripId))
+        .where(({ tg }) => eq(tg.status, 'accepted')),
+    [tripId]
+  )
+  const tripGolferIds = new Set((tripGolfers || []).map((tg) => tg.golferId))
+  const tripGolferList = (golfers || []).filter((g) => tripGolferIds.has(g.id))
+
+  // Fetch rounds for context
+  const { data: rounds } = useLiveQuery(
+    (q) =>
+      q
+        .from({ round: roundCollection })
+        .where(({ round }) => eq(round.tripId, tripId)),
+    [tripId]
+  )
+  const roundMap = new Map((rounds || []).map((r) => [r.id, r]))
+
+  // Fetch holes for context
+  const { data: holes } = useLiveQuery((q) => q.from({ hole: holeCollection }), [])
+  const holeMap = new Map((holes || []).map((h) => [h.id, h]))
+
+  // Fetch round summaries for auto-calculated challenges
+  const { data: roundSummaries } = useLiveQuery(
+    (q) => q.from({ summary: roundSummaryCollection }),
+    []
+  )
+
+  // Group results by challengeId
+  const resultsByChallengeId = new Map<string, ChallengeResult[]>()
+  for (const result of allResults || []) {
+    const existing = resultsByChallengeId.get(result.challengeId) || []
+    existing.push(result)
+    resultsByChallengeId.set(result.challengeId, existing)
+  }
+
+  // Find winner for each challenge
+  function getWinnerInfo(challenge: Challenge) {
+    // For auto-calculated challenges, compute from round summaries
+    if (isAutoCalculatedChallenge(challenge.challengeType)) {
+      return computeAutoWinner(challenge)
+    }
+
+    // For manual challenges, look at results
+    const results = resultsByChallengeId.get(challenge.id) || []
+    const winnerResult = results.find((r) => r.isWinner)
+    if (!winnerResult) return { winner: null, winnerValue: undefined }
+
+    const winner = golferMap.get(winnerResult.golferId)
+    return { winner: winner || null, winnerValue: winnerResult.resultValue }
+  }
+
+  function computeAutoWinner(challenge: Challenge) {
+    // Filter summaries to trip golfers and optionally to specific round
+    let relevantSummaries = (roundSummaries || []).filter((s) =>
+      tripGolferIds.has(s.golferId)
+    )
+
+    if (challenge.roundId) {
+      relevantSummaries = relevantSummaries.filter(
+        (s) => s.roundId === challenge.roundId
+      )
+    } else {
+      // Trip-wide: filter to rounds in this trip
+      const tripRoundIds = new Set((rounds || []).map((r) => r.id))
+      relevantSummaries = relevantSummaries.filter((s) =>
+        tripRoundIds.has(s.roundId)
+      )
+    }
+
+    if (relevantSummaries.length === 0) {
+      return { winner: null, winnerValue: undefined }
+    }
+
+    // Aggregate by golfer
+    const aggregates = new Map<
+      string,
+      { totalBirdies: number; totalStableford: number; bestNet: number }
+    >()
+
+    for (const s of relevantSummaries) {
+      const existing = aggregates.get(s.golferId) || {
+        totalBirdies: 0,
+        totalStableford: 0,
+        bestNet: Infinity,
+      }
+      existing.totalBirdies += s.birdiesOrBetter
+      existing.totalStableford += s.totalStableford
+      existing.bestNet = Math.min(existing.bestNet, s.totalNet)
+      aggregates.set(s.golferId, existing)
+    }
+
+    let winnerId: string | null = null
+    let winnerValue = ''
+
+    if (challenge.challengeType === 'most_birdies') {
+      let maxBirdies = -1
+      for (const [golferId, agg] of aggregates) {
+        if (agg.totalBirdies > maxBirdies) {
+          maxBirdies = agg.totalBirdies
+          winnerId = golferId
+          winnerValue = `${agg.totalBirdies} birdies`
+        }
+      }
+    } else if (challenge.challengeType === 'best_net') {
+      let bestNet = Infinity
+      for (const [golferId, agg] of aggregates) {
+        if (agg.bestNet < bestNet) {
+          bestNet = agg.bestNet
+          winnerId = golferId
+          winnerValue = `${agg.bestNet}`
+        }
+      }
+    } else if (challenge.challengeType === 'best_stableford') {
+      let maxPts = -1
+      for (const [golferId, agg] of aggregates) {
+        if (agg.totalStableford > maxPts) {
+          maxPts = agg.totalStableford
+          winnerId = golferId
+          winnerValue = `${agg.totalStableford} pts`
+        }
+      }
+    }
+
+    const winner = winnerId ? golferMap.get(winnerId) : null
+    return { winner: winner || null, winnerValue }
+  }
+
+  function handleDeleteChallenge(challengeId: string) {
+    // Delete results first
+    const results = resultsByChallengeId.get(challengeId) || []
+    for (const r of results) {
+      challengeResultCollection.delete(r.id)
+    }
+    // Delete challenge
+    challengeCollection.delete(challengeId)
+  }
+
+  if (!trip) {
+    return (
+      <Container size="2" py="6">
+        <Text>Trip not found</Text>
+      </Container>
+    )
+  }
+
+  // Separate active (no winner yet) and completed challenges
+  const activeChallenges: Challenge[] = []
+  const completedChallenges: Challenge[] = []
+
+  for (const challenge of challenges || []) {
+    const { winner } = getWinnerInfo(challenge)
+    if (winner) {
+      completedChallenges.push(challenge)
+    } else {
+      activeChallenges.push(challenge)
+    }
+  }
+
+  const hasChallenges = (challenges || []).length > 0
+
+  return (
+    <Container size="2" py="6">
+      <Flex direction="column" gap="5">
+        <Flex justify="between" align="center">
+          <Flex direction="column" gap="3">
+            <Heading size="7">Challenges</Heading>
+            <Text color="gray">{trip.name}</Text>
+          </Flex>
+
+          <Dialog.Root open={addChallengeDialogOpen} onOpenChange={setAddChallengeDialogOpen}>
+            <Dialog.Trigger>
+              <Button>
+                <Plus size={16} />
+                Add Challenge
+              </Button>
+            </Dialog.Trigger>
+            <Dialog.Content maxWidth="400px">
+              <Dialog.Title>Create Challenge</Dialog.Title>
+              <Flex direction="column" gap="4" pt="4">
+                <ChallengeForm
+                  tripId={tripId}
+                  onSuccess={() => setAddChallengeDialogOpen(false)}
+                />
+              </Flex>
+            </Dialog.Content>
+          </Dialog.Root>
+        </Flex>
+
+        {hasChallenges ? (
+          <Flex direction="column" gap="6">
+            {/* Active Challenges */}
+            {activeChallenges.length > 0 && (
+              <Flex direction="column" gap="3">
+                <Heading size="4">Active</Heading>
+                <Flex direction="column" gap="3">
+                  {activeChallenges.map((challenge) => (
+                    <ChallengeCardWithDialogs
+                      key={challenge.id}
+                      challenge={challenge}
+                      roundMap={roundMap}
+                      holeMap={holeMap}
+                      golferMap={golferMap}
+                      tripGolferList={tripGolferList}
+                      results={resultsByChallengeId.get(challenge.id) || []}
+                      onDelete={() => handleDeleteChallenge(challenge.id)}
+                    />
+                  ))}
+                </Flex>
+              </Flex>
+            )}
+
+            {/* Completed Challenges */}
+            {completedChallenges.length > 0 && (
+              <Flex direction="column" gap="3">
+                <Flex align="center" gap="2">
+                  <Trophy size={18} style={{ color: 'var(--amber-9)' }} />
+                  <Heading size="4">Completed</Heading>
+                </Flex>
+                <Flex direction="column" gap="3">
+                  {completedChallenges.map((challenge) => {
+                    const { winner, winnerValue } = getWinnerInfo(challenge)
+                    return (
+                      <ChallengeCard
+                        key={challenge.id}
+                        challenge={challenge}
+                        winner={winner}
+                        winnerValue={winnerValue}
+                        round={challenge.roundId ? roundMap.get(challenge.roundId) : null}
+                        hole={challenge.holeId ? holeMap.get(challenge.holeId) : null}
+                        onDelete={() => handleDeleteChallenge(challenge.id)}
+                      />
+                    )
+                  })}
+                </Flex>
+              </Flex>
+            )}
+          </Flex>
+        ) : (
+          <EmptyState
+            title="No challenges yet"
+            description="Create challenges like Closest to Pin or Longest Drive"
+            action={
+              <Dialog.Root open={addChallengeDialogOpen} onOpenChange={setAddChallengeDialogOpen}>
+                <Dialog.Trigger>
+                  <Button>
+                    <Plus size={16} />
+                    Create Challenge
+                  </Button>
+                </Dialog.Trigger>
+                <Dialog.Content maxWidth="400px">
+                  <Dialog.Title>Create Challenge</Dialog.Title>
+                  <Flex direction="column" gap="4" pt="4">
+                    <ChallengeForm
+                      tripId={tripId}
+                      onSuccess={() => setAddChallengeDialogOpen(false)}
+                    />
+                  </Flex>
+                </Dialog.Content>
+              </Dialog.Root>
+            }
+          />
+        )}
+      </Flex>
+    </Container>
+  )
+}
+
+// Separate component to handle per-challenge dialogs
+interface ChallengeCardWithDialogsProps {
+  challenge: Challenge
+  roundMap: Map<string, ReturnType<typeof roundCollection.get> & {}>
+  holeMap: Map<string, ReturnType<typeof holeCollection.get> & {}>
+  golferMap: Map<string, ReturnType<typeof golferCollection.get> & {}>
+  tripGolferList: Array<ReturnType<typeof golferCollection.get> & {}>
+  results: ChallengeResult[]
+  onDelete: () => void
+}
+
+function ChallengeCardWithDialogs({
+  challenge,
+  roundMap,
+  holeMap,
+  golferMap,
+  tripGolferList,
+  results,
+  onDelete,
+}: ChallengeCardWithDialogsProps) {
+  const [resultDialogOpen, setResultDialogOpen] = useDialogState(`results-${challenge.id}`)
+  const round = challenge.roundId ? roundMap.get(challenge.roundId) : null
+  const hole = challenge.holeId ? holeMap.get(challenge.holeId) : null
+
+  // Find winner from results
+  const winnerResult = results.find((r) => r.isWinner)
+  const winner = winnerResult ? golferMap.get(winnerResult.golferId) : null
+
+  return (
+    <Flex direction="column" gap="2">
+      <ChallengeCard
+        challenge={challenge}
+        winner={winner}
+        winnerValue={winnerResult?.resultValue}
+        round={round}
+        hole={hole}
+        onDelete={onDelete}
+        onEnterResults={undefined} // Handled by dialog below
+      />
+
+      {/* Result Entry Dialog - rendered separately to handle open state */}
+      {!winner && !isAutoCalculatedChallenge(challenge.challengeType) && (
+        <Dialog.Root open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
+          <Dialog.Trigger>
+            <Button variant="soft" size="1">
+              Enter Results
+            </Button>
+          </Dialog.Trigger>
+          <Dialog.Content maxWidth="450px">
+            <Dialog.Title>Enter Results: {challenge.name}</Dialog.Title>
+            <Flex direction="column" gap="4" pt="4">
+              <ChallengeResultEntry
+                challenge={challenge}
+                golfers={tripGolferList}
+                existingResults={results}
+                onSuccess={() => setResultDialogOpen(false)}
+              />
+            </Flex>
+          </Dialog.Content>
+        </Dialog.Root>
+      )}
+    </Flex>
+  )
+}
