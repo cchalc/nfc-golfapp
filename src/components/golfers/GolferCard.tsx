@@ -1,10 +1,12 @@
 import { Card, Flex, Text, Avatar, Badge } from '@radix-ui/themes'
+import { Link } from '@tanstack/react-router'
+import { ChevronRight } from 'lucide-react'
 import type { Golfer } from '../../db/collections'
 
 interface GolferCardProps {
   golfer: Golfer
   showHandicap?: boolean
-  onClick?: () => void
+  linkToDetail?: boolean
 }
 
 function getInitials(name: string): string {
@@ -16,17 +18,18 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
-export function GolferCard({ golfer, showHandicap = true, onClick }: GolferCardProps) {
+export function GolferCard({ golfer, showHandicap = true, linkToDetail = true }: GolferCardProps) {
   const CardContent = (
-    <Card asChild={!!onClick}>
+    <Card>
       <Flex align="center" gap="3">
         <Avatar
           size="3"
           src={golfer.profileImageUrl || undefined}
           fallback={getInitials(golfer.name)}
           radius="full"
+          color="amber"
         />
-        <Flex direction="column" gap="1" style={{ flex: 1 }}>
+        <Flex direction="column" gap="2" style={{ flex: 1 }}>
           <Text weight="medium">{golfer.name}</Text>
           {golfer.email && (
             <Text size="1" color="gray">
@@ -35,28 +38,26 @@ export function GolferCard({ golfer, showHandicap = true, onClick }: GolferCardP
           )}
         </Flex>
         {showHandicap && (
-          <Badge variant="soft" color="blue">
+          <Badge variant="soft" color="grass">
             HCP {golfer.handicap.toFixed(1)}
           </Badge>
+        )}
+        {linkToDetail && (
+          <ChevronRight size={16} style={{ color: 'var(--gray-8)' }} />
         )}
       </Flex>
     </Card>
   )
 
-  if (onClick) {
+  if (linkToDetail) {
     return (
-      <button
-        type="button"
-        onClick={onClick}
-        style={{
-          all: 'unset',
-          cursor: 'pointer',
-          display: 'block',
-          width: '100%',
-        }}
+      <Link
+        to="/golfers/$golferId"
+        params={{ golferId: golfer.id }}
+        className="golfer-card-link"
       >
         {CardContent}
-      </button>
+      </Link>
     )
   }
 

@@ -224,7 +224,7 @@ function LeaderboardsPage() {
   return (
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
-        <Flex direction="column" gap="1">
+        <Flex direction="column" gap="2">
           <Heading size="7">Leaderboards</Heading>
           <Text color="gray">{trip.name}</Text>
         </Flex>

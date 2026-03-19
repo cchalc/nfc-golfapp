@@ -68,7 +68,7 @@ function RootComponent() {
         <HeadContent />
       </head>
       <body>
-        <Theme accentColor="blue" grayColor="slate" radius="medium">
+        <Theme appearance="dark" accentColor="grass" grayColor="sage" radius="medium">
           <ClientOnly>
             <ThemeProvider>
               <DataLoader>

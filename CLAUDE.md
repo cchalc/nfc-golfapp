@@ -2,6 +2,31 @@
 
 A starter for building apps with TanStack Start, Radix UI, and capsize typography.
 
+## Tidewave MCP
+
+This project uses [Tidewave](https://github.com/tidewave-ai/tidewave_js) MCP for enhanced development tooling. The MCP server runs on the Vite dev server.
+
+### Setup Requirements
+
+1. **Dev server must be running** before starting a session for MCP tools to connect
+2. Start the dev server: `pnpm dev` (runs on port 5173)
+3. MCP is configured with SSE transport at `http://localhost:5173/tidewave/mcp`
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_docs` | Get TypeScript/JavaScript documentation and type info for symbols |
+| `get_source_location` | Find source locations for symbols in project or dependencies |
+| `project_eval` | Evaluate JS/TS code in the project runtime context |
+| `get_logs` | Retrieve application logs for debugging |
+
+### Usage
+
+- Use `get_docs` to look up types, functions, and API documentation
+- Use `project_eval` to test code snippets in the actual project context
+- Use `get_logs` to debug runtime issues
+
 ## Shell Environment
 
 - **Fish Shell Only**: This computer runs fish shell. Always use fish shell syntax, not bash/zsh.

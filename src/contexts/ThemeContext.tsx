@@ -56,7 +56,9 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 const STORAGE_KEY = 'font-theme'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [currentTheme, setCurrentTheme] = useState<FontTheme>(FONT_THEMES[0])
+  const [currentTheme, setCurrentTheme] = useState<FontTheme>(
+    FONT_THEMES.find((t) => t.id === 'playfair') || FONT_THEMES[0]
+  )
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)

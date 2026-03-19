@@ -105,7 +105,9 @@ export function GolferForm({ initialData, golferId, onSuccess }: GolferFormProps
           />
         </Flex>
 
-        <Button type="submit">{isEditing ? 'Save Changes' : 'Add Golfer'}</Button>
+        <Button type="submit" color="grass" size="3">
+          {isEditing ? 'Save Changes' : 'Add Golfer'}
+        </Button>
       </Flex>
     </form>
   )

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Container, Flex, Heading, Text, Button, Card, Grid } from '@radix-ui/themes'
-import { Flag, Users } from 'lucide-react'
+import { Flag, Users, Trophy } from 'lucide-react'
 import { useLiveQuery, count } from '@tanstack/react-db'
 import { tripCollection, golferCollection, roundCollection } from '../db/collections'
 
@@ -41,39 +41,39 @@ function HomePage() {
   return (
     <Container size="2" py="9">
       <Flex direction="column" gap="6">
-        <Flex direction="column" gap="2" align="center">
+        <Flex direction="column" gap="4" align="center" className="animate-reveal-1">
           <Heading size="8">Golf Trip Planner</Heading>
           <Text size="3" color="gray">
             Plan trips, track scores, and compete with friends
           </Text>
         </Flex>
 
-        <Grid columns="3" gap="3">
-          <Card>
-            <Flex direction="column" align="center" gap="1">
-              <Text size="6" weight="bold">
+        <Grid columns="3" gap="4" className="animate-reveal-2">
+          <Card className="card-gold-hover">
+            <Flex direction="column" align="center" gap="2" py="3">
+              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
                 {tripCount}
-              </Text>
+              </Heading>
               <Text size="2" color="gray">
                 Trips
               </Text>
             </Flex>
           </Card>
-          <Card>
-            <Flex direction="column" align="center" gap="1">
-              <Text size="6" weight="bold">
+          <Card className="card-gold-hover">
+            <Flex direction="column" align="center" gap="2" py="3">
+              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
                 {golferCount}
-              </Text>
+              </Heading>
               <Text size="2" color="gray">
                 Golfers
               </Text>
             </Flex>
           </Card>
-          <Card>
-            <Flex direction="column" align="center" gap="1">
-              <Text size="6" weight="bold">
+          <Card className="card-gold-hover">
+            <Flex direction="column" align="center" gap="2" py="3">
+              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
                 {roundCount}
-              </Text>
+              </Heading>
               <Text size="2" color="gray">
                 Rounds
               </Text>
@@ -81,19 +81,19 @@ function HomePage() {
           </Card>
         </Grid>
 
-        <Grid columns="2" gap="3">
-          <Link to="/trips">
+        <Grid columns="2" gap="3" className="animate-reveal-3">
+          <Link to="/trips" style={{ textDecoration: 'none' }}>
             <Card asChild>
               <Flex direction="column" align="center" gap="2" py="4">
-                <Flag size={32} />
+                <Flag size={32} style={{ color: 'var(--grass-9)' }} />
                 <Text weight="medium">View Trips</Text>
               </Flex>
             </Card>
           </Link>
-          <Link to="/golfers">
+          <Link to="/golfers" style={{ textDecoration: 'none' }}>
             <Card asChild>
               <Flex direction="column" align="center" gap="2" py="4">
-                <Users size={32} />
+                <Users size={32} style={{ color: 'var(--grass-9)' }} />
                 <Text weight="medium">Golfers</Text>
               </Flex>
             </Card>
@@ -101,10 +101,15 @@ function HomePage() {
         </Grid>
 
         {tripCount === 0 && (
-          <Flex direction="column" align="center" gap="3" py="4">
-            <Text color="gray">Get started by creating your first trip</Text>
+          <Flex direction="column" align="center" gap="4" py="4" className="animate-reveal-4">
+            <Flex align="center" gap="2">
+              <Trophy size={20} style={{ color: 'var(--amber-9)' }} />
+              <Text color="gray">Get started by creating your first trip</Text>
+            </Flex>
             <Link to="/trips/new">
-              <Button size="3">Create Trip</Button>
+              <Button size="3" color="grass">
+                Create Trip
+              </Button>
             </Link>
           </Flex>
         )}

@@ -26,6 +26,12 @@ function getInitials(name: string): string {
     .slice(0, 2)
 }
 
+function getTrophyClass(rank: number): string {
+  if (rank === 1) return 'trophy-gold'
+  if (rank === 2) return 'trophy-silver'
+  return 'trophy-bronze'
+}
+
 export function LeaderboardTable({
   entries,
   valueLabel,
@@ -44,21 +50,14 @@ export function LeaderboardTable({
       </Table.Header>
       <Table.Body>
         {entries.map((entry) => (
-          <Table.Row key={entry.golferId}>
+          <Table.Row
+            key={entry.golferId}
+            className={entry.rank === 1 ? 'leader-row' : undefined}
+          >
             <Table.Cell>
               {entry.rank <= highlightTop ? (
                 <Flex align="center" gap="1">
-                  <Trophy
-                    size={14}
-                    style={{
-                      color:
-                        entry.rank === 1
-                          ? 'gold'
-                          : entry.rank === 2
-                            ? 'silver'
-                            : '#cd7f32',
-                    }}
-                  />
+                  <Trophy size={14} className={getTrophyClass(entry.rank)} />
                   <Text weight="bold">{entry.rank}</Text>
                 </Flex>
               ) : (
@@ -67,7 +66,12 @@ export function LeaderboardTable({
             </Table.Cell>
             <Table.Cell>
               <Flex align="center" gap="2">
-                <Avatar size="1" fallback={getInitials(entry.name)} radius="full" />
+                <Avatar
+                  size="1"
+                  fallback={getInitials(entry.name)}
+                  radius="full"
+                  color={entry.rank === 1 ? 'amber' : undefined}
+                />
                 <Text weight={entry.rank <= highlightTop ? 'medium' : 'regular'}>
                   {entry.name}
                 </Text>
@@ -75,7 +79,7 @@ export function LeaderboardTable({
             </Table.Cell>
             {showRounds && (
               <Table.Cell>
-                <Badge variant="soft" color="gray">
+                <Badge variant="soft" color="amber">
                   {entry.rounds}
                 </Badge>
               </Table.Cell>
@@ -83,7 +87,7 @@ export function LeaderboardTable({
             <Table.Cell align="right">
               <Text
                 weight="bold"
-                color={entry.rank === 1 ? 'blue' : undefined}
+                style={entry.rank === 1 ? { color: 'var(--amber-9)' } : undefined}
                 size={entry.rank === 1 ? '3' : '2'}
               >
                 {entry.displayValue}

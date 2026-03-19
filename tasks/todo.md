@@ -7,6 +7,18 @@
 - **Auto-seeding**: DataLoader seeds sample data on first app load if collections are empty
 - **Version Control**: Use `jj` (Jujutsu), not `git`
 - **Package Manager**: Use `pnpm`, not `npm`
+- **TanStack Start**: `src/start.ts` MUST export `startInstance` (even as `undefined`) for hydration to work
+
+## Recently Completed
+
+### Session 2026-03-17: Bug Fixes
+
+- [x] **Black screen fix**: Added missing `startInstance` export to `src/start.ts`
+- [x] **Capsize typography spacing**: Changed `gap="1"` to `gap="2"` across all text-on-text stacks to prevent text overlap
+- [x] **Files fixed for spacing**: ScoreEntry, GolferCard, Scorecard, StatCard, LeaderboardTable, ThemePicker, and ~10 route files
+- [x] **Removed conflicting CSS**: Deleted line-height override in `src/styles.css` that conflicted with capsize
+- [x] **Cleaned up debug logs**: Removed console.log statements from ClientOnly.tsx and __root.tsx
+- [x] **Updated lessons.md**: Documented both the capsize gap issue and startInstance requirement
 
 ---
 

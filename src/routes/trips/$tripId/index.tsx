@@ -197,7 +197,7 @@ function TripDashboard() {
                   >
                     <Card asChild>
                       <Flex justify="between" align="center">
-                        <Flex direction="column" gap="1">
+                        <Flex direction="column" gap="2">
                           <Flex align="center" gap="2">
                             <Badge>Round {round.roundNumber}</Badge>
                             <Text weight="medium">{course?.name || 'Unknown Course'}</Text>

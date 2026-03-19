@@ -37,8 +37,8 @@ export function ScoreEntry({
 
   if (compact) {
     return (
-      <Flex direction="column" align="center" gap="1">
-        <Flex align="center" gap="1">
+      <Flex direction="column" align="center" gap="2">
+        <Flex align="center" gap="2">
           <Text size="1" color="gray">
             {hole.holeNumber}
           </Text>
@@ -73,15 +73,16 @@ export function ScoreEntry({
     <Flex
       align="center"
       justify="between"
-      gap="3"
+      gap="4"
       py="2"
       style={{ borderBottom: '1px solid var(--gray-5)' }}
     >
-      <Flex align="center" gap="3" style={{ minWidth: '80px' }}>
-        <Text weight="medium" style={{ width: '24px' }}>
+      {/* Hole info - fixed width */}
+      <Flex align="center" gap="3" style={{ width: '100px', flexShrink: 0 }}>
+        <Text weight="medium" style={{ width: '24px', textAlign: 'center' }}>
           {hole.holeNumber}
         </Text>
-        <Flex direction="column">
+        <Flex direction="column" gap="2">
           <Text size="2">Par {hole.par}</Text>
           <Text size="1" color="gray">
             SI {hole.strokeIndex}
@@ -89,9 +90,10 @@ export function ScoreEntry({
         </Flex>
       </Flex>
 
-      <Flex align="center" gap="3">
+      {/* Score entry area */}
+      <Flex align="center" gap="3" style={{ flexShrink: 0 }}>
         {handicapStrokes > 0 && (
-          <Badge variant="soft" color="blue">
+          <Badge variant="soft" color="grass" style={{ minWidth: '32px', textAlign: 'center' }}>
             +{handicapStrokes}
           </Badge>
         )}
@@ -107,11 +109,12 @@ export function ScoreEntry({
               onChange(val)
             }
           }}
-          style={{ width: '60px', textAlign: 'center' }}
+          style={{ width: '56px', textAlign: 'center' }}
           placeholder="-"
         />
 
-        <Flex direction="column" align="end" style={{ minWidth: '50px' }}>
+        {/* Score display - fixed width */}
+        <Flex direction="column" align="end" gap="2" style={{ width: '56px', flexShrink: 0 }}>
           {netScore !== null ? (
             <>
               <Badge color={scoreColor}>{netScore}</Badge>

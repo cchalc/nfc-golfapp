@@ -1,6 +1,6 @@
 :root {
-  --heading-font: Inter, sans-serif;
-  --body-font: Inter, sans-serif;
+  --heading-font: 'Playfair Display', serif;
+  --body-font: Lato, sans-serif;
 }
 
 body {
@@ -11,6 +11,17 @@ body {
 /* Apply font themes to Radix components */
 .radix-themes {
   --default-font-family: var(--body-font);
+
+  /* Gold accent using Radix amber scale */
+  --club-gold: var(--amber-9);
+  --club-gold-subtle: var(--amber-4);
+  --club-gold-text: var(--amber-11);
+
+  /* Enhanced shadows for depth */
+  --shadow-luxury:
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    0 16px 32px rgba(0, 0, 0, 0.15);
 }
 
 /* Headings use the heading font */
@@ -20,11 +31,163 @@ body {
 .radix-themes h4,
 .radix-themes h5,
 .radix-themes h6,
-.radix-themes [class*="Heading"] {
+.radix-themes [class*='Heading'] {
   font-family: var(--heading-font);
 }
 
 /* Theme picker dropdown items */
 .rt-BaseMenuViewport {
   gap: 8px;
+}
+
+/* Card hover elevation */
+.rt-Card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.rt-Card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-luxury);
+}
+
+/* Gold accent border on hover for special cards */
+.card-gold-hover:hover {
+  border-left: 3px solid var(--club-gold);
+}
+
+/* Staggered reveal animation */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal {
+  animation: fadeSlideUp 0.4s ease forwards;
+}
+
+.animate-reveal-1 {
+  animation: fadeSlideUp 0.4s ease forwards;
+  animation-delay: 0s;
+}
+
+.animate-reveal-2 {
+  animation: fadeSlideUp 0.4s ease forwards;
+  animation-delay: 0.1s;
+  opacity: 0;
+}
+
+.animate-reveal-3 {
+  animation: fadeSlideUp 0.4s ease forwards;
+  animation-delay: 0.2s;
+  opacity: 0;
+}
+
+.animate-reveal-4 {
+  animation: fadeSlideUp 0.4s ease forwards;
+  animation-delay: 0.3s;
+  opacity: 0;
+}
+
+/* Nav link hover styling */
+.nav-link {
+  position: relative;
+  text-decoration: none;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background-color: var(--club-gold);
+  transition: width 0.2s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+/* Table row hover for leaderboard */
+.rt-TableRow:hover {
+  background-color: var(--gray-2);
+}
+
+/* Leader row highlight */
+.leader-row {
+  background-color: var(--grass-2);
+}
+
+/* Gold trophy color */
+.trophy-gold {
+  color: var(--amber-9);
+}
+
+.trophy-silver {
+  color: var(--gray-8);
+}
+
+.trophy-bronze {
+  color: var(--amber-7);
+}
+
+/* Fix capsize text overlap on large headings */
+.rt-Heading.rt-r-size-8,
+.rt-Heading.rt-r-size-9 {
+  padding-bottom: 0.1em;
+}
+
+/* Ensure proper spacing in cards */
+.rt-Card {
+  overflow: visible;
+}
+
+/* Note: Capsize handles line-height automatically - don't override it.
+   Use gap="2" or larger between stacked text elements. */
+
+/* Primary button styling */
+.rt-Button[data-accent-color="grass"] {
+  font-weight: 500;
+}
+
+/* Golfer card clickable styling */
+.golfer-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.golfer-card-link:hover .rt-Card {
+  border-color: var(--grass-7);
+}
+
+/* Prevent text overflow in flex containers */
+.rt-Flex {
+  min-width: 0;
+}
+
+/* Ensure inline spans don't break capsize */
+.rt-Text span {
+  display: inline;
+  vertical-align: baseline;
+}
+
+/* Fix badge alignment in flex rows */
+.rt-Badge {
+  flex-shrink: 0;
+}
+
+/* Ensure proper text wrapping */
+.rt-Text {
+  word-break: break-word;
 }
