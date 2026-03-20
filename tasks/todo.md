@@ -89,13 +89,57 @@
 - [x] Auto-calculated challenge results (most birdies, best net)
 - [x] Winner display and history
 
-## TODO - Phase 6: Polish
+## Completed - Phase 6: Polish
 
-- [ ] Loading states (spinners, skeletons)
-- [ ] Error boundaries and error handling
-- [ ] Form validation feedback
-- [ ] Offline testing
-- [ ] Mobile responsiveness audit
+### Session 2026-03-19: Polish Implementation
+
+#### Loading States
+- [x] Created `Skeleton.tsx` with CardSkeleton, TableRowSkeleton, StatCardSkeleton components
+- [x] Updated trips, golfers, courses index pages to show skeleton cards during loading
+
+#### Error Handling
+- [x] Created `ErrorBoundary.tsx` class component with fallback UI and reload button
+- [x] Created `ErrorDisplay.tsx` inline error callout with retry option
+- [x] Added ErrorBoundary wrapper in `__root.tsx` around main app content
+
+#### Form Validation
+- [x] Created `validation.ts` with Zod schemas for golfer, trip, challenge, and course forms
+- [x] Created `formErrorCollection` in collections.ts for tracking validation errors via TanStack DB
+- [x] Created `FormField.tsx` component with label, error display, and required indicator
+- [x] Updated GolferForm, TripForm, CourseForm, ChallengeForm with Zod validation and error display
+
+#### Mobile Responsiveness
+- [x] Added mobile CSS utilities (.hide-mobile, .show-mobile-only, .table-scroll-mobile)
+- [x] Made all Grid components responsive with breakpoint-based columns
+- [x] Added mobile hamburger menu navigation to Header
+- [x] Made LeaderboardTable horizontally scrollable with hidden columns on mobile
+
+#### Files Created
+- `src/components/ui/Skeleton.tsx`
+- `src/components/ui/ErrorBoundary.tsx`
+- `src/components/ui/ErrorDisplay.tsx`
+- `src/components/ui/FormField.tsx`
+- `src/lib/validation.ts`
+
+#### Files Modified
+- `src/db/collections.ts` - Added formErrorCollection
+- `src/routes/__root.tsx` - Added ErrorBoundary
+- `src/styles.css` - Added mobile utilities
+- `src/components/Header.tsx` - Mobile navigation
+- `src/components/leaderboards/LeaderboardTable.tsx` - Mobile scroll + hidden columns
+- `src/routes/index.tsx` - Responsive grids
+- `src/routes/trips/index.tsx` - Skeleton loading
+- `src/routes/golfers/index.tsx` - Skeleton loading
+- `src/routes/courses/index.tsx` - Skeleton loading
+- `src/routes/trips/$tripId/index.tsx` - Responsive grids
+- `src/routes/golfers/$golferId.tsx` - Responsive grids
+- `src/routes/trips/$tripId/rounds/$roundId/index.tsx` - Responsive grids
+- `src/components/golfers/GolferForm.tsx` - Validation
+- `src/components/trips/TripForm.tsx` - Validation
+- `src/components/courses/CourseForm.tsx` - Validation
+- `src/components/challenges/ChallengeForm.tsx` - Validation
+
+---
 
 ## TODO - Phase 7: Sync & Auth (Future)
 

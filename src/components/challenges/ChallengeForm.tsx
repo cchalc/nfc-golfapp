@@ -4,9 +4,12 @@ import {
   challengeCollection,
   roundCollection,
   holeCollection,
+  formErrorCollection,
   type Challenge,
 } from '../../db/collections'
 import { getDefaultScope, getChallengeTypeLabel } from '../../lib/challenges'
+import { FormField } from '../ui/FormField'
+import { challengeFormSchema, validateForm } from '../../lib/validation'
 
 type ChallengeType = Challenge['challengeType']
 
@@ -32,6 +35,14 @@ export function ChallengeForm({
   initialData,
   onSuccess,
 }: ChallengeFormProps) {
+  const formId = `challenge-form-${challengeId || 'new'}`
+
+  const { data: errors } = useLiveQuery(
+    (q) => q.from({ e: formErrorCollection }).where(({ e }) => eq(e.formId, formId)),
+    [formId]
+  )
+  const errorMap = new Map(errors?.map((e) => [e.field, e.message]) ?? [])
+
   // Fetch rounds for this trip
   const { data: rounds } = useLiveQuery(
     (q) =>
@@ -75,23 +86,50 @@ export function ChallengeForm({
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
 
-    const name = formData.get('name') as string
-    const description = formData.get('description') as string
+    const name = (formData.get('name') as string).trim()
+    const description = (formData.get('description') as string).trim()
     const challengeType = formData.get('challengeType') as ChallengeType
     const scope = formData.get('scope') as 'hole' | 'round' | 'trip'
     const roundId = formData.get('roundId') as string
     const holeId = formData.get('holeId') as string
-    const prizeDescription = formData.get('prizeDescription') as string
+    const prizeDescription = (formData.get('prizeDescription') as string).trim()
 
-    const data = {
-      tripId,
+    const validationData = {
       name,
-      description: description || '',
       challengeType,
       scope,
       roundId: scope !== 'trip' && roundId ? roundId : null,
       holeId: scope === 'hole' && holeId ? holeId : null,
-      prizeDescription: prizeDescription || '',
+      prizeDescription,
+    }
+
+    // Clear old errors
+    errors?.forEach((err) => formErrorCollection.delete(err.id))
+
+    // Validate
+    const result = validateForm(challengeFormSchema, validationData)
+
+    if (!result.success) {
+      Object.entries(result.errors).forEach(([field, message]) => {
+        formErrorCollection.insert({
+          id: crypto.randomUUID(),
+          formId,
+          field,
+          message,
+        })
+      })
+      return
+    }
+
+    const data = {
+      tripId,
+      name: result.data.name,
+      description: description || '',
+      challengeType: result.data.challengeType,
+      scope: result.data.scope,
+      roundId: result.data.roundId,
+      holeId: result.data.holeId,
+      prizeDescription: result.data.prizeDescription,
     }
 
     if (challengeId) {
@@ -118,17 +156,13 @@ export function ChallengeForm({
   return (
     <form onSubmit={handleSubmit}>
       <Flex direction="column" gap="4">
-        <Flex direction="column" gap="1">
-          <Text as="label" size="2" weight="medium">
-            Challenge Name
-          </Text>
+        <FormField label="Challenge Name" name="name" error={errorMap.get('name')} required>
           <TextField.Root
             name="name"
             placeholder="KP Hole 7"
             defaultValue={initialData?.name || ''}
-            required
           />
-        </Flex>
+        </FormField>
 
         <Flex direction="column" gap="1">
           <Text as="label" size="2" weight="medium">

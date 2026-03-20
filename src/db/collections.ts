@@ -171,6 +171,14 @@ export const uiStateSchema = z.object({
   isOpen: z.boolean(),
 })
 
+// Form error collection for tracking validation errors (local-only)
+export const formErrorSchema = z.object({
+  id: z.string(),
+  formId: z.string(),
+  field: z.string(),
+  message: z.string(),
+})
+
 // ============================================================================
 // Type exports
 // ============================================================================
@@ -189,6 +197,7 @@ export type TeamMember = z.output<typeof teamMemberSchema>
 export type Challenge = z.output<typeof challengeSchema>
 export type ChallengeResult = z.output<typeof challengeResultSchema>
 export type UIState = z.output<typeof uiStateSchema>
+export type FormError = z.output<typeof formErrorSchema>
 
 // ============================================================================
 // Collections
@@ -289,5 +298,12 @@ export const uiStateCollection = createCollection(
   localOnlyCollectionOptions({
     getKey: (item) => item.id,
     schema: uiStateSchema,
+  })
+)
+
+export const formErrorCollection = createCollection(
+  localOnlyCollectionOptions({
+    getKey: (item) => item.id,
+    schema: formErrorSchema,
   })
 )

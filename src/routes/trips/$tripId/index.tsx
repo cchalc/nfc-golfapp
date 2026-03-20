@@ -136,7 +136,7 @@ function TripDashboard() {
         </Flex>
 
         {/* Stats */}
-        <Grid columns="3" gap="3">
+        <Grid columns={{ initial: '1', sm: '3' }} gap="3">
           <StatCard label="Golfers" value={golferCount} />
           <StatCard
             label="Rounds"
@@ -148,7 +148,7 @@ function TripDashboard() {
         {/* Quick Links */}
         <Flex direction="column" gap="3">
           <Heading size="4">Manage</Heading>
-          <Grid columns="2" gap="3">
+          <Grid columns={{ initial: '1', sm: '2' }} gap="3">
             <Link to="/trips/$tripId/golfers" params={{ tripId }}>
               <Card asChild>
                 <Flex justify="between" align="center">

@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
-import { Flex, Text } from '@radix-ui/themes'
+import { Flex, Text, DropdownMenu, IconButton } from '@radix-ui/themes'
+import { Menu } from 'lucide-react'
 import { ThemePicker } from './ThemePicker'
 
 export function Header() {
@@ -24,7 +25,8 @@ export function Header() {
               Golf Trip
             </Text>
           </Link>
-          <Flex gap="4" align="center">
+          {/* Desktop nav */}
+          <Flex gap="4" align="center" className="desktop-nav">
             <Link to="/trips" className="nav-link">
               <Text size="2" color="gray">
                 Trips
@@ -42,7 +44,26 @@ export function Header() {
             </Link>
           </Flex>
         </Flex>
-        <Flex gap="4" align="center">
+        <Flex gap="3" align="center">
+          {/* Mobile menu */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <IconButton variant="ghost" className="mobile-nav-trigger" style={{ display: 'none' }}>
+                <Menu size={20} />
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content>
+              <DropdownMenu.Item asChild>
+                <Link to="/trips">Trips</Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Link to="/golfers">Golfers</Link>
+              </DropdownMenu.Item>
+              <DropdownMenu.Item asChild>
+                <Link to="/courses">Courses</Link>
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
           <ThemePicker />
         </Flex>
       </Flex>

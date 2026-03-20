@@ -6,6 +6,7 @@ import { useLiveQuery, eq, count } from '@tanstack/react-db'
 import { tripCollection, tripGolferCollection } from '../../db/collections'
 import { TripCard } from '../../components/trips/TripCard'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { CardSkeleton } from '../../components/ui/Skeleton'
 
 export const Route = createFileRoute('/trips/')({
   ssr: false,
@@ -41,8 +42,10 @@ function TripsPage() {
       <Container size="2" py="6">
         <Flex direction="column" gap="4">
           <Heading size="7">Trips</Heading>
-          <Flex align="center" justify="center" py="9">
-            Loading...
+          <Flex direction="column" gap="3">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </Flex>
         </Flex>
       </Container>
