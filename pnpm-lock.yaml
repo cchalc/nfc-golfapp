@@ -72,6 +72,9 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@antithesishq/bombadil':
+        specifier: ^0.3.2
+        version: 0.3.2
       '@biomejs/biome':
         specifier: 2.2.4
         version: 2.2.4
@@ -122,6 +125,9 @@ importers:
         version: 7.3.1(@types/node@22.19.15)(tsx@4.21.0)(yaml@2.8.2)
 
 packages:
+
+  '@antithesishq/bombadil@0.3.2':
+    resolution: {integrity: sha512-ATy1w9ZY5gbny1H8DFc7rxZitT7DLLLFDiGcRZe+8TQiUrV5tLO+IJGOVNNLp3RpCqjZqSsxGiKoQsx31ipV1g==}
 
   '@babel/code-frame@7.27.1':
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
@@ -2574,6 +2580,8 @@ packages:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
+
+  '@antithesishq/bombadil@0.3.2': {}
 
   '@babel/code-frame@7.27.1':
     dependencies:

@@ -34,6 +34,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@antithesishq/bombadil": "^0.3.2",
     "@biomejs/biome": "2.2.4",
     "@durable-streams/client": "^0.2.2",
     "@durable-streams/state": "^0.2.2",

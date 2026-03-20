@@ -26,6 +26,11 @@ A golf trip planning app with real-time score tracking, automatic handicap calcu
 - **KPs** - Closest to the Pin tracking
 - **Teams** - Create teams and track combined scores
 
+### Run Challenges
+- **Closest to Pin** - Track KP competitions on par 3s
+- **Longest Drive** - Who's bombing it off the tee?
+- **Custom Challenges** - Create your own competitions
+
 ### Manage Your Crew
 - Keep a directory of all your golf buddies
 - Track handicaps and contact info
@@ -69,17 +74,20 @@ The app comes with data from a real Kelowna golf trip:
 
 ## Coming Soon
 
-- Challenge competitions (KP contests, longest drive)
-- Multi-device sync
+- Multi-device sync (Electric SQL)
 - User accounts and authentication
 - Mobile app
 - Course database integration
 
 ---
 
-## Technical Details
+## Documentation
 
-For architecture, tech stack, and development guide, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Tech stack, data models, scoring system, development guide |
+| [TESTING.md](./TESTING.md) | Property-based testing with Bombadil, CI/CD integration |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Build process, deployment targets, environments |
 
 ---
 

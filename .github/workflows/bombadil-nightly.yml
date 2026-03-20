@@ -1,0 +1,185 @@
+name: Bombadil Nightly Exploratory
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Test duration in seconds'
+        required: false
+        default: '28800'
+
+jobs:
+  exploratory-tests:
+    name: Property-Based Tests (Exploratory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 480  # 8 hours max
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download Bombadil
+        run: |
+          curl -L -o bombadil https://github.com/antithesishq/bombadil/releases/download/v0.3.2/bombadil-x86_64-linux
+          chmod +x bombadil
+          sudo mv bombadil /usr/local/bin/
+
+      - name: Verify Bombadil installation
+        run: bombadil --version
+
+      - name: Start dev server
+        run: |
+          pnpm dev &
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:5173 > /dev/null 2>&1; then
+              echo "Dev server ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run exploratory tests
+        env:
+          DURATION: ${{ github.event.inputs.duration || '28800' }}
+        run: |
+          mkdir -p bombadil-results/explore
+
+          echo "Running exploratory tests for $DURATION seconds..."
+
+          # Run all exploratory specs with long duration
+          timeout "${DURATION}s" bombadil test http://localhost:5173 \
+            bombadil/specs/exploratory/*.spec.ts \
+            --max-steps 10000 \
+            --output-path ./bombadil-results/explore || true
+
+          echo "Exploratory testing complete"
+
+      - name: Analyze results
+        if: always()
+        run: |
+          echo "## Bombadil Nightly Exploratory Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f bombadil-results/explore/trace.jsonl ]; then
+            TOTAL=$(jq -rs 'length' bombadil-results/explore/trace.jsonl 2>/dev/null || echo "0")
+            VIOLATIONS=$(jq -rs '[.[] | select(.violations != [])] | length' bombadil-results/explore/trace.jsonl 2>/dev/null || echo "0")
+
+            echo "- **Total states explored:** $TOTAL" >> $GITHUB_STEP_SUMMARY
+            echo "- **Violations found:** $VIOLATIONS" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$VIOLATIONS" != "0" ]; then
+              echo "### Violations" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              jq -r 'select(.violations != []) | {url, violations}' bombadil-results/explore/trace.jsonl >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "No results file found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Check for critical violations
+        if: always()
+        run: |
+          if [ -f bombadil-results/explore/trace.jsonl ]; then
+            VIOLATIONS=$(jq -rs '[.[] | select(.violations != [])] | length' bombadil-results/explore/trace.jsonl 2>/dev/null || echo "0")
+            if [ "$VIOLATIONS" != "0" ]; then
+              echo "⚠️ Found $VIOLATIONS violations during exploratory testing"
+              # Don't fail the job for exploratory tests, just warn
+            fi
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bombadil-nightly-results-${{ github.run_number }}
+          path: bombadil-results/
+          retention-days: 30
+
+      - name: Create issue for violations
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            const resultsPath = 'bombadil-results/explore/trace.jsonl';
+            if (!fs.existsSync(resultsPath)) {
+              console.log('No results file found');
+              return;
+            }
+
+            const lines = fs.readFileSync(resultsPath, 'utf8').split('\n').filter(Boolean);
+            const violations = lines
+              .map(line => JSON.parse(line))
+              .filter(entry => entry.violations && entry.violations.length > 0);
+
+            if (violations.length === 0) {
+              console.log('No violations found');
+              return;
+            }
+
+            const body = `## Bombadil Nightly Test Violations
+
+            Found ${violations.length} state(s) with property violations during nightly exploratory testing.
+
+            ### Violations Summary
+
+            ${violations.slice(0, 10).map(v => `- **URL:** ${v.url}\n  - Violations: ${v.violations.join(', ')}`).join('\n\n')}
+
+            ${violations.length > 10 ? `\n_...and ${violations.length - 10} more violations_` : ''}
+
+            ### Artifacts
+
+            [Download full results](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+            ---
+            _This issue was automatically created by the nightly Bombadil exploratory test run._
+            `;
+
+            // Check if there's already an open issue for Bombadil violations
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'bombadil-violations'
+            });
+
+            if (existingIssues.data.length > 0) {
+              // Update existing issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssues.data[0].number,
+                body: body
+              });
+              console.log(`Updated existing issue #${existingIssues.data[0].number}`);
+            } else {
+              // Create new issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🔍 Bombadil Nightly: ${violations.length} property violation(s) found`,
+                body: body,
+                labels: ['bombadil-violations', 'bug']
+              });
+              console.log('Created new issue for violations');
+            }
