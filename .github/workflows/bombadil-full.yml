@@ -1,0 +1,107 @@
+name: Bombadil Full Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'bombadil/**'
+      - 'package.json'
+
+jobs:
+  full-tests:
+    name: Property-Based Tests (Full Suite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download Bombadil
+        run: |
+          curl -L -o bombadil https://github.com/antithesishq/bombadil/releases/download/v0.3.2/bombadil-x86_64-linux
+          chmod +x bombadil
+          sudo mv bombadil /usr/local/bin/
+
+      - name: Verify Bombadil installation
+        run: bombadil --version
+
+      - name: Start dev server
+        run: |
+          pnpm dev &
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:5173 > /dev/null 2>&1; then
+              echo "Dev server ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run core property tests
+        run: |
+          mkdir -p bombadil-results/full
+
+          echo "=== Core Tests ==="
+          for spec in bombadil/specs/core/*.spec.ts; do
+            echo "Testing: $spec"
+            bombadil test http://localhost:5173 "$spec" \
+              --max-steps 200 \
+              --timeout 180 \
+              --output-path ./bombadil-results/full
+          done
+
+      - name: Run workflow property tests
+        run: |
+          echo "=== Workflow Tests ==="
+          for spec in bombadil/specs/workflows/*.spec.ts; do
+            echo "Testing: $spec"
+            bombadil test http://localhost:5173 "$spec" \
+              --max-steps 500 \
+              --timeout 600 \
+              --output-path ./bombadil-results/full
+          done
+
+      - name: Check for violations
+        run: |
+          VIOLATIONS=$(jq -rs '[.[] | select(.violations != [])] | length' bombadil-results/full/trace.jsonl 2>/dev/null || echo "0")
+          echo "Violations found: $VIOLATIONS"
+          if [ "$VIOLATIONS" != "0" ]; then
+            echo "Property violations detected!"
+            jq -r 'select(.violations != []) | {url, violations}' bombadil-results/full/trace.jsonl
+            exit 1
+          fi
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Bombadil Full Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          TOTAL=$(jq -rs 'length' bombadil-results/full/trace.jsonl 2>/dev/null || echo "0")
+          VIOLATIONS=$(jq -rs '[.[] | select(.violations != [])] | length' bombadil-results/full/trace.jsonl 2>/dev/null || echo "0")
+
+          echo "- **Total states explored:** $TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "- **Violations found:** $VIOLATIONS" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bombadil-full-results
+          path: bombadil-results/
+          retention-days: 14
