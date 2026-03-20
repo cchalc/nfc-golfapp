@@ -240,7 +240,8 @@ Team *──* Golfer (via TeamMember)
 
 ## Roadmap
 
-- [ ] **Challenges**: KP contests, longest drive, custom challenges
+- [x] **Challenges**: KP contests, longest drive, custom challenges
+- [x] **Property Testing**: Bombadil-based automated testing
 - [ ] **Electric Sync**: Multi-device real-time sync
 - [ ] **Authentication**: Google OAuth + email/password
 - [ ] **Mobile App**: React Native with shared logic

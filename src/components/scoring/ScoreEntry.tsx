@@ -76,6 +76,7 @@ export function ScoreEntry({
       gap="4"
       py="2"
       style={{ borderBottom: '1px solid var(--gray-5)' }}
+      data-testid={`score-entry-hole-${hole.holeNumber}`}
     >
       {/* Hole info - fixed width */}
       <Flex align="center" gap="3" style={{ width: '100px', flexShrink: 0 }}>
@@ -83,7 +84,9 @@ export function ScoreEntry({
           {hole.holeNumber}
         </Text>
         <Flex direction="column" gap="2">
-          <Text size="2">Par {hole.par}</Text>
+          <Text size="2" data-testid={`hole-par-${hole.holeNumber}`}>
+            Par {hole.par}
+          </Text>
           <Text size="1" color="gray">
             SI {hole.strokeIndex}
           </Text>
@@ -93,7 +96,12 @@ export function ScoreEntry({
       {/* Score entry area */}
       <Flex align="center" gap="3" style={{ flexShrink: 0 }}>
         {handicapStrokes > 0 && (
-          <Badge variant="soft" color="grass" style={{ minWidth: '32px', textAlign: 'center' }}>
+          <Badge
+            variant="soft"
+            color="grass"
+            style={{ minWidth: '32px', textAlign: 'center' }}
+            data-testid={`handicap-strokes-${hole.holeNumber}`}
+          >
             +{handicapStrokes}
           </Badge>
         )}
@@ -111,14 +119,17 @@ export function ScoreEntry({
           }}
           style={{ width: '56px', textAlign: 'center' }}
           placeholder="-"
+          data-testid={`gross-score-${hole.holeNumber}`}
         />
 
         {/* Score display - fixed width */}
         <Flex direction="column" align="end" gap="2" style={{ width: '56px', flexShrink: 0 }}>
           {netScore !== null ? (
             <>
-              <Badge color={scoreColor}>{netScore}</Badge>
-              <Text size="1" color="gray">
+              <Badge color={scoreColor} data-testid={`net-score-${hole.holeNumber}`}>
+                {netScore}
+              </Badge>
+              <Text size="1" color="gray" data-testid={`stableford-points-${hole.holeNumber}`}>
                 {stablefordPoints} pts
               </Text>
             </>

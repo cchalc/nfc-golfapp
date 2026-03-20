@@ -141,6 +141,65 @@
 
 ---
 
+## Completed - Bombadil Property-Based Testing
+
+### Session 2026-03-19: Bombadil Implementation
+
+#### Setup
+- [x] Installed `@antithesishq/bombadil` npm package
+- [x] Created bombadil/ directory structure (specs, extractors, generators, fixtures, state-machines)
+- [x] Added data-testid attributes to ScoreEntry.tsx, Scorecard.tsx, LeaderboardTable.tsx
+
+#### Extractors (bombadil/extractors/)
+- [x] `scoring.ts` - Hole scores, nine totals, scorecard visibility
+- [x] `navigation.ts` - Path, loading state, errors, links
+- [x] `leaderboard.ts` - Entries, ranks, contiguity checks
+
+#### Generators (bombadil/generators/)
+- [x] `navigation.ts` - Browser navigation actions
+- [x] `score-entry.ts` - Random and sequential score entry
+- [x] `forms.ts` - Form filling and submission
+
+#### Fixtures (bombadil/fixtures/)
+- [x] `constants.ts` - Golf scoring constants, bounds
+- [x] `golfers.ts` - Test golfer data generators
+- [x] `courses.ts` - Test course and hole data
+
+#### State Machines (bombadil/state-machines/)
+- [x] `round-states.ts` - Round scoring state transitions
+
+#### Specs - Core (bombadil/specs/core/)
+- [x] `scoring.spec.ts` - Net/stableford calculation invariants
+- [x] `navigation.spec.ts` - Route accessibility, loading
+- [x] `data-integrity.spec.ts` - Totals consistency, leaderboard sorting
+
+#### Specs - Workflows (bombadil/specs/workflows/)
+- [x] `trip-lifecycle.spec.ts` - Trip creation flow
+- [x] `round-scoring.spec.ts` - Score entry and state transitions
+- [x] `leaderboard.spec.ts` - Ranking invariants
+- [x] `challenge-flow.spec.ts` - Challenge management
+
+#### Specs - Exploratory (bombadil/specs/exploratory/)
+- [x] `chaos-scoring.spec.ts` - Stress testing score entry
+- [x] `edge-cases.spec.ts` - Boundary condition testing
+
+#### CI/CD
+- [x] `justfile` - Local test runner (quick, full, explore, report)
+- [x] `.github/workflows/bombadil-quick.yml` - PR tests (<10 min)
+- [x] `.github/workflows/bombadil-full.yml` - Main branch tests (~45 min)
+- [x] `.github/workflows/bombadil-nightly.yml` - Overnight exploratory (8 hrs)
+
+#### Usage
+```bash
+just bombadil-install    # Install bombadil binary
+just bombadil-quick      # Run core tests
+just bombadil-full       # Run full suite
+just bombadil-explore    # Run exploratory tests
+just bombadil-report     # Check for violations
+```
+
+---
+
 ## TODO - Phase 7: Sync & Auth (Future)
 
 - [ ] Set up Neon PostgreSQL database

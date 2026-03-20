@@ -1,0 +1,83 @@
+name: Bombadil Quick Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'bombadil/**'
+      - 'package.json'
+
+jobs:
+  quick-tests:
+    name: Property-Based Tests (Quick)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download Bombadil
+        run: |
+          curl -L -o bombadil https://github.com/antithesishq/bombadil/releases/download/v0.3.2/bombadil-x86_64-linux
+          chmod +x bombadil
+          sudo mv bombadil /usr/local/bin/
+
+      - name: Verify Bombadil installation
+        run: bombadil --version
+
+      - name: Start dev server
+        run: |
+          pnpm dev &
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:5173 > /dev/null 2>&1; then
+              echo "Dev server ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run core property tests
+        run: |
+          mkdir -p bombadil-results/quick
+
+          for spec in bombadil/specs/core/*.spec.ts; do
+            echo "Testing: $spec"
+            bombadil test http://localhost:5173 "$spec" \
+              --max-steps 100 \
+              --timeout 120 \
+              --output-path ./bombadil-results/quick
+          done
+
+      - name: Check for violations
+        run: |
+          VIOLATIONS=$(jq -rs '[.[] | select(.violations != [])] | length' bombadil-results/quick/trace.jsonl 2>/dev/null || echo "0")
+          echo "Violations found: $VIOLATIONS"
+          if [ "$VIOLATIONS" != "0" ]; then
+            echo "Property violations detected!"
+            jq -r 'select(.violations != []) | {url, violations}' bombadil-results/quick/trace.jsonl
+            exit 1
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bombadil-quick-results
+          path: bombadil-results/
+          retention-days: 7

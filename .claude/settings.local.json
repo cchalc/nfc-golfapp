@@ -59,7 +59,11 @@
       "WebFetch(domain:rapidapi.com)",
       "Bash(direnv allow:*)",
       "Bash(pnpm typecheck:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "WebFetch(domain:antithesishq.github.io)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(jj branch create:*)",
+      "Bash(jj --help:*)"
     ]
   },
   "enabledPlugins": {
