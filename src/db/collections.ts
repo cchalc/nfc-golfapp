@@ -47,15 +47,35 @@ export const tripGolferSchema = z.object({
   status: z.enum(['invited', 'accepted', 'declined']).default('invited'),
   invitedAt: dateField,
   acceptedAt: nullableDateField.default(null),
+  includedInScoring: z.boolean().default(true),
 })
 
 export const courseSchema = z.object({
   id: z.string(),
+  apiId: z.number().nullable().default(null), // Golf Course API ID for reference
   name: z.string(),
+  clubName: z.string().default(''),
   location: z.string().default(''),
+  address: z.string().default(''),
+  city: z.string().default(''),
+  state: z.string().default(''),
+  country: z.string().default(''),
+  latitude: z.number().nullable().default(null),
+  longitude: z.number().nullable().default(null),
   courseRating: z.number().nullable().default(null),
   slopeRating: z.number().nullable().default(null),
   totalPar: z.number().default(72),
+})
+
+export const teeBoxSchema = z.object({
+  id: z.string(),
+  courseId: z.string(),
+  teeName: z.string(),
+  gender: z.enum(['male', 'female']),
+  courseRating: z.number(),
+  slopeRating: z.number(),
+  totalYards: z.number(),
+  parTotal: z.number(),
 })
 
 export const holeSchema = z.object({
@@ -74,6 +94,7 @@ export const roundSchema = z.object({
   roundDate: dateField,
   roundNumber: z.number().default(1),
   notes: z.string().default(''),
+  includedInScoring: z.boolean().default(true),
 })
 
 export const scoreSchema = z.object({
@@ -96,6 +117,7 @@ export const roundSummarySchema = z.object({
   totalStableford: z.number(),
   birdiesOrBetter: z.number().default(0),
   kps: z.number().default(0),
+  includedInScoring: z.boolean().default(true),
 })
 
 export const teamSchema = z.object({
@@ -142,6 +164,13 @@ export const challengeResultSchema = z.object({
   isWinner: z.boolean().default(false),
 })
 
+// UI State collection for managing dialog open states (local-only)
+export const uiStateSchema = z.object({
+  id: z.string(),
+  dialogId: z.string(),
+  isOpen: z.boolean(),
+})
+
 // ============================================================================
 // Type exports
 // ============================================================================
@@ -150,6 +179,7 @@ export type Trip = z.output<typeof tripSchema>
 export type Golfer = z.output<typeof golferSchema>
 export type TripGolfer = z.output<typeof tripGolferSchema>
 export type Course = z.output<typeof courseSchema>
+export type TeeBox = z.output<typeof teeBoxSchema>
 export type Hole = z.output<typeof holeSchema>
 export type Round = z.output<typeof roundSchema>
 export type Score = z.output<typeof scoreSchema>
@@ -158,6 +188,7 @@ export type Team = z.output<typeof teamSchema>
 export type TeamMember = z.output<typeof teamMemberSchema>
 export type Challenge = z.output<typeof challengeSchema>
 export type ChallengeResult = z.output<typeof challengeResultSchema>
+export type UIState = z.output<typeof uiStateSchema>
 
 // ============================================================================
 // Collections
@@ -188,6 +219,13 @@ export const courseCollection = createCollection(
   localOnlyCollectionOptions({
     getKey: (item) => item.id,
     schema: courseSchema,
+  })
+)
+
+export const teeBoxCollection = createCollection(
+  localOnlyCollectionOptions({
+    getKey: (item) => item.id,
+    schema: teeBoxSchema,
   })
 )
 
@@ -244,5 +282,12 @@ export const challengeResultCollection = createCollection(
   localOnlyCollectionOptions({
     getKey: (item) => item.id,
     schema: challengeResultSchema,
+  })
+)
+
+export const uiStateCollection = createCollection(
+  localOnlyCollectionOptions({
+    getKey: (item) => item.id,
+    schema: uiStateSchema,
   })
 )

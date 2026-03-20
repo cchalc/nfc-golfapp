@@ -1,5 +1,6 @@
-import { Table, Text, Badge, Flex, Avatar } from '@radix-ui/themes'
-import { Trophy } from 'lucide-react'
+import { Table, Text, Badge, Flex, Avatar, Switch, Tooltip } from '@radix-ui/themes'
+import { Link } from '@tanstack/react-router'
+import { Trophy, Calculator } from 'lucide-react'
 
 export interface LeaderboardEntry {
   rank: number
@@ -8,6 +9,7 @@ export interface LeaderboardEntry {
   value: number
   displayValue: string
   rounds?: number
+  included?: boolean
 }
 
 interface LeaderboardTableProps {
@@ -15,6 +17,8 @@ interface LeaderboardTableProps {
   valueLabel: string
   showRounds?: boolean
   highlightTop?: number
+  onToggleGolfer?: (golferId: string) => void
+  onClickRounds?: (golferId: string) => void
 }
 
 function getInitials(name: string): string {
@@ -37,7 +41,11 @@ export function LeaderboardTable({
   valueLabel,
   showRounds = false,
   highlightTop = 3,
+  onToggleGolfer,
+  onClickRounds,
 }: LeaderboardTableProps) {
+  const showToggle = !!onToggleGolfer
+
   return (
     <Table.Root>
       <Table.Header>
@@ -46,55 +54,94 @@ export function LeaderboardTable({
           <Table.ColumnHeaderCell>Golfer</Table.ColumnHeaderCell>
           {showRounds && <Table.ColumnHeaderCell>Rounds</Table.ColumnHeaderCell>}
           <Table.ColumnHeaderCell align="right">{valueLabel}</Table.ColumnHeaderCell>
+          {showToggle && (
+            <Table.ColumnHeaderCell width="60px" align="center">
+              <Tooltip content="Include in scoring">
+                <Calculator size={14} />
+              </Tooltip>
+            </Table.ColumnHeaderCell>
+          )}
         </Table.Row>
       </Table.Header>
       <Table.Body>
-        {entries.map((entry) => (
-          <Table.Row
-            key={entry.golferId}
-            className={entry.rank === 1 ? 'leader-row' : undefined}
-          >
-            <Table.Cell>
-              {entry.rank <= highlightTop ? (
-                <Flex align="center" gap="1">
-                  <Trophy size={14} className={getTrophyClass(entry.rank)} />
-                  <Text weight="bold">{entry.rank}</Text>
-                </Flex>
-              ) : (
-                <Text color="gray">{entry.rank}</Text>
-              )}
-            </Table.Cell>
-            <Table.Cell>
-              <Flex align="center" gap="2">
-                <Avatar
-                  size="1"
-                  fallback={getInitials(entry.name)}
-                  radius="full"
-                  color={entry.rank === 1 ? 'amber' : undefined}
-                />
-                <Text weight={entry.rank <= highlightTop ? 'medium' : 'regular'}>
-                  {entry.name}
-                </Text>
-              </Flex>
-            </Table.Cell>
-            {showRounds && (
+        {entries.map((entry) => {
+          const isExcluded = entry.included === false
+          const isLeader = entry.rank === 1 && !isExcluded
+
+          return (
+            <Table.Row
+              key={entry.golferId}
+              className={isLeader ? 'leader-row' : undefined}
+              style={isExcluded ? { opacity: 0.5 } : undefined}
+            >
               <Table.Cell>
-                <Badge variant="soft" color="amber">
-                  {entry.rounds}
-                </Badge>
+                {isExcluded ? (
+                  <Text color="gray">—</Text>
+                ) : entry.rank <= highlightTop ? (
+                  <Flex align="center" gap="1">
+                    <Trophy size={14} className={getTrophyClass(entry.rank)} />
+                    <Text weight="bold">{entry.rank}</Text>
+                  </Flex>
+                ) : (
+                  <Text color="gray">{entry.rank}</Text>
+                )}
               </Table.Cell>
-            )}
-            <Table.Cell align="right">
-              <Text
-                weight="bold"
-                style={entry.rank === 1 ? { color: 'var(--amber-9)' } : undefined}
-                size={entry.rank === 1 ? '3' : '2'}
-              >
-                {entry.displayValue}
-              </Text>
-            </Table.Cell>
-          </Table.Row>
-        ))}
+              <Table.Cell>
+                <Link
+                  to="/golfers/$golferId"
+                  params={{ golferId: entry.golferId }}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Flex align="center" gap="2" style={{ cursor: 'pointer' }}>
+                    <Avatar
+                      size="1"
+                      fallback={getInitials(entry.name)}
+                      radius="full"
+                      color={isLeader ? 'amber' : isExcluded ? 'gray' : undefined}
+                    />
+                    <Text
+                      weight={!isExcluded && entry.rank <= highlightTop ? 'medium' : 'regular'}
+                      color={isExcluded ? 'gray' : undefined}
+                    >
+                      {entry.name}
+                    </Text>
+                  </Flex>
+                </Link>
+              </Table.Cell>
+              {showRounds && (
+                <Table.Cell>
+                  <Badge
+                    variant="soft"
+                    color={isExcluded ? 'gray' : 'amber'}
+                    style={onClickRounds ? { cursor: 'pointer' } : undefined}
+                    onClick={onClickRounds ? () => onClickRounds(entry.golferId) : undefined}
+                  >
+                    {entry.rounds}
+                  </Badge>
+                </Table.Cell>
+              )}
+              <Table.Cell align="right">
+                <Text
+                  weight={isExcluded ? 'regular' : 'bold'}
+                  style={isLeader ? { color: 'var(--amber-9)' } : undefined}
+                  size={isLeader ? '3' : '2'}
+                  color={isExcluded ? 'gray' : undefined}
+                >
+                  {entry.displayValue}
+                </Text>
+              </Table.Cell>
+              {showToggle && (
+                <Table.Cell align="center">
+                  <Switch
+                    size="1"
+                    checked={!isExcluded}
+                    onCheckedChange={() => onToggleGolfer(entry.golferId)}
+                  />
+                </Table.Cell>
+              )}
+            </Table.Row>
+          )
+        })}
       </Table.Body>
     </Table.Root>
   )

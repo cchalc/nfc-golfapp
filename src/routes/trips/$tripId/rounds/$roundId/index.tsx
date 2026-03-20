@@ -9,7 +9,7 @@ import {
   Button,
   Grid,
 } from '@radix-ui/themes'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ArrowLeft, Trophy } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
   roundCollection,
@@ -97,6 +97,22 @@ function RoundOverview() {
   return (
     <Container size="2" py="6">
       <Flex direction="column" gap="5">
+        {/* Navigation */}
+        <Flex justify="between" align="center" wrap="wrap" gap="2">
+          <Link to="/trips/$tripId" params={{ tripId }}>
+            <Button variant="ghost" size="1">
+              <ArrowLeft size={16} />
+              Back to Trip
+            </Button>
+          </Link>
+          <Link to="/trips/$tripId/leaderboards" params={{ tripId }}>
+            <Button variant="soft" size="1">
+              <Trophy size={14} />
+              Leaderboard
+            </Button>
+          </Link>
+        </Flex>
+
         {/* Header */}
         <Flex direction="column" gap="3">
           <Flex align="center" gap="2">

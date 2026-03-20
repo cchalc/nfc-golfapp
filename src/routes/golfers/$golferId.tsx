@@ -12,14 +12,16 @@ import {
   Separator,
   Grid,
 } from '@radix-ui/themes'
-import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useDialogState } from '../../hooks/useDialogState'
 import {
   golferCollection,
   tripGolferCollection,
   tripCollection,
   roundSummaryCollection,
   roundCollection,
+  courseCollection,
 } from '../../db/collections'
 import { GolferForm } from '../../components/golfers/GolferForm'
 
@@ -39,6 +41,7 @@ function getInitials(name: string): string {
 
 function GolferDetailPage() {
   const { golferId } = Route.useParams()
+  const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-golfer-${golferId}`)
 
   const { data: golfers } = useLiveQuery(
     (q) =>
@@ -66,15 +69,20 @@ function GolferDetailPage() {
     [golferId]
   )
 
-  // Get round summaries for this golfer
+  // Get round summaries for this golfer with trip and course info
   const { data: roundSummaries } = useLiveQuery(
     (q) =>
       q
         .from({ rs: roundSummaryCollection })
         .where(({ rs }) => eq(rs.golferId, golferId))
         .join({ round: roundCollection }, ({ rs, round }) => eq(rs.roundId, round!.id))
-        .select(({ rs, round }) => ({
+        .join({ trip: tripCollection }, ({ round, trip }) => eq(round!.tripId, trip!.id))
+        .join({ course: courseCollection }, ({ round, course }) => eq(round!.courseId, course!.id))
+        .select(({ rs, round, trip, course }) => ({
           roundId: rs.roundId,
+          tripId: round!.tripId,
+          tripName: trip!.name,
+          courseName: course!.name,
           totalGross: rs.totalGross,
           totalNet: rs.totalNet,
           totalStableford: rs.totalStableford,
@@ -146,7 +154,7 @@ function GolferDetailPage() {
                     HCP {golfer.handicap.toFixed(1)}
                   </Badge>
                 </Flex>
-                <Dialog.Root>
+                <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <Dialog.Trigger>
                     <Button variant="soft" size="1">
                       <Edit size={14} />
@@ -164,12 +172,7 @@ function GolferDetailPage() {
                           phone: golfer.phone,
                           handicap: golfer.handicap,
                         }}
-                        onSuccess={() => {
-                          const closeButton = document.querySelector(
-                            '[data-radix-dialog-close]'
-                          ) as HTMLButtonElement
-                          closeButton?.click()
-                        }}
+                        onSuccess={() => setEditDialogOpen(false)}
                       />
                     </Flex>
                   </Dialog.Content>
@@ -321,37 +324,63 @@ function GolferDetailPage() {
 
             <Flex direction="column" gap="2">
               {rounds.slice(0, 5).map((round) => (
-                <Card key={round.roundId}>
-                  <Flex justify="between" align="center">
-                    <Flex direction="column" gap="3">
-                      <Text size="2" color="gray">
-                        {round.roundDate.toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </Text>
-                      <Flex gap="4">
-                        <Text size="2">
-                          <span style={{ color: 'var(--gray-11)' }}>Gross:</span> {round.totalGross}
-                        </Text>
-                        <Text size="2">
-                          <span style={{ color: 'var(--gray-11)' }}>Net:</span> {round.totalNet}
-                        </Text>
+                <Link
+                  key={round.roundId}
+                  to="/trips/$tripId/rounds/$roundId/scorecard"
+                  params={{ tripId: round.tripId, roundId: round.roundId }}
+                  search={{ golferId }}
+                >
+                  <Card asChild>
+                    <Flex justify="between" align="center" gap="3">
+                      <Flex direction="column" gap="3">
+                        <Flex align="center" gap="2">
+                          <Badge size="1">R{round.roundNumber}</Badge>
+                          <Text weight="medium">{round.courseName}</Text>
+                        </Flex>
+                        <Flex align="center" gap="2" wrap="wrap">
+                          <Flex align="center" gap="1">
+                            <Flag size={12} style={{ color: 'var(--grass-9)' }} />
+                            <Text size="1" color="gray">
+                              {round.tripName}
+                            </Text>
+                          </Flex>
+                          <Text size="1" color="gray">•</Text>
+                          <Flex align="center" gap="1">
+                            <Calendar size={12} style={{ color: 'var(--gray-9)' }} />
+                            <Text size="1" color="gray">
+                              {round.roundDate.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                              })}
+                            </Text>
+                          </Flex>
+                        </Flex>
+                        <Flex gap="5" wrap="wrap">
+                          <Flex direction="column" gap="1">
+                            <Text size="1" color="gray">Gross</Text>
+                            <Text size="3" weight="medium">{round.totalGross}</Text>
+                          </Flex>
+                          <Flex direction="column" gap="1">
+                            <Text size="1" color="gray">Net</Text>
+                            <Text size="3" weight="medium">{round.totalNet}</Text>
+                          </Flex>
+                          <Flex direction="column" gap="1">
+                            <Text size="1" color="gray">Pts</Text>
+                            <Text size="3" weight="medium" style={{ color: 'var(--amber-9)' }}>{round.totalStableford}</Text>
+                          </Flex>
+                          {round.birdiesOrBetter > 0 && (
+                            <Flex direction="column" gap="1">
+                              <Text size="1" color="gray">Birdies</Text>
+                              <Text size="3" weight="medium" color="grass">{round.birdiesOrBetter}</Text>
+                            </Flex>
+                          )}
+                        </Flex>
                       </Flex>
+                      <ChevronRight size={16} style={{ color: 'var(--gray-9)', flexShrink: 0 }} />
                     </Flex>
-                    <Flex direction="column" align="end" gap="1">
-                      <Badge color="amber" size="2">
-                        {round.totalStableford} pts
-                      </Badge>
-                      {round.birdiesOrBetter > 0 && (
-                        <Text size="1" color="grass">
-                          {round.birdiesOrBetter} birdies+
-                        </Text>
-                      )}
-                    </Flex>
-                  </Flex>
-                </Card>
+                  </Card>
+                </Link>
               ))}
             </Flex>
           </Flex>

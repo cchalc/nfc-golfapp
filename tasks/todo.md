@@ -27,6 +27,27 @@
 - [x] **$roundId/index.tsx**: Fixed course info cards (Par, Rating, Slope) with `gap="2"`
 - [x] **leaderboards.tsx**: Fixed team leaderboard text stacking with `gap="2"`
 
+### Session 2026-03-18: Phase 5 - Challenges + Dialog Bug Fix
+
+#### Challenges Feature (Complete)
+- [x] **lib/challenges.ts**: Utility functions for KP distance parsing, formatting, winner determination, type labels
+- [x] **ChallengeCard.tsx**: Display component with type badge, scope context, winner display, action buttons
+- [x] **ChallengeForm.tsx**: Create/edit dialog form with type selector, scope settings, round/hole selectors
+- [x] **ChallengeResultEntry.tsx**: Manual result entry with golfer list, distance inputs, auto-winner selection
+- [x] **challenges.tsx route**: Main challenges page with active/completed sections, CRUD operations
+- [x] **Trip dashboard**: Added Challenges link with Target icon and badge count
+
+#### Dialog Closing Bug Fix
+- [x] **Root cause**: `document.querySelector('[data-radix-dialog-close]')` returned null because no `<Dialog.Close>` element existed
+- [x] **Solution**: Created `useDialogState` hook using TanStack DB local-only collection for UI state
+- [x] **Files fixed**:
+  - `src/hooks/useDialogState.ts` - New hook for controlled dialog state
+  - `src/db/collections.ts` - Added `uiStateCollection` for dialog open/close state
+  - `src/routes/golfers/$golferId.tsx` - Edit golfer dialog
+  - `src/routes/golfers/index.tsx` - Add golfer dialog
+  - `src/routes/trips/$tripId/teams.tsx` - Create team dialog
+  - `src/routes/trips/$tripId/challenges.tsx` - All challenge dialogs
+
 ---
 
 ## Completed - Phase 1: Foundation
@@ -61,12 +82,12 @@
 
 ---
 
-## TODO - Phase 5: Challenges
+## Completed - Phase 5: Challenges
 
-- [ ] Challenge creation form (KP, longest drive, custom)
-- [ ] Result entry for manual challenges
-- [ ] Auto-calculated challenge results (most birdies, best net)
-- [ ] Winner display and history
+- [x] Challenge creation form (KP, longest drive, custom)
+- [x] Result entry for manual challenges
+- [x] Auto-calculated challenge results (most birdies, best net)
+- [x] Winner display and history
 
 ## TODO - Phase 6: Polish
 
@@ -96,6 +117,10 @@ src/
 │   ├── DataLoader.tsx          # Auto-seeds data
 │   ├── Header.tsx              # Navigation
 │   ├── ThemePicker.tsx         # Font themes
+│   ├── challenges/
+│   │   ├── ChallengeCard.tsx   # Challenge display component
+│   │   ├── ChallengeForm.tsx   # Create/edit challenge
+│   │   └── ChallengeResultEntry.tsx  # Enter manual results
 │   ├── golfers/
 │   │   ├── GolferCard.tsx
 │   │   └── GolferForm.tsx
@@ -114,20 +139,25 @@ src/
 ├── contexts/
 │   └── ThemeContext.tsx
 ├── db/
-│   ├── collections.ts          # TanStack DB schemas
+│   ├── collections.ts          # TanStack DB schemas + uiStateCollection
 │   └── seed.ts                 # Sample data
+├── hooks/
+│   └── useDialogState.ts       # Controlled dialog state via TanStack DB
 ├── lib/
+│   ├── challenges.ts           # Challenge utilities (distance parsing, etc.)
 │   └── scoring.ts              # Golf scoring logic
 └── routes/
     ├── __root.tsx
     ├── index.tsx               # Home
     ├── golfers/
-    │   └── index.tsx           # Golfer directory
+    │   ├── index.tsx           # Golfer directory
+    │   └── $golferId.tsx       # Golfer detail
     └── trips/
         ├── index.tsx           # Trip list
         ├── new.tsx             # Create trip
         └── $tripId/
             ├── index.tsx       # Trip dashboard
+            ├── challenges.tsx  # Challenges management
             ├── golfers.tsx     # Manage participants
             ├── leaderboards.tsx
             ├── teams.tsx
