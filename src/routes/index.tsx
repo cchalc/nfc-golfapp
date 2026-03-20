@@ -48,7 +48,7 @@ function HomePage() {
           </Text>
         </Flex>
 
-        <Grid columns="3" gap="4" className="animate-reveal-2">
+        <Grid columns={{ initial: '1', sm: '3' }} gap="4" className="animate-reveal-2">
           <Card className="card-gold-hover">
             <Flex direction="column" align="center" gap="2" py="3">
               <Heading size="6" style={{ color: 'var(--amber-9)' }}>
@@ -81,7 +81,7 @@ function HomePage() {
           </Card>
         </Grid>
 
-        <Grid columns="2" gap="3" className="animate-reveal-3">
+        <Grid columns={{ initial: '1', sm: '2' }} gap="3" className="animate-reveal-3">
           <Link to="/trips" style={{ textDecoration: 'none' }}>
             <Card asChild>
               <Flex direction="column" align="center" gap="2" py="4">

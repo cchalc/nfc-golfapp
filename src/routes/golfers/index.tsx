@@ -7,6 +7,7 @@ import { golferCollection } from '../../db/collections'
 import { GolferCard } from '../../components/golfers/GolferCard'
 import { GolferForm } from '../../components/golfers/GolferForm'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { CardSkeleton } from '../../components/ui/Skeleton'
 
 export const Route = createFileRoute('/golfers/')({
   ssr: false,
@@ -27,8 +28,10 @@ function GolfersPage() {
       <Container size="2" py="6">
         <Flex direction="column" gap="4">
           <Heading size="7">Golfers</Heading>
-          <Flex align="center" justify="center" py="9">
-            Loading...
+          <Flex direction="column" gap="3">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </Flex>
         </Flex>
       </Container>

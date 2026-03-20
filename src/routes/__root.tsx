@@ -10,6 +10,7 @@ import { Header } from '../components/Header'
 import { ThemeProvider } from '../contexts/ThemeContext'
 import { DataLoader } from '../components/DataLoader'
 import { ClientOnly } from '../components/ClientOnly'
+import { ErrorBoundary } from '../components/ui/ErrorBoundary'
 
 import radixCss from '@radix-ui/themes/styles.css?url'
 import interCss from '@fontsource/inter/latin.css?url'
@@ -69,14 +70,16 @@ function RootComponent() {
       </head>
       <body>
         <Theme appearance="dark" accentColor="grass" grayColor="sage" radius="medium">
-          <ClientOnly>
-            <ThemeProvider>
-              <DataLoader>
-                <Header />
-                <Outlet />
-              </DataLoader>
-            </ThemeProvider>
-          </ClientOnly>
+          <ErrorBoundary>
+            <ClientOnly>
+              <ThemeProvider>
+                <DataLoader>
+                  <Header />
+                  <Outlet />
+                </DataLoader>
+              </ThemeProvider>
+            </ClientOnly>
+          </ErrorBoundary>
         </Theme>
         <Scripts />
       </body>

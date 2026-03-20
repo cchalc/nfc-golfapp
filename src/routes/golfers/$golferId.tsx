@@ -204,7 +204,7 @@ function GolferDetailPage() {
 
         {/* Stats summary */}
         {totalRounds > 0 && (
-          <Grid columns="4" gap="3">
+          <Grid columns={{ initial: '2', md: '4' }} gap="3">
             <Card>
               <Flex direction="column" align="center" gap="2">
                 <Heading size="5" style={{ color: 'var(--amber-9)' }}>

@@ -47,22 +47,25 @@ export function LeaderboardTable({
   const showToggle = !!onToggleGolfer
 
   return (
-    <Table.Root>
-      <Table.Header>
-        <Table.Row>
-          <Table.ColumnHeaderCell width="60px">Rank</Table.ColumnHeaderCell>
-          <Table.ColumnHeaderCell>Golfer</Table.ColumnHeaderCell>
-          {showRounds && <Table.ColumnHeaderCell>Rounds</Table.ColumnHeaderCell>}
-          <Table.ColumnHeaderCell align="right">{valueLabel}</Table.ColumnHeaderCell>
-          {showToggle && (
-            <Table.ColumnHeaderCell width="60px" align="center">
-              <Tooltip content="Include in scoring">
-                <Calculator size={14} />
-              </Tooltip>
-            </Table.ColumnHeaderCell>
-          )}
-        </Table.Row>
-      </Table.Header>
+    <div className="table-scroll-mobile">
+      <Table.Root style={{ minWidth: '400px' }}>
+        <Table.Header>
+          <Table.Row>
+            <Table.ColumnHeaderCell width="60px">Rank</Table.ColumnHeaderCell>
+            <Table.ColumnHeaderCell>Golfer</Table.ColumnHeaderCell>
+            {showRounds && (
+              <Table.ColumnHeaderCell className="hide-mobile">Rounds</Table.ColumnHeaderCell>
+            )}
+            <Table.ColumnHeaderCell align="right">{valueLabel}</Table.ColumnHeaderCell>
+            {showToggle && (
+              <Table.ColumnHeaderCell width="60px" align="center" className="hide-mobile">
+                <Tooltip content="Include in scoring">
+                  <Calculator size={14} />
+                </Tooltip>
+              </Table.ColumnHeaderCell>
+            )}
+          </Table.Row>
+        </Table.Header>
       <Table.Body>
         {entries.map((entry) => {
           const isExcluded = entry.included === false
@@ -109,7 +112,7 @@ export function LeaderboardTable({
                 </Link>
               </Table.Cell>
               {showRounds && (
-                <Table.Cell>
+                <Table.Cell className="hide-mobile">
                   <Badge
                     variant="soft"
                     color={isExcluded ? 'gray' : 'amber'}
@@ -131,7 +134,7 @@ export function LeaderboardTable({
                 </Text>
               </Table.Cell>
               {showToggle && (
-                <Table.Cell align="center">
+                <Table.Cell align="center" className="hide-mobile">
                   <Switch
                     size="1"
                     checked={!isExcluded}
@@ -144,5 +147,6 @@ export function LeaderboardTable({
         })}
       </Table.Body>
     </Table.Root>
+    </div>
   )
 }

@@ -57,7 +57,9 @@
       "WebFetch(domain:documenter.getpostman.com)",
       "WebFetch(domain:golfapi.io)",
       "WebFetch(domain:rapidapi.com)",
-      "Bash(direnv allow:*)"
+      "Bash(direnv allow:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm build:*)"
     ]
   },
   "enabledPlugins": {

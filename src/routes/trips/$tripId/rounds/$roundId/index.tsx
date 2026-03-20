@@ -126,7 +126,7 @@ function RoundOverview() {
         {/* Course Info */}
         {course && (
           <Card>
-            <Grid columns="3" gap="3">
+            <Grid columns={{ initial: '1', sm: '3' }} gap="3">
               <Flex direction="column" align="center" gap="2">
                 <Text size="1" color="gray">
                   Par

@@ -6,6 +6,7 @@ import { courseCollection, holeCollection } from '../../db/collections'
 import { CourseCard } from '../../components/courses/CourseCard'
 import { CourseSearch } from '../../components/courses/CourseSearch'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { CardSkeleton } from '../../components/ui/Skeleton'
 import { useDialogState } from '../../hooks/useDialogState'
 
 export const Route = createFileRoute('/courses/')({
@@ -38,8 +39,10 @@ function CoursesPage() {
       <Container size="2" py="6">
         <Flex direction="column" gap="4">
           <Heading size="7">Courses</Heading>
-          <Flex align="center" justify="center" py="9">
-            Loading...
+          <Flex direction="column" gap="3">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </Flex>
         </Flex>
       </Container>
