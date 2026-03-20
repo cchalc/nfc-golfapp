@@ -115,7 +115,7 @@ export function Scorecard({
       </Flex>
 
       {/* Front 9 */}
-      <Flex direction="column" gap="2">
+      <Flex direction="column" gap="2" data-testid="front-nine">
         <Flex justify="between" align="center">
           <Text size="2" weight="medium">
             Front 9
@@ -135,14 +135,14 @@ export function Scorecard({
             onChange={(gross) => onScoreChange(h.hole.id, gross)}
           />
         ))}
-        <Flex justify="end" gap="4" py="2">
-          <Text size="2">
+        <Flex justify="end" gap="4" py="2" data-testid="front-nine-totals">
+          <Text size="2" data-testid="front-nine-gross">
             <span style={{ color: 'var(--gray-11)' }}>Gross:</span> {frontTotals.gross || '-'}
           </Text>
-          <Text size="2">
+          <Text size="2" data-testid="front-nine-net">
             <span style={{ color: 'var(--gray-11)' }}>Net:</span> {frontTotals.net || '-'}
           </Text>
-          <Text size="2">
+          <Text size="2" data-testid="front-nine-stableford">
             <span style={{ color: 'var(--gray-11)' }}>Pts:</span> {frontTotals.stableford || '-'}
           </Text>
         </Flex>
@@ -151,7 +151,7 @@ export function Scorecard({
       <Separator size="4" />
 
       {/* Back 9 */}
-      <Flex direction="column" gap="2">
+      <Flex direction="column" gap="2" data-testid="back-nine">
         <Flex justify="between" align="center">
           <Text size="2" weight="medium">
             Back 9
@@ -171,14 +171,14 @@ export function Scorecard({
             onChange={(gross) => onScoreChange(h.hole.id, gross)}
           />
         ))}
-        <Flex justify="end" gap="4" py="2">
-          <Text size="2">
+        <Flex justify="end" gap="4" py="2" data-testid="back-nine-totals">
+          <Text size="2" data-testid="back-nine-gross">
             <span style={{ color: 'var(--gray-11)' }}>Gross:</span> {backTotals.gross || '-'}
           </Text>
-          <Text size="2">
+          <Text size="2" data-testid="back-nine-net">
             <span style={{ color: 'var(--gray-11)' }}>Net:</span> {backTotals.net || '-'}
           </Text>
-          <Text size="2">
+          <Text size="2" data-testid="back-nine-stableford">
             <span style={{ color: 'var(--gray-11)' }}>Pts:</span> {backTotals.stableford || '-'}
           </Text>
         </Flex>

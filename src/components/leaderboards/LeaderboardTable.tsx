@@ -66,7 +66,7 @@ export function LeaderboardTable({
             )}
           </Table.Row>
         </Table.Header>
-      <Table.Body>
+      <Table.Body data-testid="leaderboard-body">
         {entries.map((entry) => {
           const isExcluded = entry.included === false
           const isLeader = entry.rank === 1 && !isExcluded
@@ -76,6 +76,7 @@ export function LeaderboardTable({
               key={entry.golferId}
               className={isLeader ? 'leader-row' : undefined}
               style={isExcluded ? { opacity: 0.5 } : undefined}
+              data-testid={`leaderboard-row-${entry.golferId}`}
             >
               <Table.Cell>
                 {isExcluded ? (
@@ -83,10 +84,14 @@ export function LeaderboardTable({
                 ) : entry.rank <= highlightTop ? (
                   <Flex align="center" gap="1">
                     <Trophy size={14} className={getTrophyClass(entry.rank)} />
-                    <Text weight="bold">{entry.rank}</Text>
+                    <Text weight="bold" data-testid={`rank-${entry.golferId}`}>
+                      {entry.rank}
+                    </Text>
                   </Flex>
                 ) : (
-                  <Text color="gray">{entry.rank}</Text>
+                  <Text color="gray" data-testid={`rank-${entry.golferId}`}>
+                    {entry.rank}
+                  </Text>
                 )}
               </Table.Cell>
               <Table.Cell>
@@ -105,6 +110,7 @@ export function LeaderboardTable({
                     <Text
                       weight={!isExcluded && entry.rank <= highlightTop ? 'medium' : 'regular'}
                       color={isExcluded ? 'gray' : undefined}
+                      data-testid={`golfer-name-${entry.golferId}`}
                     >
                       {entry.name}
                     </Text>
@@ -129,6 +135,7 @@ export function LeaderboardTable({
                   style={isLeader ? { color: 'var(--amber-9)' } : undefined}
                   size={isLeader ? '3' : '2'}
                   color={isExcluded ? 'gray' : undefined}
+                  data-testid={`score-value-${entry.golferId}`}
                 >
                   {entry.displayValue}
                 </Text>
