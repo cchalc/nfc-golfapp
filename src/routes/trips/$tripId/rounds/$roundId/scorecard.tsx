@@ -80,6 +80,7 @@ function ScorecardPage() {
     [tripId]
   )
   const tripGolferIds = (tripGolfers || []).map((tg) => tg.golferId)
+  const tripGolferMap = new Map((tripGolfers || []).map((tg) => [tg.golferId, tg]))
 
   const { data: allGolfers } = useLiveQuery(
     (q) => q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
@@ -123,8 +124,12 @@ function ScorecardPage() {
     const hole = holes.find((h) => h.id === holeId)
     if (!hole) return
 
+    // Use trip handicap override if set
+    const tripGolfer = tripGolferMap.get(golferId)
+    const effectiveHandicap = tripGolfer?.handicapOverride ?? golfer.handicap
+
     const playingHandicap = getPlayingHandicap(
-      golfer.handicap,
+      effectiveHandicap,
       course.slopeRating,
       course.courseRating,
       course.totalPar
@@ -296,7 +301,11 @@ function ScorecardPage() {
                 </Select.Content>
               </Select.Root>
               <Text size="1" color="gray">
-                HCP {golfer?.handicap.toFixed(1)}
+                HCP {(tripGolferMap.get(golferId)?.handicapOverride ?? golfer?.handicap)?.toFixed(1)}
+                {tripGolferMap.get(golferId)?.handicapOverride !== null &&
+                  tripGolferMap.get(golferId)?.handicapOverride !== undefined && (
+                    <span style={{ color: 'var(--amber-9)' }}> (trip)</span>
+                  )}
               </Text>
             </Flex>
 
@@ -321,6 +330,7 @@ function ScorecardPage() {
             coursePar={course.totalPar}
             scores={holeScores}
             onScoreChange={handleScoreChange}
+            handicapOverride={tripGolferMap.get(golferId)?.handicapOverride}
           />
         )}
       </Flex>

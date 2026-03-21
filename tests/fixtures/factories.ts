@@ -112,6 +112,28 @@ export function createChallengeResult(
   return { golferId, resultNumeric }
 }
 
+// TripGolfer factory
+export function createTripGolfer(
+  overrides: Partial<{
+    id: string
+    tripId: string
+    golferId: string
+    status: 'invited' | 'accepted' | 'declined'
+    handicapOverride: number | null
+  }> = {}
+) {
+  return {
+    id: overrides.id ?? crypto.randomUUID(),
+    tripId: overrides.tripId ?? 'trip-1',
+    golferId: overrides.golferId ?? 'golfer-1',
+    status: overrides.status ?? 'accepted',
+    invitedAt: new Date(),
+    acceptedAt: new Date(),
+    includedInScoring: true,
+    handicapOverride: overrides.handicapOverride ?? null,
+  }
+}
+
 // Challenge type constants for testing
 export const CHALLENGE_TYPES = [
   'closest_to_pin',

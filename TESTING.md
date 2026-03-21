@@ -180,6 +180,7 @@ Fast-running property tests that validate fundamental invariants. Run on every P
 | `scoring.spec.ts` | Net score calculation, Stableford points, handicap strokes | ~30s |
 | `navigation.spec.ts` | Valid paths, no stuck loading, pages have headings | ~30s |
 | `data-integrity.spec.ts` | Totals match sums, leaderboard sorted, ranks contiguous | ~30s |
+| `trip-improvements.spec.ts` | Back navigation, course search, handicap overrides | ~30s |
 
 ### Workflow Tests (`bombadil/specs/workflows/`)
 

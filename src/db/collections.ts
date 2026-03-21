@@ -48,6 +48,7 @@ export const tripGolferSchema = z.object({
   invitedAt: dateField,
   acceptedAt: nullableDateField.default(null),
   includedInScoring: z.boolean().default(true),
+  handicapOverride: z.number().nullable().default(null), // Trip-specific handicap (null = use golfer's default)
 })
 
 export const courseSchema = z.object({
