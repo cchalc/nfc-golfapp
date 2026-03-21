@@ -26,6 +26,7 @@ export const tripFormSchema = z
 export const challengeFormSchema = z
   .object({
     name: z.string().min(2, 'Name required'),
+    description: z.string().optional(),
     challengeType: z.enum([
       'closest_to_pin',
       'longest_drive',

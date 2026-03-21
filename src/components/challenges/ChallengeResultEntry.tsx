@@ -91,7 +91,7 @@ export function ChallengeResultEntry({
         : 'Result'
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} data-testid="result-entry-form">
       <Flex direction="column" gap="4">
         <Text size="2" color="gray">
           Enter results for each participant. The winner will be determined automatically.
@@ -109,6 +109,7 @@ export function ChallengeResultEntry({
                 align="center"
                 gap="3"
                 p="2"
+                data-testid={`result-golfer-${golfer.id}`}
                 style={{
                   backgroundColor: 'var(--gray-2)',
                   borderRadius: 'var(--radius-2)',

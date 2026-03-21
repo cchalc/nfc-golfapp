@@ -89,6 +89,19 @@
 - [x] Auto-calculated challenge results (most birdies, best net)
 - [x] Winner display and history
 
+### Session 2026-03-20: Challenges Polish
+
+- [x] **Edit challenge dialog**: Click edit icon to modify existing challenge via ChallengeForm
+- [x] **Delete confirmation**: AlertDialog prompt before deleting challenge and results
+- [x] **Edit results button**: Completed manual challenges show "Edit Results" to re-enter scores
+- [x] **data-testid attributes**: Added testids to all challenge components for Bombadil testing
+  - `challenge-card-{id}`, `challenge-type-{type}`, `challenge-name`, `challenge-winner-{id}`
+  - `challenges-active`, `challenges-completed`, `add-challenge-btn`
+  - `challenge-form`, `challenge-name-input`, `challenge-submit-btn`
+  - `result-entry-form`, `result-golfer-{id}`, `enter-results-btn`, `edit-results-btn`
+- [x] **Validation schema**: Added optional `description` field to `challengeFormSchema`
+- [x] **Bombadil extractors**: Updated challenge-flow.spec.ts to use new data-testid selectors
+
 ## Completed - Phase 6: Polish
 
 ### Session 2026-03-19: Polish Implementation

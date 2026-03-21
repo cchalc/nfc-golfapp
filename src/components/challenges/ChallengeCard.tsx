@@ -39,12 +39,12 @@ export function ChallengeCard({
   }
 
   return (
-    <Card>
+    <Card data-testid={`challenge-card-${challenge.id}`}>
       <Flex direction="column" gap="3">
         <Flex justify="between" align="start">
           <Flex direction="column" gap="2">
             <Flex align="center" gap="2">
-              <Badge color={color} variant="soft">
+              <Badge color={color} variant="soft" data-testid={`challenge-type-${challenge.challengeType}`}>
                 {typeLabel}
               </Badge>
               {scopeContext && (
@@ -53,7 +53,7 @@ export function ChallengeCard({
                 </Text>
               )}
             </Flex>
-            <Text weight="medium" size="3">
+            <Text weight="medium" size="3" data-testid="challenge-name">
               {challenge.name}
             </Text>
           </Flex>
@@ -93,6 +93,7 @@ export function ChallengeCard({
             align="center"
             gap="2"
             p="2"
+            data-testid={`challenge-winner-${winner.id}`}
             style={{
               backgroundColor: 'var(--amber-3)',
               borderRadius: 'var(--radius-2)',

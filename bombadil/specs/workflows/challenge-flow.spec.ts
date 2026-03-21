@@ -16,23 +16,27 @@ export { fillGolferForm, submitForms, interactWithDialogs } from '../../generato
 
 // Challenge extractor that returns JSON-compatible array
 const challenges = extract((state) => {
-  const result: { id: string; name: string; type: string; scope: string }[] = []
+  const result: { id: string; name: string; type: string; hasWinner: boolean }[] = []
 
-  // Look for challenge cards/rows
-  const challengeElements = state.document.querySelectorAll('[data-testid^="challenge-"]')
+  // Look for challenge cards by their data-testid pattern
+  const challengeElements = state.document.querySelectorAll('[data-testid^="challenge-card-"]')
 
   challengeElements.forEach((el) => {
     const testId = el.getAttribute('data-testid') || ''
-    const id = testId.replace('challenge-', '')
+    const id = testId.replace('challenge-card-', '')
     const nameEl = el.querySelector('[data-testid="challenge-name"]')
-    const typeEl = el.querySelector('[data-testid="challenge-type"]')
-    const scopeEl = el.querySelector('[data-testid="challenge-scope"]')
+    // Type badges have format data-testid="challenge-type-{type}"
+    const typeEl = el.querySelector('[data-testid^="challenge-type-"]')
+    const winnerEl = el.querySelector('[data-testid^="challenge-winner-"]')
+
+    const typeTestId = typeEl?.getAttribute('data-testid') || ''
+    const type = typeTestId.replace('challenge-type-', '')
 
     result.push({
       id,
       name: nameEl?.textContent?.trim() || '',
-      type: typeEl?.textContent?.trim() || '',
-      scope: scopeEl?.textContent?.trim() || '',
+      type: type || typeEl?.textContent?.trim() || '',
+      hasWinner: !!winnerEl,
     })
   })
 
@@ -69,15 +73,22 @@ export const challengeHasRequiredFields = always(() => {
 })
 
 /**
- * INVARIANT: Challenge Scope Valid
- * Challenge scope must be one of: hole, round, trip
+ * INVARIANT: Challenge Type Valid
+ * Challenge type must be one of the known types
  */
-export const challengeScopeValid = always(() => {
+export const challengeTypeValid = always(() => {
   const challengeList = challenges.current
-  const validScopes = ['hole', 'round', 'trip', 'Hole', 'Round', 'Trip']
+  const validTypes = [
+    'closest_to_pin',
+    'longest_drive',
+    'most_birdies',
+    'best_net',
+    'best_stableford',
+    'custom',
+  ]
 
   for (const challenge of challengeList) {
-    if (challenge.scope && !validScopes.includes(challenge.scope)) {
+    if (challenge.type && !validTypes.includes(challenge.type)) {
       return false
     }
   }

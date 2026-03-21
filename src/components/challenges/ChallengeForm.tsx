@@ -154,13 +154,14 @@ export function ChallengeForm({
   const showHoleSelector = defaultScope === 'hole'
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} data-testid="challenge-form">
       <Flex direction="column" gap="4">
         <FormField label="Challenge Name" name="name" error={errorMap.get('name')} required>
           <TextField.Root
             name="name"
             placeholder="KP Hole 7"
             defaultValue={initialData?.name || ''}
+            data-testid="challenge-name-input"
           />
         </FormField>
 
@@ -238,7 +239,7 @@ export function ChallengeForm({
           />
         </Flex>
 
-        <Button type="submit">{challengeId ? 'Save Changes' : 'Create Challenge'}</Button>
+        <Button type="submit" data-testid="challenge-submit-btn">{challengeId ? 'Save Changes' : 'Create Challenge'}</Button>
       </Flex>
     </form>
   )

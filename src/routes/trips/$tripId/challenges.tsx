@@ -6,8 +6,9 @@ import {
   Text,
   Button,
   Dialog,
+  AlertDialog,
 } from '@radix-ui/themes'
-import { Plus, Trophy } from 'lucide-react'
+import { Plus, Trophy, Edit2 } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useDialogState } from '../../../hooks/useDialogState'
 import {
@@ -242,7 +243,7 @@ function ChallengesPage() {
 
           <Dialog.Root open={addChallengeDialogOpen} onOpenChange={setAddChallengeDialogOpen}>
             <Dialog.Trigger>
-              <Button>
+              <Button data-testid="add-challenge-btn">
                 <Plus size={16} />
                 Add Challenge
               </Button>
@@ -263,12 +264,13 @@ function ChallengesPage() {
           <Flex direction="column" gap="6">
             {/* Active Challenges */}
             {activeChallenges.length > 0 && (
-              <Flex direction="column" gap="3">
+              <Flex direction="column" gap="3" data-testid="challenges-active">
                 <Heading size="4">Active</Heading>
                 <Flex direction="column" gap="3">
                   {activeChallenges.map((challenge) => (
                     <ChallengeCardWithDialogs
                       key={challenge.id}
+                      tripId={tripId}
                       challenge={challenge}
                       roundMap={roundMap}
                       holeMap={holeMap}
@@ -284,26 +286,25 @@ function ChallengesPage() {
 
             {/* Completed Challenges */}
             {completedChallenges.length > 0 && (
-              <Flex direction="column" gap="3">
+              <Flex direction="column" gap="3" data-testid="challenges-completed">
                 <Flex align="center" gap="2">
                   <Trophy size={18} style={{ color: 'var(--amber-9)' }} />
                   <Heading size="4">Completed</Heading>
                 </Flex>
                 <Flex direction="column" gap="3">
-                  {completedChallenges.map((challenge) => {
-                    const { winner, winnerValue } = getWinnerInfo(challenge)
-                    return (
-                      <ChallengeCard
-                        key={challenge.id}
-                        challenge={challenge}
-                        winner={winner}
-                        winnerValue={winnerValue}
-                        round={challenge.roundId ? roundMap.get(challenge.roundId) : null}
-                        hole={challenge.holeId ? holeMap.get(challenge.holeId) : null}
-                        onDelete={() => handleDeleteChallenge(challenge.id)}
-                      />
-                    )
-                  })}
+                  {completedChallenges.map((challenge) => (
+                    <ChallengeCardWithDialogs
+                      key={challenge.id}
+                      tripId={tripId}
+                      challenge={challenge}
+                      roundMap={roundMap}
+                      holeMap={holeMap}
+                      golferMap={golferMap}
+                      tripGolferList={tripGolferList}
+                      results={resultsByChallengeId.get(challenge.id) || []}
+                      onDelete={() => handleDeleteChallenge(challenge.id)}
+                    />
+                  ))}
                 </Flex>
               </Flex>
             )}
@@ -340,6 +341,7 @@ function ChallengesPage() {
 
 // Separate component to handle per-challenge dialogs
 interface ChallengeCardWithDialogsProps {
+  tripId: string
   challenge: Challenge
   roundMap: Map<string, ReturnType<typeof roundCollection.get> & {}>
   holeMap: Map<string, ReturnType<typeof holeCollection.get> & {}>
@@ -350,6 +352,7 @@ interface ChallengeCardWithDialogsProps {
 }
 
 function ChallengeCardWithDialogs({
+  tripId,
   challenge,
   roundMap,
   holeMap,
@@ -359,12 +362,19 @@ function ChallengeCardWithDialogs({
   onDelete,
 }: ChallengeCardWithDialogsProps) {
   const [resultDialogOpen, setResultDialogOpen] = useDialogState(`results-${challenge.id}`)
+  const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-${challenge.id}`)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useDialogState(`delete-${challenge.id}`)
   const round = challenge.roundId ? roundMap.get(challenge.roundId) : null
   const hole = challenge.holeId ? holeMap.get(challenge.holeId) : null
 
   // Find winner from results
   const winnerResult = results.find((r) => r.isWinner)
   const winner = winnerResult ? golferMap.get(winnerResult.golferId) : null
+
+  const handleConfirmDelete = () => {
+    onDelete()
+    setDeleteDialogOpen(false)
+  }
 
   return (
     <Flex direction="column" gap="2">
@@ -374,31 +384,88 @@ function ChallengeCardWithDialogs({
         winnerValue={winnerResult?.resultValue}
         round={round}
         hole={hole}
-        onDelete={onDelete}
-        onEnterResults={undefined} // Handled by dialog below
+        onEdit={() => setEditDialogOpen(true)}
+        onDelete={() => setDeleteDialogOpen(true)}
       />
 
-      {/* Result Entry Dialog - rendered separately to handle open state */}
-      {!winner && !isAutoCalculatedChallenge(challenge.challengeType) && (
-        <Dialog.Root open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
-          <Dialog.Trigger>
-            <Button variant="soft" size="1">
-              Enter Results
-            </Button>
-          </Dialog.Trigger>
-          <Dialog.Content maxWidth="450px">
-            <Dialog.Title>Enter Results: {challenge.name}</Dialog.Title>
-            <Flex direction="column" gap="4" pt="4">
-              <ChallengeResultEntry
-                challenge={challenge}
-                golfers={tripGolferList}
-                existingResults={results}
-                onSuccess={() => setResultDialogOpen(false)}
-              />
-            </Flex>
-          </Dialog.Content>
-        </Dialog.Root>
+      {/* Action buttons for manual challenges */}
+      {!isAutoCalculatedChallenge(challenge.challengeType) && (
+        <Flex gap="2">
+          {!winner ? (
+            <Dialog.Root open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
+              <Dialog.Trigger>
+                <Button variant="soft" size="1" data-testid="enter-results-btn">
+                  Enter Results
+                </Button>
+              </Dialog.Trigger>
+              <Dialog.Content maxWidth="450px">
+                <Dialog.Title>Enter Results: {challenge.name}</Dialog.Title>
+                <Flex direction="column" gap="4" pt="4">
+                  <ChallengeResultEntry
+                    challenge={challenge}
+                    golfers={tripGolferList}
+                    existingResults={results}
+                    onSuccess={() => setResultDialogOpen(false)}
+                  />
+                </Flex>
+              </Dialog.Content>
+            </Dialog.Root>
+          ) : (
+            <Dialog.Root open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
+              <Dialog.Trigger>
+                <Button variant="ghost" size="1" data-testid="edit-results-btn">
+                  <Edit2 size={14} />
+                  Edit Results
+                </Button>
+              </Dialog.Trigger>
+              <Dialog.Content maxWidth="450px">
+                <Dialog.Title>Edit Results: {challenge.name}</Dialog.Title>
+                <Flex direction="column" gap="4" pt="4">
+                  <ChallengeResultEntry
+                    challenge={challenge}
+                    golfers={tripGolferList}
+                    existingResults={results}
+                    onSuccess={() => setResultDialogOpen(false)}
+                  />
+                </Flex>
+              </Dialog.Content>
+            </Dialog.Root>
+          )}
+        </Flex>
       )}
+
+      {/* Edit Challenge Dialog */}
+      <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <Dialog.Content maxWidth="400px">
+          <Dialog.Title>Edit Challenge</Dialog.Title>
+          <Flex direction="column" gap="4" pt="4">
+            <ChallengeForm
+              tripId={tripId}
+              challengeId={challenge.id}
+              initialData={challenge}
+              onSuccess={() => setEditDialogOpen(false)}
+            />
+          </Flex>
+        </Dialog.Content>
+      </Dialog.Root>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog.Root open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog.Content maxWidth="400px">
+          <AlertDialog.Title>Delete Challenge?</AlertDialog.Title>
+          <AlertDialog.Description>
+            This will permanently delete "{challenge.name}" and all results.
+          </AlertDialog.Description>
+          <Flex gap="3" mt="4" justify="end">
+            <AlertDialog.Cancel>
+              <Button variant="soft" color="gray">Cancel</Button>
+            </AlertDialog.Cancel>
+            <AlertDialog.Action>
+              <Button color="red" onClick={handleConfirmDelete}>Delete</Button>
+            </AlertDialog.Action>
+          </Flex>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
     </Flex>
   )
 }
