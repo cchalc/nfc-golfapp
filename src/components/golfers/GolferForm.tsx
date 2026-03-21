@@ -58,17 +58,37 @@ export function GolferForm({ initialData, golferId, onSuccess }: GolferFormProps
 
     if (isEditing && golferId) {
       golferCollection.update(golferId, (draft) => {
+        const oldHandicap = draft.handicap
         draft.name = result.data.name
         draft.email = result.data.email
         draft.phone = result.data.phone
         draft.handicap = result.data.handicap
+
+        // Track handicap changes in history
+        if (oldHandicap !== result.data.handicap) {
+          const history = draft.handicapHistory || []
+          history.push({
+            handicap: result.data.handicap,
+            date: new Date(),
+            source: 'manual' as const,
+          })
+          draft.handicapHistory = history
+        }
       })
     } else {
+      const now = new Date()
       golferCollection.insert({
         id: crypto.randomUUID(),
         ...result.data,
+        handicapHistory: [
+          {
+            handicap: result.data.handicap,
+            date: now,
+            source: 'manual' as const,
+          },
+        ],
         profileImageUrl: null,
-        createdAt: new Date(),
+        createdAt: now,
       })
     }
 

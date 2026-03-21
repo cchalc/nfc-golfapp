@@ -12,7 +12,7 @@ import {
   Separator,
   Grid,
 } from '@radix-ui/themes'
-import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight, History } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useDialogState } from '../../hooks/useDialogState'
 import {
@@ -201,6 +201,33 @@ function GolferDetailPage() {
             </Flex>
           </Flex>
         </Card>
+
+        {/* Handicap history */}
+        {golfer.handicapHistory && golfer.handicapHistory.length > 0 && (
+          <Card>
+            <Flex direction="column" gap="3">
+              <Flex align="center" gap="2">
+                <History size={16} style={{ color: 'var(--gray-9)' }} />
+                <Text size="2" weight="medium">Handicap History</Text>
+              </Flex>
+              <Flex gap="3" wrap="wrap">
+                {golfer.handicapHistory
+                  .slice()
+                  .reverse()
+                  .slice(0, 5)
+                  .map((entry, idx) => (
+                    <Badge
+                      key={idx}
+                      variant={idx === 0 ? 'solid' : 'soft'}
+                      color={idx === 0 ? 'grass' : 'gray'}
+                    >
+                      {entry.handicap.toFixed(1)} ({entry.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })})
+                    </Badge>
+                  ))}
+              </Flex>
+            </Flex>
+          </Card>
+        )}
 
         {/* Stats summary */}
         {totalRounds > 0 && (

@@ -56,13 +56,18 @@ export function createGolfer(
     email: string
     phone: string
     handicap: number
+    handicapHistory: Array<{ handicap: number; date: Date; source: 'manual' | 'ghin' | 'import' }>
   }> = {}
 ) {
+  const handicap = overrides.handicap ?? 15
   return {
     name: overrides.name ?? 'Test Golfer',
     email: overrides.email ?? 'test@example.com',
     phone: overrides.phone ?? '555-1234',
-    handicap: overrides.handicap ?? 15,
+    handicap,
+    handicapHistory: overrides.handicapHistory ?? [
+      { handicap, date: new Date(), source: 'manual' as const },
+    ],
   }
 }
 
