@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import {
   Container,
   Flex,
@@ -8,13 +8,17 @@ import {
   TextArea,
   Button,
   Select,
+  Dialog,
 } from '@radix-ui/themes'
+import { ChevronLeft, Plus, Search } from 'lucide-react'
+import { useState } from 'react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
   tripCollection,
   courseCollection,
   roundCollection,
 } from '../../../../db/collections'
+import { CourseSearch } from '../../../../components/courses/CourseSearch'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/new')({
   ssr: false,
@@ -24,6 +28,7 @@ export const Route = createFileRoute('/trips/$tripId/rounds/new')({
 function NewRoundPage() {
   const { tripId } = Route.useParams()
   const navigate = useNavigate()
+  const [addCourseDialogOpen, setAddCourseDialogOpen] = useState(false)
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -85,6 +90,18 @@ function NewRoundPage() {
   return (
     <Container size="1" py="6">
       <Flex direction="column" gap="5">
+        {/* Back navigation */}
+        <Link
+          to="/trips/$tripId/rounds"
+          params={{ tripId }}
+          style={{ textDecoration: 'none' }}
+        >
+          <Flex align="center" gap="1" style={{ color: 'var(--accent-11)' }}>
+            <ChevronLeft size={20} />
+            <Text size="2">Back to Rounds</Text>
+          </Flex>
+        </Link>
+
         <Flex direction="column" gap="1">
           <Heading size="7">New Round</Heading>
           <Text color="gray">{trip.name}</Text>
@@ -96,19 +113,41 @@ function NewRoundPage() {
               <Text as="label" size="2" weight="medium" htmlFor="courseId">
                 Course
               </Text>
-              <Select.Root name="courseId" required>
-                <Select.Trigger placeholder="Select a course" />
-                <Select.Content>
-                  {courses?.map((course) => (
-                    <Select.Item key={course.id} value={course.id}>
-                      {course.name}
-                    </Select.Item>
-                  ))}
-                </Select.Content>
-              </Select.Root>
+              <Flex gap="2" align="end">
+                <Flex direction="column" gap="1" style={{ flex: 1 }}>
+                  <Select.Root name="courseId" required>
+                    <Select.Trigger placeholder="Select a course" />
+                    <Select.Content>
+                      {courses?.map((course) => (
+                        <Select.Item key={course.id} value={course.id}>
+                          {course.name}
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select.Root>
+                </Flex>
+                <Dialog.Root
+                  open={addCourseDialogOpen}
+                  onOpenChange={setAddCourseDialogOpen}
+                >
+                  <Dialog.Trigger>
+                    <Button type="button" variant="soft" color="grass">
+                      <Search size={16} />
+                      Find Course
+                    </Button>
+                  </Dialog.Trigger>
+                  <Dialog.Content maxWidth="500px">
+                    <Dialog.Title>Add Course</Dialog.Title>
+                    <Dialog.Description size="2" color="gray" mb="4">
+                      Search for a course or add one manually
+                    </Dialog.Description>
+                    <CourseSearch onSuccess={() => setAddCourseDialogOpen(false)} />
+                  </Dialog.Content>
+                </Dialog.Root>
+              </Flex>
               {(!courses || courses.length === 0) && (
                 <Text size="1" color="amber">
-                  No courses available. Add courses to the database first.
+                  No courses available. Click "Find Course" to search and add one.
                 </Text>
               )}
             </Flex>

@@ -64,3 +64,41 @@ export const visibleHeadings: Cell<string[]> = extract((state) => {
   })
   return texts
 })
+
+// Check if back navigation link is present
+export const hasBackNavigation: Cell<boolean> = extract((state) => {
+  // Look for "Back to" links or chevron-left icons next to text containing "Back"
+  const backLinks = state.document.querySelectorAll('a[href*="/trips/"]')
+  for (const link of backLinks) {
+    const text = link.textContent?.toLowerCase() || ''
+    if (text.includes('back')) {
+      return true
+    }
+  }
+  return false
+})
+
+// Check if course search dialog is available
+export const hasCourseSearchButton: Cell<boolean> = extract((state) => {
+  const buttons = state.document.querySelectorAll('button')
+  for (const button of buttons) {
+    const text = button.textContent?.toLowerCase() || ''
+    if (text.includes('find course') || text.includes('search course')) {
+      return true
+    }
+  }
+  return false
+})
+
+// Check if handicap override badge is visible
+export const hasHandicapOverrideBadge: Cell<boolean> = extract((state) => {
+  // Look for "(trip)" indicator in handicap display
+  const elements = state.document.querySelectorAll('*')
+  for (const el of elements) {
+    const text = el.textContent || ''
+    if (text.includes('(trip)') && text.toLowerCase().includes('hcp')) {
+      return true
+    }
+  }
+  return false
+})

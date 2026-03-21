@@ -23,6 +23,7 @@ interface ScorecardProps {
   coursePar: number
   scores: HoleScore[]
   onScoreChange: (holeId: string, grossScore: number) => void
+  handicapOverride?: number | null // Trip-level handicap override
 }
 
 export function Scorecard({
@@ -33,9 +34,12 @@ export function Scorecard({
   coursePar,
   scores,
   onScoreChange,
+  handicapOverride,
 }: ScorecardProps) {
+  // Use trip handicap override if provided, otherwise use golfer's default
+  const effectiveHandicap = handicapOverride ?? golfer.handicap
   const playingHandicap = getPlayingHandicap(
-    golfer.handicap,
+    effectiveHandicap,
     slopeRating,
     courseRating,
     coursePar
@@ -109,7 +113,11 @@ export function Scorecard({
         <Flex direction="column" gap="3">
           <Heading size="4">{golfer.name}</Heading>
           <Text size="2" color="gray">
-            HCP {golfer.handicap.toFixed(1)} → Playing {playingHandicap}
+            HCP {effectiveHandicap.toFixed(1)}
+            {handicapOverride !== null && handicapOverride !== undefined && (
+              <span style={{ color: 'var(--amber-9)' }}> (trip)</span>
+            )}{' '}
+            → Playing {playingHandicap}
           </Text>
         </Flex>
       </Flex>
