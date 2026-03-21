@@ -144,8 +144,6 @@ export const CHALLENGE_TYPES = [
   'closest_to_pin',
   'longest_drive',
   'most_birdies',
-  'best_net',
-  'best_stableford',
   'custom',
 ] as const
 

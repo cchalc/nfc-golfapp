@@ -151,22 +151,12 @@ describe('isManualChallenge', () => {
 
   it('returns false for auto-calculated types', () => {
     expect(isManualChallenge('most_birdies')).toBe(false)
-    expect(isManualChallenge('best_net')).toBe(false)
-    expect(isManualChallenge('best_stableford')).toBe(false)
   })
 })
 
 describe('isAutoCalculatedChallenge', () => {
   it('returns true for most_birdies', () => {
     expect(isAutoCalculatedChallenge('most_birdies')).toBe(true)
-  })
-
-  it('returns true for best_net', () => {
-    expect(isAutoCalculatedChallenge('best_net')).toBe(true)
-  })
-
-  it('returns true for best_stableford', () => {
-    expect(isAutoCalculatedChallenge('best_stableford')).toBe(true)
   })
 
   it('returns false for manual types', () => {
@@ -189,14 +179,6 @@ describe('getChallengeColor', () => {
     expect(getChallengeColor('most_birdies')).toBe('blue')
   })
 
-  it('returns purple for best_net', () => {
-    expect(getChallengeColor('best_net')).toBe('purple')
-  })
-
-  it('returns orange for best_stableford', () => {
-    expect(getChallengeColor('best_stableford')).toBe('orange')
-  })
-
   it('returns gray for custom', () => {
     expect(getChallengeColor('custom')).toBe('gray')
   })
@@ -207,8 +189,6 @@ describe('getChallengeTypeLabel', () => {
     expect(getChallengeTypeLabel('closest_to_pin')).toBe('Closest to Pin')
     expect(getChallengeTypeLabel('longest_drive')).toBe('Longest Drive')
     expect(getChallengeTypeLabel('most_birdies')).toBe('Most Birdies')
-    expect(getChallengeTypeLabel('best_net')).toBe('Best Net')
-    expect(getChallengeTypeLabel('best_stableford')).toBe('Best Stableford')
     expect(getChallengeTypeLabel('custom')).toBe('Custom')
   })
 
@@ -229,14 +209,6 @@ describe('getDefaultScope', () => {
 
   it('returns round for most_birdies', () => {
     expect(getDefaultScope('most_birdies')).toBe('round')
-  })
-
-  it('returns round for best_net', () => {
-    expect(getDefaultScope('best_net')).toBe('round')
-  })
-
-  it('returns round for best_stableford', () => {
-    expect(getDefaultScope('best_stableford')).toBe('round')
   })
 
   it('returns trip for custom', () => {
@@ -293,12 +265,12 @@ describe('determineWinner', () => {
       expect(determineWinner(results, 'most_birdies')).toBe('golfer-2')
     })
 
-    it('returns highest for best_stableford', () => {
+    it('returns highest for custom', () => {
       const results = [
         createChallengeResult('golfer-1', 36),
         createChallengeResult('golfer-2', 40),
       ]
-      expect(determineWinner(results, 'best_stableford')).toBe('golfer-2')
+      expect(determineWinner(results, 'custom')).toBe('golfer-2')
     })
   })
 

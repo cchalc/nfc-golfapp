@@ -4,6 +4,7 @@ import {
   challengeCollection,
   roundCollection,
   holeCollection,
+  courseCollection,
   formErrorCollection,
   type Challenge,
 } from '../../db/collections'
@@ -17,8 +18,6 @@ const CHALLENGE_TYPES: ChallengeType[] = [
   'closest_to_pin',
   'longest_drive',
   'most_birdies',
-  'best_net',
-  'best_stableford',
   'custom',
 ]
 
@@ -52,6 +51,13 @@ export function ChallengeForm({
         .orderBy(({ round }) => round.roundNumber, 'asc'),
     [tripId]
   )
+
+  // Fetch courses to show names in round selector
+  const { data: courses } = useLiveQuery(
+    (q) => q.from({ course: courseCollection }),
+    []
+  )
+  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
 
   // Track form state via data attributes on the form element
   // We use uncontrolled inputs with form data
@@ -156,10 +162,10 @@ export function ChallengeForm({
   return (
     <form onSubmit={handleSubmit} data-testid="challenge-form">
       <Flex direction="column" gap="4">
-        <FormField label="Challenge Name" name="name" error={errorMap.get('name')} required>
+        <FormField label="Challenge Name (optional)" name="name" error={errorMap.get('name')}>
           <TextField.Root
             name="name"
-            placeholder="KP Hole 7"
+            placeholder="Leave blank to use type as name"
             defaultValue={initialData?.name || ''}
             data-testid="challenge-name-input"
           />
@@ -202,11 +208,15 @@ export function ChallengeForm({
           <Select.Root name="roundId" defaultValue={initialData?.roundId || ''}>
             <Select.Trigger placeholder="Select round" />
             <Select.Content>
-              {(rounds || []).map((round) => (
-                <Select.Item key={round.id} value={round.id}>
-                  Round {round.roundNumber}
-                </Select.Item>
-              ))}
+              {(rounds || []).map((round) => {
+                const course = courseMap.get(round.courseId)
+                const dateStr = round.date ? new Date(round.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+                return (
+                  <Select.Item key={round.id} value={round.id}>
+                    R{round.roundNumber}: {course?.name || 'Unknown'} {dateStr && `(${dateStr})`}
+                  </Select.Item>
+                )
+              })}
             </Select.Content>
           </Select.Root>
         </Flex>
@@ -263,7 +273,7 @@ function HoleSelectorField({
   )
   const round = rounds?.find((r) => r.id === defaultRoundId)
 
-  // Get holes for the course, filtered to par 3s for KP
+  // Get all holes for the course
   const { data: holes } = useLiveQuery(
     (q) =>
       round?.courseId
@@ -275,9 +285,6 @@ function HoleSelectorField({
     [round?.courseId]
   )
 
-  // For KP, show only par 3s
-  const par3Holes = (holes || []).filter((h) => h.par === 3)
-
   return (
     <Flex
       direction="column"
@@ -286,12 +293,12 @@ function HoleSelectorField({
       style={{ display: showInitially ? 'flex' : 'none' }}
     >
       <Text as="label" size="2" weight="medium">
-        Hole (Par 3s)
+        Hole
       </Text>
       <Select.Root name="holeId" defaultValue={defaultHoleId}>
         <Select.Trigger placeholder="Select hole" />
         <Select.Content>
-          {par3Holes.map((hole) => (
+          {(holes || []).map((hole) => (
             <Select.Item key={hole.id} value={hole.id}>
               Hole {hole.holeNumber} (Par {hole.par})
             </Select.Item>

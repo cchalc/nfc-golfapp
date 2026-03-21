@@ -153,8 +153,6 @@ export const challengeSchema = z.object({
       'closest_to_pin',
       'longest_drive',
       'most_birdies',
-      'best_net',
-      'best_stableford',
       'custom',
     ])
     .default('custom'),

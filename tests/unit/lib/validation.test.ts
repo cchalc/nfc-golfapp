@@ -232,16 +232,22 @@ describe('challengeFormSchema', () => {
   })
 
   describe('name validation', () => {
-    it('rejects name shorter than 2 characters', () => {
-      const challenge = { ...validChallenge, name: 'A' }
+    it('accepts empty name (optional)', () => {
+      const challenge = { ...validChallenge, name: '' }
       const result = challengeFormSchema.safeParse(challenge)
-      expect(result.success).toBe(false)
+      expect(result.success).toBe(true)
+    })
+
+    it('accepts undefined name', () => {
+      const challenge = { ...validChallenge, name: undefined }
+      const result = challengeFormSchema.safeParse(challenge)
+      expect(result.success).toBe(true)
     })
   })
 
   describe('challengeType validation', () => {
     it('accepts all valid challenge types', () => {
-      const types = ['closest_to_pin', 'longest_drive', 'most_birdies', 'best_net', 'best_stableford', 'custom'] as const
+      const types = ['closest_to_pin', 'longest_drive', 'most_birdies', 'custom'] as const
       for (const type of types) {
         const challenge = { ...validChallenge, challengeType: type }
         const result = challengeFormSchema.safeParse(challenge)

@@ -53,9 +53,11 @@ export function ChallengeCard({
                 </Text>
               )}
             </Flex>
-            <Text weight="medium" size="3" data-testid="challenge-name">
-              {challenge.name}
-            </Text>
+            {challenge.name && (
+              <Text weight="medium" size="3" data-testid="challenge-name">
+                {challenge.name}
+              </Text>
+            )}
           </Flex>
 
           <Flex gap="1">
@@ -103,11 +105,6 @@ export function ChallengeCard({
             <Text size="2" weight="medium">
               {winner.name}
             </Text>
-            {winnerValue && (
-              <Badge variant="soft" color="amber">
-                {winnerValue}
-              </Badge>
-            )}
           </Flex>
         ) : needsManualEntry && onEnterResults ? (
           <Button variant="soft" size="1" onClick={onEnterResults}>

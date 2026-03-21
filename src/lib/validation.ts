@@ -25,14 +25,12 @@ export const tripFormSchema = z
 // Challenge form schema
 export const challengeFormSchema = z
   .object({
-    name: z.string().min(2, 'Name required'),
+    name: z.string().optional(),
     description: z.string().optional(),
     challengeType: z.enum([
       'closest_to_pin',
       'longest_drive',
       'most_birdies',
-      'best_net',
-      'best_stableford',
       'custom',
     ]),
     scope: z.enum(['hole', 'round', 'trip']),

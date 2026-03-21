@@ -63,13 +63,13 @@ export function isManualChallenge(type: ChallengeType): boolean {
  * Check if a challenge type is auto-calculated from round data
  */
 export function isAutoCalculatedChallenge(type: ChallengeType): boolean {
-  return type === 'most_birdies' || type === 'best_net' || type === 'best_stableford'
+  return type === 'most_birdies'
 }
 
 /**
  * Get Radix color for challenge type badge
  */
-export function getChallengeColor(type: ChallengeType): 'amber' | 'grass' | 'blue' | 'purple' | 'orange' | 'gray' {
+export function getChallengeColor(type: ChallengeType): 'amber' | 'grass' | 'blue' | 'gray' {
   switch (type) {
     case 'closest_to_pin':
       return 'amber'
@@ -77,10 +77,6 @@ export function getChallengeColor(type: ChallengeType): 'amber' | 'grass' | 'blu
       return 'grass'
     case 'most_birdies':
       return 'blue'
-    case 'best_net':
-      return 'purple'
-    case 'best_stableford':
-      return 'orange'
     case 'custom':
     default:
       return 'gray'
@@ -98,10 +94,6 @@ export function getChallengeTypeLabel(type: ChallengeType): string {
       return 'Longest Drive'
     case 'most_birdies':
       return 'Most Birdies'
-    case 'best_net':
-      return 'Best Net'
-    case 'best_stableford':
-      return 'Best Stableford'
     case 'custom':
       return 'Custom'
     default:
@@ -118,8 +110,6 @@ export function getDefaultScope(type: ChallengeType): 'hole' | 'round' | 'trip' 
     case 'longest_drive':
       return 'hole'
     case 'most_birdies':
-    case 'best_net':
-    case 'best_stableford':
       return 'round'
     case 'custom':
     default:
