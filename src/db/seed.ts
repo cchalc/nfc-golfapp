@@ -219,14 +219,21 @@ export function seedData() {
       email: '',
       phone: '',
       handicap: g.handicap,
+      handicapHistory: [
+        {
+          handicap: g.handicap,
+          date: now,
+          source: 'manual' as const,
+        },
+      ],
       profileImageUrl: null,
       createdAt: now,
     }
   })
   golferCollection.insert(golfers)
 
-  // Create trip golfers
-  const tripGolfers: TripGolfer[] = golferIds.map((golferId) => ({
+  // Create trip golfers with captured handicap
+  const tripGolfers: TripGolfer[] = golferIds.map((golferId, idx) => ({
     id: generateId(),
     tripId,
     golferId,
@@ -234,6 +241,7 @@ export function seedData() {
     invitedAt: now,
     acceptedAt: now,
     includedInScoring: true,
+    handicapOverride: golferData[idx].handicap, // Capture handicap at time of trip
   }))
   tripGolferCollection.insert(tripGolfers)
 

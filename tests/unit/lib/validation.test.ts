@@ -314,7 +314,13 @@ describe('validateForm', () => {
       const result = validateForm(golferFormSchema, golfer)
       expect(result.success).toBe(true)
       if (result.success) {
-        expect(result.data).toEqual(golfer)
+        // Only compare fields that the form schema validates
+        expect(result.data).toEqual({
+          name: golfer.name,
+          email: golfer.email,
+          phone: golfer.phone,
+          handicap: golfer.handicap,
+        })
       }
     })
   })

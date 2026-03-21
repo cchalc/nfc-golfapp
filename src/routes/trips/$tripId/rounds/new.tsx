@@ -10,7 +10,7 @@ import {
   Select,
   Dialog,
 } from '@radix-ui/themes'
-import { ChevronLeft, Plus, Search } from 'lucide-react'
+import { ChevronLeft, Search } from 'lucide-react'
 import { useState } from 'react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {

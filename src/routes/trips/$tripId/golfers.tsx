@@ -62,6 +62,12 @@ function TripGolfersPage() {
     if (existing) {
       tripGolferCollection.delete(existing.id)
     } else {
+      // Capture the golfer's current handicap when adding them to the trip
+      // This ensures the trip uses a locked-in handicap that won't change
+      // if the golfer's main handicap is updated later
+      const golfer = allGolfers?.find((g) => g.id === golferId)
+      const capturedHandicap = golfer?.handicap ?? 0
+
       tripGolferCollection.insert({
         id: crypto.randomUUID(),
         tripId,
@@ -69,7 +75,7 @@ function TripGolfersPage() {
         status: 'accepted',
         invitedAt: new Date(),
         acceptedAt: new Date(),
-        handicapOverride: null,
+        handicapOverride: capturedHandicap,
       })
     }
   }
@@ -86,18 +92,10 @@ function TripGolfersPage() {
   function saveHandicapOverride(tripGolferId: string) {
     const value = parseFloat(handicapValue)
     if (!isNaN(value) && value >= 0 && value <= 54) {
-      tripGolferCollection.update(tripGolferId, {
-        handicapOverride: value,
+      tripGolferCollection.update(tripGolferId, (draft) => {
+        draft.handicapOverride = value
       })
     }
-    setEditingHandicap(null)
-    setHandicapValue('')
-  }
-
-  function clearHandicapOverride(tripGolferId: string) {
-    tripGolferCollection.update(tripGolferId, {
-      handicapOverride: null,
-    })
     setEditingHandicap(null)
     setHandicapValue('')
   }
@@ -153,7 +151,10 @@ function TripGolfersPage() {
                   tripGolfer?.handicapOverride !== null
                     ? tripGolfer?.handicapOverride
                     : golfer.handicap
-                const hasOverride = tripGolfer?.handicapOverride !== null
+
+                const isOverrideDifferent =
+                  tripGolfer?.handicapOverride !== null &&
+                  tripGolfer?.handicapOverride !== golfer.handicap
 
                 return (
                   <Card key={golfer.id}>
@@ -164,7 +165,7 @@ function TripGolfersPage() {
                       />
                       <Flex style={{ flex: 1 }} align="center" justify="between">
                         <GolferCard golfer={golfer} />
-                        <Flex align="center" gap="2">
+                        <Flex direction="column" align="end" gap="1">
                           {editingHandicap === tripGolfer?.id ? (
                             <Flex align="center" gap="1">
                               <TextField.Root
@@ -197,36 +198,37 @@ function TripGolfersPage() {
                           ) : (
                             <Flex align="center" gap="1">
                               <Tooltip
-                                content={
-                                  hasOverride
-                                    ? `Trip handicap (base: ${golfer.handicap})`
-                                    : 'Click to set trip-specific handicap'
-                                }
+                                content={`Trip handicap used for scoring. Current: ${golfer.handicap.toFixed(1)}`}
                               >
                                 <Badge
-                                  color={hasOverride ? 'amber' : 'gray'}
-                                  variant={hasOverride ? 'solid' : 'soft'}
+                                  color="grass"
+                                  variant="solid"
                                   style={{ cursor: 'pointer' }}
                                   onClick={() =>
                                     startEditingHandicap(tripGolfer!, golfer.handicap)
                                   }
                                 >
-                                  {effectiveHandicap}
+                                  HCP {effectiveHandicap?.toFixed(1)}
                                 </Badge>
                               </Tooltip>
-                              {hasOverride && (
-                                <Tooltip content="Reset to golfer's default handicap">
-                                  <IconButton
-                                    size="1"
-                                    variant="ghost"
-                                    color="gray"
-                                    onClick={() => clearHandicapOverride(tripGolfer!.id)}
-                                  >
-                                    <X size={12} />
-                                  </IconButton>
-                                </Tooltip>
-                              )}
+                              <Tooltip content="Edit trip handicap">
+                                <IconButton
+                                  size="1"
+                                  variant="ghost"
+                                  color="gray"
+                                  onClick={() =>
+                                    startEditingHandicap(tripGolfer!, golfer.handicap)
+                                  }
+                                >
+                                  <Edit2 size={12} />
+                                </IconButton>
+                              </Tooltip>
                             </Flex>
+                          )}
+                          {isOverrideDifferent && (
+                            <Text size="1" color="gray">
+                              Current: {golfer.handicap.toFixed(1)}
+                            </Text>
                           )}
                         </Flex>
                       </Flex>

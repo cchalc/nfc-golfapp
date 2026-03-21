@@ -30,12 +30,20 @@ export const tripSchema = z.object({
   createdAt: dateField,
 })
 
+// Handicap history entry for tracking changes over time
+export const handicapHistoryEntrySchema = z.object({
+  handicap: z.number(),
+  date: dateField,
+  source: z.enum(['manual', 'ghin', 'import']).default('manual'),
+})
+
 export const golferSchema = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string().default(''),
   phone: z.string().default(''),
-  handicap: z.number().default(0),
+  handicap: z.number().default(0), // Current handicap
+  handicapHistory: z.array(handicapHistoryEntrySchema).default([]), // Timestamped history
   profileImageUrl: z.string().nullable().default(null),
   createdAt: dateField,
 })
@@ -185,6 +193,7 @@ export const formErrorSchema = z.object({
 // ============================================================================
 
 export type Trip = z.output<typeof tripSchema>
+export type HandicapHistoryEntry = z.output<typeof handicapHistoryEntrySchema>
 export type Golfer = z.output<typeof golferSchema>
 export type TripGolfer = z.output<typeof tripGolferSchema>
 export type Course = z.output<typeof courseSchema>
