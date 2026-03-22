@@ -18,10 +18,22 @@ import {
   tripCollection,
   golferCollection,
   tripGolferCollection,
+  roundCollection,
+  courseCollection,
+  holeCollection,
+  scoreCollection,
+  roundSummaryCollection,
   type TripGolfer,
 } from '../../../db/collections'
 import { GolferCard } from '../../../components/golfers/GolferCard'
 import { EmptyState } from '../../../components/ui/EmptyState'
+import {
+  getPlayingHandicap,
+  getHandicapStrokes,
+  calculateNetScore,
+  calculateStablefordPoints,
+  isBirdieOrBetter,
+} from '../../../lib/scoring'
 
 export const Route = createFileRoute('/trips/$tripId/golfers')({
   ssr: false,
@@ -56,6 +68,38 @@ function TripGolfersPage() {
   const tripGolferMap = new Map((tripGolfers || []).map((tg) => [tg.golferId, tg]))
   const tripGolferIds = new Set((tripGolfers || []).map((tg) => tg.golferId))
 
+  // Fetch rounds for this trip (needed for score recalculation)
+  const { data: rounds } = useLiveQuery(
+    (q) =>
+      q.from({ round: roundCollection }).where(({ round }) => eq(round.tripId, tripId)),
+    [tripId]
+  )
+
+  // Fetch courses (needed for handicap calculation)
+  const { data: courses } = useLiveQuery(
+    (q) => q.from({ course: courseCollection }),
+    []
+  )
+  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
+
+  // Fetch all holes
+  const { data: holes } = useLiveQuery(
+    (q) => q.from({ hole: holeCollection }),
+    []
+  )
+
+  // Fetch all scores
+  const { data: allScores } = useLiveQuery(
+    (q) => q.from({ score: scoreCollection }),
+    []
+  )
+
+  // Fetch round summaries
+  const { data: roundSummaries } = useLiveQuery(
+    (q) => q.from({ summary: roundSummaryCollection }),
+    []
+  )
+
   function toggleGolfer(golferId: string) {
     const existing = tripGolfers?.find((tg) => tg.golferId === golferId)
 
@@ -89,15 +133,103 @@ function TripGolfersPage() {
     )
   }
 
-  function saveHandicapOverride(tripGolferId: string) {
+  function saveHandicapOverride(tripGolferId: string, golferId: string) {
     const value = parseFloat(handicapValue)
-    if (!isNaN(value) && value >= 0 && value <= 54) {
-      tripGolferCollection.update(tripGolferId, (draft) => {
-        draft.handicapOverride = value
-      })
+    if (isNaN(value) || value < 0 || value > 54) {
+      setEditingHandicap(null)
+      setHandicapValue('')
+      return
     }
+
+    // Update the trip golfer handicap
+    tripGolferCollection.update(tripGolferId, (draft) => {
+      draft.handicapOverride = value
+    })
+
+    // Recalculate all scores for this golfer in this trip
+    recalculateGolferScores(golferId, value)
+
     setEditingHandicap(null)
     setHandicapValue('')
+  }
+
+  function recalculateGolferScores(golferId: string, newHandicap: number) {
+    if (!rounds || !holes || !allScores) return
+
+    // Group holes by courseId
+    const holesByCourse = new Map<string, typeof holes>()
+    for (const hole of holes) {
+      const existing = holesByCourse.get(hole.courseId) || []
+      existing.push(hole)
+      holesByCourse.set(hole.courseId, existing)
+    }
+
+    // Process each round in this trip
+    for (const round of rounds) {
+      const course = courseMap.get(round.courseId)
+      if (!course) continue
+
+      const courseHoles = holesByCourse.get(course.id) || []
+      const holeMap = new Map(courseHoles.map((h) => [h.id, h]))
+
+      // Calculate playing handicap for this course
+      const playingHandicap = getPlayingHandicap(
+        newHandicap,
+        course.slopeRating,
+        course.courseRating,
+        course.totalPar
+      )
+
+      // Get scores for this golfer in this round
+      const golferScores = (allScores || []).filter(
+        (s) => s.roundId === round.id && s.golferId === golferId
+      )
+
+      // Recalculate each score
+      let totalGross = 0
+      let totalNet = 0
+      let totalStableford = 0
+      let birdiesOrBetter = 0
+
+      for (const score of golferScores) {
+        const hole = holeMap.get(score.holeId)
+        if (!hole) continue
+
+        const handicapStrokes = getHandicapStrokes(hole.strokeIndex, playingHandicap)
+        const netScore = calculateNetScore(score.grossScore, handicapStrokes)
+        const stablefordPoints = calculateStablefordPoints(netScore, hole.par)
+
+        // Update the score
+        scoreCollection.update(score.id, (draft) => {
+          draft.handicapStrokes = handicapStrokes
+          draft.netScore = netScore
+          draft.stablefordPoints = stablefordPoints
+        })
+
+        totalGross += score.grossScore
+        totalNet += netScore
+        totalStableford += stablefordPoints
+        if (isBirdieOrBetter(netScore, hole.par)) {
+          birdiesOrBetter++
+        }
+      }
+
+      // Update round summary if there are scores
+      if (golferScores.length > 0) {
+        const existingSummary = (roundSummaries || []).find(
+          (s) => s.roundId === round.id && s.golferId === golferId
+        )
+
+        if (existingSummary) {
+          roundSummaryCollection.update(existingSummary.id, (draft) => {
+            draft.totalGross = totalGross
+            draft.totalNet = totalNet
+            draft.totalStableford = totalStableford
+            draft.birdiesOrBetter = birdiesOrBetter
+          })
+        }
+      }
+    }
   }
 
   function cancelEditingHandicap() {
@@ -182,7 +314,7 @@ function TripGolfersPage() {
                                 size="1"
                                 variant="soft"
                                 color="grass"
-                                onClick={() => saveHandicapOverride(tripGolfer!.id)}
+                                onClick={() => saveHandicapOverride(tripGolfer!.id, golfer.id)}
                               >
                                 <Check size={14} />
                               </IconButton>

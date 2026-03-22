@@ -219,13 +219,6 @@ export function seedData() {
       email: '',
       phone: '',
       handicap: g.handicap,
-      handicapHistory: [
-        {
-          handicap: g.handicap,
-          date: now,
-          source: 'manual' as const,
-        },
-      ],
       profileImageUrl: null,
       createdAt: now,
     }

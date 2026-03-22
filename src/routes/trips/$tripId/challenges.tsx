@@ -8,8 +8,9 @@ import {
   Dialog,
   AlertDialog,
 } from '@radix-ui/themes'
-import { Plus, Trophy, Edit2 } from 'lucide-react'
+import { Plus, Trophy } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useEffect, useRef } from 'react'
 import { useDialogState } from '../../../hooks/useDialogState'
 import {
   tripCollection,
@@ -19,9 +20,11 @@ import {
   tripGolferCollection,
   roundCollection,
   holeCollection,
+  courseCollection,
   roundSummaryCollection,
   type Challenge,
   type ChallengeResult,
+  type Hole,
 } from '../../../db/collections'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { ChallengeCard } from '../../../components/challenges/ChallengeCard'
@@ -92,6 +95,25 @@ function ChallengesPage() {
   // Fetch holes for context
   const { data: holes } = useLiveQuery((q) => q.from({ hole: holeCollection }), [])
   const holeMap = new Map((holes || []).map((h) => [h.id, h]))
+
+  // Fetch courses for display
+  const { data: courses } = useLiveQuery((q) => q.from({ course: courseCollection }), [])
+  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
+
+  // Group holes by courseId for the inline selector
+  const holesByCourseId = new Map<string, Hole[]>()
+  for (const h of holes || []) {
+    const existing = holesByCourseId.get(h.courseId) || []
+    existing.push(h)
+    holesByCourseId.set(h.courseId, existing)
+  }
+  // Sort holes by holeNumber within each course
+  for (const [courseId, courseHoles] of holesByCourseId) {
+    holesByCourseId.set(
+      courseId,
+      courseHoles.sort((a, b) => a.holeNumber - b.holeNumber)
+    )
+  }
 
   // Fetch round summaries for auto-calculated challenges
   const { data: roundSummaries } = useLiveQuery(
@@ -209,6 +231,52 @@ function ChallengesPage() {
     challengeCollection.delete(challengeId)
   }
 
+  // Auto-create default challenges (KP and LD) for each round if none exist
+  const hasCreatedDefaults = useRef(false)
+  useEffect(() => {
+    // Only run once per trip when data is loaded
+    if (hasCreatedDefaults.current) return
+    if (!rounds || rounds.length === 0) return
+    if (challenges === undefined) return // Still loading
+
+    // If challenges already exist, don't auto-create
+    if (challenges && challenges.length > 0) {
+      hasCreatedDefaults.current = true
+      return
+    }
+
+    hasCreatedDefaults.current = true
+
+    // Create one KP and one LD for each round
+    for (const round of rounds) {
+      // Closest to Pin
+      challengeCollection.insert({
+        id: crypto.randomUUID(),
+        tripId,
+        name: '',
+        challengeType: 'closest_to_pin',
+        scope: 'hole',
+        roundId: round.id,
+        holeId: null,
+        description: '',
+        prizeDescription: '',
+      })
+
+      // Longest Drive
+      challengeCollection.insert({
+        id: crypto.randomUUID(),
+        tripId,
+        name: '',
+        challengeType: 'longest_drive',
+        scope: 'hole',
+        roundId: round.id,
+        holeId: null,
+        description: '',
+        prizeDescription: '',
+      })
+    }
+  }, [rounds, challenges, tripId])
+
   if (!trip) {
     return (
       <Container size="2" py="6">
@@ -274,6 +342,8 @@ function ChallengesPage() {
                       challenge={challenge}
                       roundMap={roundMap}
                       holeMap={holeMap}
+                      courseMap={courseMap}
+                      holesByCourseId={holesByCourseId}
                       golferMap={golferMap}
                       tripGolferList={tripGolferList}
                       results={resultsByChallengeId.get(challenge.id) || []}
@@ -299,6 +369,8 @@ function ChallengesPage() {
                       challenge={challenge}
                       roundMap={roundMap}
                       holeMap={holeMap}
+                      courseMap={courseMap}
+                      holesByCourseId={holesByCourseId}
                       golferMap={golferMap}
                       tripGolferList={tripGolferList}
                       results={resultsByChallengeId.get(challenge.id) || []}
@@ -345,6 +417,8 @@ interface ChallengeCardWithDialogsProps {
   challenge: Challenge
   roundMap: Map<string, ReturnType<typeof roundCollection.get> & {}>
   holeMap: Map<string, ReturnType<typeof holeCollection.get> & {}>
+  courseMap: Map<string, ReturnType<typeof courseCollection.get> & {}>
+  holesByCourseId: Map<string, Hole[]>
   golferMap: Map<string, ReturnType<typeof golferCollection.get> & {}>
   tripGolferList: Array<ReturnType<typeof golferCollection.get> & {}>
   results: ChallengeResult[]
@@ -356,6 +430,8 @@ function ChallengeCardWithDialogs({
   challenge,
   roundMap,
   holeMap,
+  courseMap,
+  holesByCourseId,
   golferMap,
   tripGolferList,
   results,
@@ -366,6 +442,8 @@ function ChallengeCardWithDialogs({
   const [deleteDialogOpen, setDeleteDialogOpen] = useDialogState(`delete-${challenge.id}`)
   const round = challenge.roundId ? roundMap.get(challenge.roundId) : null
   const hole = challenge.holeId ? holeMap.get(challenge.holeId) : null
+  const course = round?.courseId ? courseMap.get(round.courseId) : null
+  const holesForRound = round?.courseId ? holesByCourseId.get(round.courseId) : undefined
 
   // Find winner from results
   const winnerResult = results.find((r) => r.isWinner)
@@ -376,62 +454,43 @@ function ChallengeCardWithDialogs({
     setDeleteDialogOpen(false)
   }
 
+  // Get challenge title for dialog (use type label if no name)
+  const challengeTitle = challenge.name || (
+    challenge.challengeType === 'closest_to_pin' ? 'Closest to Pin' :
+    challenge.challengeType === 'longest_drive' ? 'Longest Drive' :
+    'Challenge'
+  )
+
   return (
-    <Flex direction="column" gap="2">
+    <>
       <ChallengeCard
         challenge={challenge}
         winner={winner}
         winnerValue={winnerResult?.resultValue}
         round={round}
         hole={hole}
+        course={course}
+        holes={holesForRound}
+        onCardClick={() => setResultDialogOpen(true)}
         onEdit={() => setEditDialogOpen(true)}
         onDelete={() => setDeleteDialogOpen(true)}
       />
 
-      {/* Action buttons for manual challenges */}
+      {/* Results dialog for manual challenges - opened by clicking card */}
       {!isAutoCalculatedChallenge(challenge.challengeType) && (
-        <Flex gap="2">
-          {!winner ? (
-            <Dialog.Root open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
-              <Dialog.Trigger>
-                <Button variant="soft" size="1" data-testid="enter-results-btn">
-                  Enter Results
-                </Button>
-              </Dialog.Trigger>
-              <Dialog.Content maxWidth="450px">
-                <Dialog.Title>Enter Results: {challenge.name}</Dialog.Title>
-                <Flex direction="column" gap="4" pt="4">
-                  <ChallengeResultEntry
-                    challenge={challenge}
-                    golfers={tripGolferList}
-                    existingResults={results}
-                    onSuccess={() => setResultDialogOpen(false)}
-                  />
-                </Flex>
-              </Dialog.Content>
-            </Dialog.Root>
-          ) : (
-            <Dialog.Root open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
-              <Dialog.Trigger>
-                <Button variant="ghost" size="1" data-testid="edit-results-btn">
-                  <Edit2 size={14} />
-                  Edit Results
-                </Button>
-              </Dialog.Trigger>
-              <Dialog.Content maxWidth="450px">
-                <Dialog.Title>Edit Results: {challenge.name}</Dialog.Title>
-                <Flex direction="column" gap="4" pt="4">
-                  <ChallengeResultEntry
-                    challenge={challenge}
-                    golfers={tripGolferList}
-                    existingResults={results}
-                    onSuccess={() => setResultDialogOpen(false)}
-                  />
-                </Flex>
-              </Dialog.Content>
-            </Dialog.Root>
-          )}
-        </Flex>
+        <Dialog.Root open={resultDialogOpen} onOpenChange={setResultDialogOpen}>
+          <Dialog.Content maxWidth="450px">
+            <Dialog.Title>{winner ? 'Edit' : 'Enter'} Results: {challengeTitle}</Dialog.Title>
+            <Flex direction="column" gap="4" pt="4">
+              <ChallengeResultEntry
+                challenge={challenge}
+                golfers={tripGolferList}
+                existingResults={results}
+                onSuccess={() => setResultDialogOpen(false)}
+              />
+            </Flex>
+          </Dialog.Content>
+        </Dialog.Root>
       )}
 
       {/* Edit Challenge Dialog */}
@@ -454,7 +513,7 @@ function ChallengeCardWithDialogs({
         <AlertDialog.Content maxWidth="400px">
           <AlertDialog.Title>Delete Challenge?</AlertDialog.Title>
           <AlertDialog.Description>
-            This will permanently delete "{challenge.name}" and all results.
+            This will permanently delete "{challengeTitle}" and all results.
           </AlertDialog.Description>
           <Flex gap="3" mt="4" justify="end">
             <AlertDialog.Cancel>
@@ -466,6 +525,6 @@ function ChallengeCardWithDialogs({
           </Flex>
         </AlertDialog.Content>
       </AlertDialog.Root>
-    </Flex>
+    </>
   )
 }

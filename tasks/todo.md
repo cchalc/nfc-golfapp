@@ -102,6 +102,32 @@
 - [x] **Validation schema**: Added optional `description` field to `challengeFormSchema`
 - [x] **Bombadil extractors**: Updated challenge-flow.spec.ts to use new data-testid selectors
 
+### Session 2026-03-22: Challenges UX + Handicap System
+
+#### Challenges UX Improvements
+- [x] **Clickable challenge cards**: Click card body to open winner selection dialog
+- [x] **Course name display**: Show "Gallagher's Canyon - Hole 3" instead of "Round 1, Hole 3"
+- [x] **Auto-create defaults**: Each round auto-creates one KP and one Longest Drive challenge
+- [x] **Inline hole selector**: Unassigned challenges show dropdown to quickly assign hole
+
+#### Simplified Handicap System
+- [x] **Removed handicap history**: Golfers now have single `handicap` field (no date tracking)
+- [x] **Trip-specific handicaps**: `tripGolfer.handicapOverride` captures handicap at trip creation
+- [x] **Inline handicap editing**: Edit trip handicap directly on Trip Golfers page
+- [x] **Real-time score recalculation**: Changing trip handicap recalculates all scores immediately
+  - Updates `handicapStrokes`, `netScore`, `stablefordPoints` for each score
+  - Updates `roundSummary` totals for leaderboard
+- [x] **UI indicator**: Shows "Current: X" when trip handicap differs from golfer's main handicap
+
+#### Files Modified
+- `src/components/challenges/ChallengeCard.tsx` - Clickable, course display, hole selector
+- `src/routes/trips/$tripId/challenges.tsx` - Course fetching, auto-create logic
+- `src/routes/trips/$tripId/golfers.tsx` - Handicap editing with score recalculation
+- `src/components/golfers/GolferForm.tsx` - Simplified without history tracking
+- `src/routes/golfers/$golferId.tsx` - Removed handicap history section
+- `src/db/collections.ts` - Removed handicapHistoryEntrySchema
+- `src/db/seed.ts` - Removed handicapHistory from golfer creation
+
 ## Completed - Phase 6: Polish
 
 ### Session 2026-03-19: Polish Implementation
@@ -215,12 +241,53 @@ just bombadil-report     # Check for violations
 
 ## TODO - Phase 7: Sync & Auth (Future)
 
-- [ ] Set up Neon PostgreSQL database
-- [ ] Run schema migrations
-- [ ] Configure Electric SQL for real-time sync
-- [ ] Add Auth.js with Google OAuth + Email/Password
-- [ ] Switch from localOnlyCollectionOptions to electricCollectionOptions
-- [ ] Multi-user testing
+### 7.1 Database Setup
+- [ ] Create Neon PostgreSQL account and project
+- [ ] Create database tables matching TanStack DB schemas:
+  - [ ] trips, golfers, trip_golfers
+  - [ ] courses, holes, tee_boxes
+  - [ ] rounds, scores, round_summaries
+  - [ ] teams, team_members
+  - [ ] challenges, challenge_results
+- [ ] Set up database migrations (Drizzle or Prisma)
+- [ ] Configure connection pooling for serverless
+
+### 7.2 Electric SQL Integration
+- [ ] Install `@electric-sql/client` package
+- [ ] Configure Electric SQL proxy/service
+- [ ] Define shapes for each collection (what data to sync)
+- [ ] Switch collections from `localOnlyCollectionOptions` to `electricCollectionOptions`
+- [ ] Test offline support and sync conflict resolution
+- [ ] Verify real-time updates across browser tabs
+
+### 7.3 Authentication
+- [ ] Install Auth.js (NextAuth) dependencies
+- [ ] Configure Google OAuth provider
+- [ ] Configure Email/Password (credentials) provider
+- [ ] Create sign-in/sign-up pages
+- [ ] Add session provider to app root
+- [ ] Protect routes that require authentication
+- [ ] Add user ID to data models (createdBy, ownerId)
+
+### 7.4 Authorization & Multi-tenancy
+- [ ] Trip-level permissions (owner, invited golfers)
+- [ ] Row-level security in Postgres
+- [ ] Filter shapes by user/trip membership
+- [ ] Test data isolation between users
+
+### 7.5 Multi-user Testing
+- [ ] Test concurrent score entry by multiple users
+- [ ] Test real-time leaderboard updates
+- [ ] Test offline mode and reconnection
+- [ ] Test conflict resolution edge cases
+- [ ] Load testing with multiple simultaneous users
+
+### Reference Skills
+When implementing, load these TanStack DB skills:
+- `node_modules/@electric-sql/client/skills/electric-new-feature/SKILL.md`
+- `node_modules/@electric-sql/client/skills/electric-shapes/SKILL.md`
+- `node_modules/@electric-sql/client/skills/electric-postgres-security/SKILL.md`
+- `node_modules/@tanstack/db/skills/db-core/collection-setup/SKILL.md`
 
 ---
 
