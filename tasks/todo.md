@@ -282,13 +282,28 @@ just bombadil-report     # Check for violations
 #### Files Modified
 - `package.json` - Added drizzle-orm, @neondatabase/serverless, drizzle-kit
 - `justfile` - Added db-generate, db-migrate, db-studio, db-push recipes
+- `.gitignore` - Added negation pattern for SQL migrations
 
-#### Next Steps
-1. Run `pnpm install` when npm registry is available
-2. Create Neon project and get DATABASE_URL
-3. Add DATABASE_URL to `.env`
-4. Run `just db-migrate` to create tables
-5. Verify with `just db-studio`
+#### Neon Database Deployment
+- [x] Created Neon PostgreSQL project in us-west-2
+- [x] Ran `just db-migrate` - all 13 tables created successfully
+- [x] Verified `REPLICA IDENTITY FULL` on all tables for Electric SQL sync
+- [x] Database connection configured via direnv (`.envrc`)
+
+#### Database Connection
+```
+Host: ep-proud-meadow-ak88j9wc-pooler.c-3.us-west-2.aws.neon.tech
+Database: neondb
+Region: us-west-2
+```
+
+#### Useful Commands
+```fish
+just db-migrate   # Run pending migrations
+just db-studio    # Open Drizzle Studio GUI
+just db-generate  # Generate migration from schema changes
+just db-push      # Push schema directly (dev only)
+```
 
 ---
 
