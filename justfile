@@ -6,6 +6,26 @@ default:
     @just --list
 
 # ============================================================================
+# Database Management (Drizzle)
+# ============================================================================
+
+# Generate migrations from schema changes
+db-generate:
+    pnpm exec drizzle-kit generate
+
+# Run pending migrations
+db-migrate:
+    pnpm exec drizzle-kit migrate
+
+# Open Drizzle Studio to browse database
+db-studio:
+    pnpm exec drizzle-kit studio
+
+# Push schema directly to database (dev only, no migration files)
+db-push:
+    pnpm exec drizzle-kit push
+
+# ============================================================================
 # Vitest Tests (Unit + Integration)
 # ============================================================================
 

