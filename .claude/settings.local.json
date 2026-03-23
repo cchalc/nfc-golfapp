@@ -73,7 +73,17 @@
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__press_key",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__fill",
       "Bash(pnpm check:*)",
-      "Bash(jj show:*)"
+      "Bash(jj show:*)",
+      "Bash(npx neonctl@latest init:*)",
+      "Bash(pnpm dlx:*)",
+      "Bash(jj file:*)",
+      "Bash(jj config:*)",
+      "Bash(jj debug ignore:*)",
+      "Bash(jj restore:*)",
+      "Bash(xattr:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git check-ignore:*)"
     ]
   },
   "enabledPlugins": {
