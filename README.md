@@ -72,9 +72,28 @@ The app comes with data from a real Kelowna golf trip:
 
 ---
 
+## Database
+
+The app uses **Neon PostgreSQL** with **Drizzle ORM** for data persistence.
+
+```fish
+# Run migrations
+just db-migrate
+
+# Open database GUI
+just db-studio
+
+# Generate migration from schema changes
+just db-generate
+```
+
+**Schema**: 13 tables with full foreign key relationships and `REPLICA IDENTITY FULL` for real-time sync.
+
+---
+
 ## Coming Soon
 
-- Multi-device sync (Electric SQL)
+- Multi-device sync (Electric SQL) - database ready with REPLICA IDENTITY FULL
 - User accounts and authentication
 - Mobile app
 - Course database integration
