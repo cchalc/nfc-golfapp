@@ -34,21 +34,26 @@ The app has Electric SQL integration working but is experiencing sluggishness th
 
 ## Outstanding Issues
 
-### 1. App Sluggishness (HIGH PRIORITY)
-- App is extremely sluggish - needs investigation
-- Possible causes:
-  - Electric shape subscriptions causing too many re-renders
-  - Too many live queries running simultaneously
-  - Network latency to Electric Cloud
-  - Neon database connection overhead
+### 1. App Sluggishness - INVESTIGATED
+**Root cause identified**: Network latency to Electric Cloud (~300-500ms per request) combined with:
+- 13 shape subscriptions starting simultaneously
+- HTTP/1.1 browser limit (6 concurrent connections)
+- Eager sync mode loading all data upfront
 
-### 2. Performance Investigation Needed
-- Profile the app to identify bottlenecks
-- Consider:
-  - Reducing number of shape subscriptions
-  - Adding loading states / suspense boundaries
-  - Optimizing live queries (fewer, more targeted)
-  - Checking if Electric is polling too frequently
+**Fix applied**: Added `syncMode: 'progressive'` to all 13 Electric collections. This:
+- Queries fetch only needed data first
+- Full sync happens in background
+- Reduces initial blocking time
+
+**Additional recommendations**:
+- Self-host Electric for production (eliminates ~300ms cloud latency)
+- Use Caddy as HTTP/2 proxy for local dev (removes 6-connection limit)
+- Add WHERE clauses to scope shapes by trip_id where possible
+
+### 2. Electric Cloud Sync Status
+- Electric Cloud IS working - data syncs correctly
+- The two-phase protocol is normal (first request returns handle, second returns data)
+- Added `challenge_results` table to publication (was missing)
 
 ## Key Files Modified
 ```

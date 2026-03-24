@@ -268,6 +268,7 @@ export const tripCollection = createCollection(
     id: 'trips',
     schema: tripSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/trips'),
       parser: timestampParser,
@@ -296,6 +297,7 @@ export const golferCollection = createCollection(
     id: 'golfers',
     schema: golferSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/golfers'),
       parser: timestampParser,
@@ -324,6 +326,7 @@ export const tripGolferCollection = createCollection(
     id: 'trip_golfers',
     schema: tripGolferSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/trip-golfers'),
       parser: timestampParser,
@@ -352,6 +355,7 @@ export const courseCollection = createCollection(
     id: 'courses',
     schema: courseSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/courses'),
       columnMapper,
@@ -379,6 +383,7 @@ export const teeBoxCollection = createCollection(
     id: 'tee_boxes',
     schema: teeBoxSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/tee-boxes'),
       columnMapper,
@@ -406,6 +411,7 @@ export const holeCollection = createCollection(
     id: 'holes',
     schema: holeSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/holes'),
       columnMapper,
@@ -433,6 +439,7 @@ export const roundCollection = createCollection(
     id: 'rounds',
     schema: roundSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/rounds'),
       parser: timestampParser,
@@ -461,6 +468,7 @@ export const scoreCollection = createCollection(
     id: 'scores',
     schema: scoreSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/scores'),
       columnMapper,
@@ -488,6 +496,7 @@ export const roundSummaryCollection = createCollection(
     id: 'round_summaries',
     schema: roundSummarySchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/round-summaries'),
       columnMapper,
@@ -515,6 +524,7 @@ export const teamCollection = createCollection(
     id: 'teams',
     schema: teamSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/teams'),
       columnMapper,
@@ -542,6 +552,7 @@ export const teamMemberCollection = createCollection(
     id: 'team_members',
     schema: teamMemberSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/team-members'),
       columnMapper,
@@ -564,6 +575,7 @@ export const challengeCollection = createCollection(
     id: 'challenges',
     schema: challengeSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/challenges'),
       columnMapper,
@@ -591,6 +603,7 @@ export const challengeResultCollection = createCollection(
     id: 'challenge_results',
     schema: challengeResultSchema,
     getKey: (item) => item.id,
+    syncMode: 'progressive',
     shapeOptions: {
       url: getShapeUrl('/api/electric/challenge-results'),
       columnMapper,

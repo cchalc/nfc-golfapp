@@ -93,7 +93,8 @@
       "WebFetch(domain:dashboard.electric-sql.cloud)",
       "Bash(npx @electric-sql/cli:*)",
       "Bash(npx:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(direnv export:*)"
     ]
   },
   "enabledPlugins": {

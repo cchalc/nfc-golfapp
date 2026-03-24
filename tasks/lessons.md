@@ -517,3 +517,64 @@ const result = await importCourseWithDetails({
 - Creating related records together (trip + golfers + rounds)
 - Any operation that creates 5+ records at once
 - Migrating or bulk-inserting data
+
+## Electric SQL: Performance with Many Shape Subscriptions
+
+**Issue**: App sluggishness when using Electric Cloud with many collections (13+ shapes). Each shape subscription requires:
+1. Initial request with `offset=-1` to get metadata/handle
+2. Follow-up request(s) with handle to get actual data
+3. Persistent SSE connection for real-time updates
+
+**Symptoms**:
+- App takes several seconds to become interactive after page load
+- Network tab shows many pending requests
+- UI feels sluggish/unresponsive during initial sync
+
+**Root causes**:
+1. **Network latency to Electric Cloud**: ~300-500ms per request
+2. **HTTP/1.1 connection limit**: Browsers limit 6 concurrent connections per origin
+3. **Eager sync mode**: All shapes try to load complete dataset upfront
+4. **13 shapes × 2+ requests × 300ms = 8+ seconds** just for initial sync
+
+**Solution**: Use `syncMode: 'progressive'` on Electric collections:
+
+```typescript
+export const myCollection = createCollection(
+  electricCollectionOptions({
+    id: 'my_table',
+    schema: mySchema,
+    getKey: (item) => item.id,
+    syncMode: 'progressive',  // <-- Add this
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/my-table'),
+      columnMapper,
+    },
+    // ...handlers
+  })
+)
+```
+
+**How progressive mode helps**:
+1. Queries initially fetch just the data they need (not entire table)
+2. Full sync happens in background after UI is interactive
+3. Reduces initial blocking time significantly
+
+**Additional mitigations**:
+- **HTTP/2 proxy**: Use Caddy to allow more concurrent connections locally
+- **Self-host Electric**: Eliminates cloud latency (~300ms → ~10ms)
+- **Lazy-load collections**: Only create shapes when routes need them
+- **Add WHERE clauses**: Scope shapes to relevant data subset (e.g., by trip_id)
+
+**Diagnosis commands**:
+```bash
+# Test Electric proxy latency
+time curl -s "http://localhost:5173/api/electric/golfers?offset=-1" -o /dev/null
+
+# Check if Electric Cloud is returning data
+curl -s "http://localhost:5173/api/electric/golfers?offset=-1" | head
+
+# Get data using handle from first request
+curl -s "http://localhost:5173/api/electric/golfers?offset=0_0&handle=<HANDLE>"
+```
+
+**Note**: Electric's protocol is two-phase - first request returns metadata/handle, subsequent requests return data. Empty `snapshot-end` responses are normal for the first request.
