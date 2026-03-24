@@ -45,6 +45,11 @@ import {
   insertChallengeResult,
   updateChallengeResult,
   deleteChallengeResult,
+  insertTripOrganizer,
+  updateTripOrganizer,
+  deleteTripOrganizer,
+  insertTripInvite,
+  deleteTripInvite,
 } from '../server/mutations'
 
 // Helper for date fields that can come as string or Date
@@ -206,6 +211,37 @@ export const challengeResultSchema = z.object({
   isWinner: z.boolean().default(false),
 })
 
+// ============================================================================
+// Auth Schemas
+// ============================================================================
+
+export const identitySchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  golferId: z.string().nullable().default(null),
+  createdAt: dateField,
+  lastLoginAt: nullableDateField.default(null),
+})
+
+export const tripOrganizerSchema = z.object({
+  id: z.string(),
+  tripId: z.string(),
+  identityId: z.string(),
+  role: z.enum(['owner', 'organizer']).default('organizer'),
+  addedAt: dateField,
+})
+
+export const tripInviteSchema = z.object({
+  id: z.string(),
+  tripId: z.string(),
+  token: z.string(),
+  createdBy: z.string(),
+  expiresAt: dateField,
+  maxUses: z.number().nullable().default(null),
+  useCount: z.number().default(0),
+  createdAt: dateField,
+})
+
 // UI State collection for managing dialog open states (local-only)
 export const uiStateSchema = z.object({
   id: z.string(),
@@ -240,6 +276,9 @@ export type Challenge = z.output<typeof challengeSchema>
 export type ChallengeResult = z.output<typeof challengeResultSchema>
 export type UIState = z.output<typeof uiStateSchema>
 export type FormError = z.output<typeof formErrorSchema>
+export type Identity = z.output<typeof identitySchema>
+export type TripOrganizer = z.output<typeof tripOrganizerSchema>
+export type TripInvite = z.output<typeof tripInviteSchema>
 
 // ============================================================================
 // Helper: Build Electric shape URL
@@ -667,6 +706,84 @@ export const challengeResultCollection = createCollection(
     onDelete: async ({ transaction }) => {
       const { original: result } = transaction.mutations[0]
       const { txid } = await deleteChallengeResult({ data: { id: result.id } })
+      return { txid }
+    },
+  })
+)
+
+// ============================================================================
+// Auth Collections (synced with PostgreSQL)
+// ============================================================================
+
+export const identityCollection = createCollection(
+  electricCollectionOptions({
+    id: 'identities',
+    schema: identitySchema,
+    getKey: (item) => item.id,
+    syncMode: 'progressive',
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/identities'),
+      parser: timestampParser,
+      columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
+    },
+    // Identities are read-only from client - managed via server auth functions
+  })
+)
+
+export const tripOrganizerCollection = createCollection(
+  electricCollectionOptions({
+    id: 'trip_organizers',
+    schema: tripOrganizerSchema,
+    getKey: (item) => item.id,
+    syncMode: 'progressive',
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/trip-organizers'),
+      parser: timestampParser,
+      columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: organizer } = transaction.mutations[0]
+      const { txid } = await insertTripOrganizer({ data: organizer })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: organizer } = transaction.mutations[0]
+      const { txid } = await updateTripOrganizer({ data: { id: organizer.id, changes: organizer } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: organizer } = transaction.mutations[0]
+      const { txid } = await deleteTripOrganizer({ data: { id: organizer.id } })
+      return { txid }
+    },
+  })
+)
+
+export const tripInviteCollection = createCollection(
+  electricCollectionOptions({
+    id: 'trip_invites',
+    schema: tripInviteSchema,
+    getKey: (item) => item.id,
+    syncMode: 'progressive',
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/trip-invites'),
+      parser: timestampParser,
+      columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: invite } = transaction.mutations[0]
+      const { txid } = await insertTripInvite({ data: invite })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: invite } = transaction.mutations[0]
+      const { txid } = await deleteTripInvite({ data: { id: invite.id } })
       return { txid }
     },
   })

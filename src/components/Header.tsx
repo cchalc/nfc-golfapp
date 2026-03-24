@@ -3,6 +3,7 @@ import { Flex, Text, DropdownMenu, IconButton } from '@radix-ui/themes'
 import { Menu } from 'lucide-react'
 import { ThemePicker } from './ThemePicker'
 import { SyncStatusIndicator } from './SyncStatusIndicator'
+import { UserMenu } from './auth/UserMenu'
 
 export function Header() {
   return (
@@ -66,6 +67,7 @@ export function Header() {
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Root>
+          <UserMenu />
           <ThemePicker />
         </Flex>
       </Flex>

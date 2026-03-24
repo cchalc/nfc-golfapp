@@ -540,18 +540,23 @@ just db-push      # Push schema directly (dev only)
 - [ ] Test data persistence (create → refresh → verify)
 - [ ] Test real-time sync across browser tabs
 
-### 7.3 Authentication
-- [ ] Install Auth.js (NextAuth) dependencies
-- [ ] Configure Google OAuth provider
-- [ ] Configure Email/Password (credentials) provider
-- [ ] Create sign-in/sign-up pages
-- [ ] Add session provider to app root
-- [ ] Protect routes that require authentication
-- [ ] Add user ID to data models (createdBy, ownerId)
+### 7.3 Authentication - COMPLETE
+- [x] Created magic link authentication system
+- [x] Database migration for auth tables (identities, sessions, magic_links, trip_organizers, trip_invites)
+- [x] Server auth mutations (requestMagicLink, verifyMagicLink, getSession, logout)
+- [x] Authorization functions (getTripRole, requireOrganizer, requireTripAccess)
+- [x] Trip invite system (createTripInvite, acceptTripInvite, getInviteInfo)
+- [x] AuthContext provider with refresh and signOut
+- [x] Login routes (/login, /login/verify) with code countdown
+- [x] Invite route (/invite/$token) with accept flow
+- [x] UserMenu component in Header (Sign In / email + logout)
+- [x] Auto-add creator as organizer on trip creation
+- [x] Electric collections for identities, trip_organizers, trip_invites
 
 ### 7.4 Authorization & Multi-tenancy
-- [ ] Trip-level permissions (owner, invited golfers)
-- [ ] Row-level security in Postgres
+- [ ] Wire up useTripRole hook to trip management UI
+- [ ] Hide management controls for participants (role-based UI)
+- [ ] Row-level security in Postgres (optional)
 - [ ] Filter shapes by user/trip membership
 - [ ] Test data isolation between users
 
@@ -601,17 +606,31 @@ src/
 │       └── StatCard.tsx
 ├── contexts/
 │   └── ThemeContext.tsx
+├── contexts/
+│   ├── ThemeContext.tsx        # Font theme state
+│   └── AuthContext.tsx         # Auth session state + refresh/signOut
 ├── db/
 │   ├── collections.ts          # TanStack DB schemas + uiStateCollection
 │   └── seed.ts                 # Sample data
 ├── hooks/
-│   └── useDialogState.ts       # Controlled dialog state via TanStack DB
+│   ├── useDialogState.ts       # Controlled dialog state via TanStack DB
+│   ├── useRequireAuth.ts       # Redirect to login if not authenticated
+│   └── useTripRole.ts          # Get user's role for a trip
+├── server/
+│   └── auth/
+│       ├── utils.ts            # Code/token generation, cookies
+│       ├── mutations.ts        # requestMagicLink, verifyMagicLink, getSession, logout
+│       ├── authorization.ts    # getTripRole, requireOrganizer, requireTripAccess
+│       └── invites.ts          # createTripInvite, acceptTripInvite, getInviteInfo
 ├── lib/
 │   ├── challenges.ts           # Challenge utilities (distance parsing, etc.)
 │   └── scoring.ts              # Golf scoring logic
 └── routes/
     ├── __root.tsx
     ├── index.tsx               # Home
+    ├── login.tsx               # Email entry for magic link
+    ├── login.verify.tsx        # Code verification with countdown
+    ├── invite.$token.tsx       # Trip invite acceptance
     ├── golfers/
     │   ├── index.tsx           # Golfer directory
     │   └── $golferId.tsx       # Golfer detail
