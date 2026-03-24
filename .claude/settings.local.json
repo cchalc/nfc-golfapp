@@ -94,7 +94,8 @@
       "Bash(npx @electric-sql/cli:*)",
       "Bash(npx:*)",
       "Bash(source:*)",
-      "Bash(direnv export:*)"
+      "Bash(direnv export:*)",
+      "Bash(jj git fetch:*)"
     ]
   },
   "enabledPlugins": {

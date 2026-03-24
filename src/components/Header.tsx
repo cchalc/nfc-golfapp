@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { Flex, Text, DropdownMenu, IconButton } from '@radix-ui/themes'
 import { Menu } from 'lucide-react'
 import { ThemePicker } from './ThemePicker'
+import { SyncStatusIndicator } from './SyncStatusIndicator'
 
 export function Header() {
   return (
@@ -45,6 +46,7 @@ export function Header() {
           </Flex>
         </Flex>
         <Flex gap="3" align="center">
+          <SyncStatusIndicator />
           {/* Mobile menu */}
           <DropdownMenu.Root>
             <DropdownMenu.Trigger>

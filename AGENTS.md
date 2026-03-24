@@ -9,6 +9,91 @@ A starter for building apps with TanStack Start, Radix UI, and capsize typograph
 - **vite-plugin-capsize-radix** - Pixel-perfect typography
 - **Dozens of font pairings included** - Ask the agent to set one up
 
+## Core Domain Models
+
+This is a golf trip scoring app. The domain model centers around **Trips** as the primary organizational unit.
+
+### Entity Hierarchy
+
+```
+Trip (event container)
+├── TripGolfers (participation) → Golfer
+├── Rounds (daily games) → Course
+│   ├── Scores (per-hole results) → Golfer, Hole
+│   └── RoundSummaries (aggregated stats) → Golfer
+├── Teams (competition groups)
+│   └── TeamMembers → Golfer
+└── Challenges (side bets/contests)
+    └── ChallengeResults → Golfer
+
+Course (venue)
+├── TeeBoxes (rating sets by gender/skill)
+└── Holes (18 per course)
+
+Golfer (person) - spans multiple trips
+```
+
+### Key Entities
+
+**Trip** → The organizing container for a golf vacation
+- Has date range, location, list of invited golfers
+- Everything else (rounds, teams, challenges) belongs to a trip
+- `created_by` indicates the organizer
+
+**Golfer** → A person who plays golf
+- Global across trips (same person can join multiple trips)
+- Has handicap (skill rating, lower = better)
+- Linked to trips via TripGolfer join table
+
+**TripGolfer** → Participation record
+- Lifecycle: `invited` → `accepted` | `declined`
+- Can override handicap for this specific trip
+- `included_in_scoring` flag for stat calculations
+
+**Round** → A single day's game at a course
+- Belongs to a Trip and a Course
+- `round_number` for ordering within a trip
+- Contains 18 Scores per participating golfer
+
+**Score** → The atomic unit of scoring
+- One per golfer per hole per round
+- Tracks: `gross_score` (actual strokes), `net_score` (handicap-adjusted), `stableford_points`
+- Most critical for offline support (entered on-course with spotty connectivity)
+
+**Course** → A golf course venue
+- May come from external API (`api_id`) or manual entry
+- Contains TeeBoxes and Holes
+
+**Challenge** → Side competitions (closest to pin, longest drive, etc.)
+- Scope: `hole` | `round` | `trip`
+- Types: `closest_to_pin` | `longest_drive` | `most_birdies` | `custom`
+
+### Architectural Decisions
+
+- **UUID primary keys** everywhere for offline-first creation (clients can create IDs without server)
+- **Cascade deletes** on all foreign keys (delete trip = delete everything in it)
+- **Electric SQL sync** for real-time multi-device collaboration
+- **Offline mutations** queue to IndexedDB, replay on reconnect
+- **Idempotency keys** prevent duplicate mutations on retry
+
+### Key Conventions
+
+- All timestamps use `timestamptz` (timezone-aware)
+- Scores are the most important offline data (on-course use case)
+- `included_in_scoring` flags exist for manual exclusions
+- Golfer handicaps can be overridden per-trip via TripGolfer
+
+### Code Locations
+
+| Concern | Location |
+|---------|----------|
+| Database schema | `src/db/drizzle/schema.ts` |
+| TanStack DB collections | `src/db/collections.ts` |
+| Server mutations | `src/server/mutations/*.ts` |
+| Electric proxy routes | `src/server/electric-proxy.ts` |
+| Offline executor | `src/db/offline.ts` |
+| Sync status tracking | `src/db/sync-status.ts` |
+
 ## Project Structure
 
 ```

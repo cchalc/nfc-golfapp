@@ -35,6 +35,12 @@ export function createElectricProxyHandler(tableName: string) {
     headers.delete('content-encoding')
     headers.delete('content-length')
 
+    // Expose Electric headers for client-side sync (required by Electric client)
+    headers.set(
+      'Access-Control-Expose-Headers',
+      'electric-offset, electric-handle, electric-schema, electric-cursor'
+    )
+
     return new Response(res.body, {
       status: res.status,
       statusText: res.statusText,

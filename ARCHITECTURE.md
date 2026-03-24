@@ -20,9 +20,15 @@ This document covers the technical implementation details of the Golf Trip Plann
 │  │                    Live Queries (IVM)                       ││
 │  │         Sub-millisecond reactive updates via d2ts           ││
 │  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │               Offline Transaction Queue                     ││
+│  │         IndexedDB persistence, auto-replay on reconnect     ││
+│  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
                               │
-                    (Future: Electric SQL)
+                        Electric SQL
+                    (Shape streams + proxy)
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -49,7 +55,8 @@ This document covers the technical implementation details of the Golf Trip Plann
 | **State** | TanStack DB | Reactive client-side collections with live queries |
 | **Typography** | Capsize + Radix | Pixel-perfect font rendering with theme switching |
 | **Validation** | Zod | Type-safe schema validation |
-| **Sync** | Electric SQL (planned) | Real-time Postgres sync for multiplayer |
+| **Sync** | Electric SQL | Real-time Postgres sync for multiplayer |
+| **Offline** | @tanstack/offline-transactions | IndexedDB queue with leader election |
 | **Build** | Vite | Fast dev server and optimized builds |
 
 ### Why TanStack DB?
@@ -217,23 +224,84 @@ The app uses a "Clubhouse Luxury" theme:
 
 ## Data Models
 
+The domain model centers around **Trips** as the primary organizational unit.
+
+### Entity Hierarchy
+
+```
+Trip (event container)
+├── TripGolfers (participation) → Golfer
+├── Rounds (daily games) → Course
+│   ├── Scores (per-hole results) → Golfer, Hole
+│   └── RoundSummaries (aggregated stats) → Golfer
+├── Teams (competition groups)
+│   └── TeamMembers → Golfer
+└── Challenges (side bets/contests)
+    └── ChallengeResults → Golfer
+
+Course (venue)
+├── TeeBoxes (rating sets by gender/skill)
+└── Holes (18 per course)
+
+Golfer (person) - spans multiple trips
+```
+
 ### Core Entities
 
-- **Trip**: Golf trip with dates, location, participants
-- **Golfer**: Player with handicap index and contact info
-- **Round**: A round of golf on a specific course
-- **Score**: Hole-by-hole scores with net and Stableford calculations
-- **Team**: Groups of golfers for team competitions
+**Trip** → The organizing container for a golf vacation
+- Has date range, location, list of invited golfers
+- Everything else (rounds, teams, challenges) belongs to a trip
+- `created_by` indicates the organizer
 
-### Relationships
+**Golfer** → A person who plays golf
+- Global across trips (same person can join multiple trips)
+- Has handicap (skill rating, lower = better)
+- Linked to trips via TripGolfer join table
+
+**TripGolfer** → Participation record
+- Lifecycle: `invited` → `accepted` | `declined`
+- Can override handicap for this specific trip
+- `included_in_scoring` flag for stat calculations
+
+**Round** → A single day's game at a course
+- Belongs to a Trip and a Course
+- `round_number` for ordering within a trip
+- Contains 18 Scores per participating golfer
+
+**Score** → The atomic unit of scoring
+- One per golfer per hole per round
+- Tracks: `gross_score` (actual strokes), `net_score` (handicap-adjusted), `stableford_points`
+- Most critical for offline support (entered on-course with spotty connectivity)
+
+**Course** → A golf course venue
+- May come from external API (`api_id`) or manual entry
+- Contains TeeBoxes (rating sets) and Holes (18 per course)
+
+**Challenge** → Side competitions (closest to pin, longest drive, etc.)
+- Scope: `hole` | `round` | `trip`
+- Types: `closest_to_pin` | `longest_drive` | `most_birdies` | `custom`
+
+### Key Conventions
+
+- **UUID primary keys** everywhere for offline-first creation (clients can create IDs without server)
+- **Cascade deletes** on all foreign keys (delete trip = delete everything in it)
+- **Electric SQL sync** for real-time multi-device collaboration
+- **Offline mutations** queue to IndexedDB, replay on reconnect
+- **Idempotency keys** prevent duplicate mutations on retry
+- All timestamps use `timestamptz` (timezone-aware)
+
+### Database Relationships
 
 ```
 Trip 1──* Round
 Trip *──* Golfer (via TripGolfer)
 Round 1──* Score
+Round 1──* RoundSummary
 Golfer 1──* Score
+Course 1──* TeeBox
 Course 1──* Hole
 Team *──* Golfer (via TeamMember)
+Challenge 1──* ChallengeResult
 ```
 
 ---
@@ -242,7 +310,8 @@ Team *──* Golfer (via TeamMember)
 
 - [x] **Challenges**: KP contests, longest drive, custom challenges
 - [x] **Property Testing**: Bombadil-based automated testing
-- [ ] **Electric Sync**: Multi-device real-time sync
+- [x] **Electric Sync**: Multi-device real-time sync via Electric SQL Cloud
+- [x] **Offline Support**: IndexedDB queue with automatic retry on reconnect
 - [ ] **Authentication**: Google OAuth + email/password
 - [ ] **Mobile App**: React Native with shared logic
 - [ ] **Course Database**: Import from golf course APIs

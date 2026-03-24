@@ -259,6 +259,26 @@ const timestampParser = { timestamptz: (date: string) => new Date(date) }
 // Column mapper to convert snake_case from DB to camelCase in client
 const columnMapper = snakeCamelMapper()
 
+/**
+ * Shared backoff options for Electric shape streams.
+ * Exponential backoff with jitter for resilient sync.
+ */
+const backoffOptions = {
+  initialDelay: 1000,
+  maxDelay: 30000,
+  multiplier: 2,
+}
+
+/**
+ * Error handler for Electric shape streams.
+ * Returns {} to trigger retry with backoff.
+ */
+function handleSyncError(error: unknown) {
+  console.error('[Electric Sync Error]', error)
+  // Return {} to retry - returning void would stop the stream permanently
+  return {}
+}
+
 // ============================================================================
 // Electric Collections (synced with PostgreSQL)
 // ============================================================================
@@ -273,6 +293,8 @@ export const tripCollection = createCollection(
       url: getShapeUrl('/api/electric/trips'),
       parser: timestampParser,
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: trip } = transaction.mutations[0]
@@ -302,6 +324,8 @@ export const golferCollection = createCollection(
       url: getShapeUrl('/api/electric/golfers'),
       parser: timestampParser,
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: golfer } = transaction.mutations[0]
@@ -331,6 +355,8 @@ export const tripGolferCollection = createCollection(
       url: getShapeUrl('/api/electric/trip-golfers'),
       parser: timestampParser,
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: tripGolfer } = transaction.mutations[0]
@@ -359,6 +385,8 @@ export const courseCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/courses'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: course } = transaction.mutations[0]
@@ -387,6 +415,8 @@ export const teeBoxCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/tee-boxes'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: teeBox } = transaction.mutations[0]
@@ -415,6 +445,8 @@ export const holeCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/holes'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: hole } = transaction.mutations[0]
@@ -444,6 +476,8 @@ export const roundCollection = createCollection(
       url: getShapeUrl('/api/electric/rounds'),
       parser: timestampParser,
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: round } = transaction.mutations[0]
@@ -472,6 +506,8 @@ export const scoreCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/scores'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: score } = transaction.mutations[0]
@@ -500,6 +536,8 @@ export const roundSummaryCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/round-summaries'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: summary } = transaction.mutations[0]
@@ -528,6 +566,8 @@ export const teamCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/teams'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: team } = transaction.mutations[0]
@@ -556,6 +596,8 @@ export const teamMemberCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/team-members'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: teamMember } = transaction.mutations[0]
@@ -579,6 +621,8 @@ export const challengeCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/challenges'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: challenge } = transaction.mutations[0]
@@ -607,6 +651,8 @@ export const challengeResultCollection = createCollection(
     shapeOptions: {
       url: getShapeUrl('/api/electric/challenge-results'),
       columnMapper,
+      backoffOptions,
+      onError: handleSyncError,
     },
     onInsert: async ({ transaction }) => {
       const { modified: result } = transaction.mutations[0]

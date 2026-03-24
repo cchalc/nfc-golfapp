@@ -91,6 +91,21 @@ just db-generate
 
 ---
 
+## Core Concepts
+
+The app is organized around **Trips** as the central unit:
+
+- **Trip** - A golf vacation with dates, location, and your crew
+- **Golfer** - A player with handicap (skill rating) and contact info
+- **Round** - One day's game at a specific course (18 holes)
+- **Score** - Hole-by-hole results with gross, net, and Stableford points
+- **Team** - Groups for team competitions
+- **Challenge** - Side bets like closest to pin, longest drive
+
+Everything cascades from the trip - delete a trip and all its rounds, scores, teams, and challenges go with it.
+
+---
+
 ## Coming Soon
 
 - Multi-device sync (Electric SQL) - database ready with REPLICA IDENTITY FULL

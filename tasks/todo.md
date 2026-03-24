@@ -454,6 +454,82 @@ just db-push      # Push schema directly (dev only)
 
 ---
 
+## Completed - Phase 7.3: Robust Sync & Offline Support
+
+### Session 2026-03-24: Offline-First Architecture
+
+#### Phase 1: Error Handling Foundation
+- [x] Created `src/lib/errors.ts` with `RetriableError`, `PermanentError` classes
+- [x] Added `isRetriable()` function for error classification (network, Postgres codes, HTTP status)
+- [x] Added `wrapMutation()` helper for consistent error handling
+
+#### Phase 2: Electric Resilience
+- [x] Added CORS `Access-Control-Expose-Headers` to electric-proxy.ts
+  - Required headers: `electric-offset`, `electric-handle`, `electric-schema`, `electric-cursor`
+- [x] Added `onError` handler to all 13 Electric collections
+  - Returns `{}` to trigger retry (returning void stops sync permanently)
+- [x] Added `backoffOptions` to all collections
+  - `initialDelay: 1000`, `maxDelay: 30000`, `multiplier: 2`
+
+#### Phase 3: Offline Transaction Support
+- [x] Created `src/db/offline.ts` with `OfflineExecutor` setup
+  - Registers all 13 synced collections for optimistic state restoration
+  - 39 mutation functions (insert/update/delete for each entity)
+  - Leader election ensures only one tab processes outbox
+  - Error classification with `NonRetriableError` for permanent failures
+- [x] Updated `src/components/DataLoader.tsx` to initialize offline executor
+- [x] Transactions persist to IndexedDB, replay on reconnection
+
+#### Phase 4: Idempotency Key Support
+- [x] Created migration `src/db/drizzle/migrations/0001_idempotency_keys.sql`
+  - `idempotency_keys` table with 24-hour TTL
+  - `claim_idempotency_key()` function for atomic key claiming
+  - `cleanup_idempotency_keys()` function for scheduled cleanup
+- [x] Added `withIdempotency()` helper to `src/server/mutations/db.ts`
+  - Checks for existing key before executing mutation
+  - Stores result in key for duplicate detection
+
+#### Phase 5: Sync Status UI
+- [x] Created `src/db/sync-status.ts` with local-only collection
+  - Tracks `isOnline`, `pendingCount`, `lastSyncError`, `lastSyncAt`
+- [x] Created `src/components/SyncStatusIndicator.tsx`
+  - Shows cloud icon with color (green=synced, yellow=offline/pending, red=error)
+  - Badge shows pending change count
+  - Tooltip with detailed status
+- [x] Added indicator to Header.tsx
+- [x] Online/offline event listeners initialized in DataLoader
+
+#### Error Handling in Mutations
+- [x] Updated all 15 mutation files with `wrapMutation()`:
+  - `trips.ts`, `golfers.ts`, `trip-golfers.ts`, `courses.ts`
+  - `tee-boxes.ts`, `holes.ts`, `rounds.ts`, `scores.ts`
+  - `round-summaries.ts`, `teams.ts`, `team-members.ts`
+  - `challenges.ts`, `challenge-results.ts`, `course-import.ts`
+
+#### Files Created
+- `src/lib/errors.ts` - Error classes and classification
+- `src/db/offline.ts` - Offline executor with all mutation functions
+- `src/db/sync-status.ts` - Sync status collection and listeners
+- `src/components/SyncStatusIndicator.tsx` - Visual sync indicator
+- `src/db/drizzle/migrations/0001_idempotency_keys.sql` - Idempotency table
+
+#### Files Modified
+- `src/server/electric-proxy.ts` - Added CORS headers
+- `src/server/mutations/db.ts` - Added `withIdempotency()` helper
+- `src/server/mutations/*.ts` - Added error handling to all 15 files
+- `src/db/collections.ts` - Added `onError` and `backoffOptions` to 13 collections
+- `src/components/DataLoader.tsx` - Initialize offline executor and sync listeners
+- `src/components/Header.tsx` - Added SyncStatusIndicator
+
+#### Testing Strategy
+1. Run `pnpm dev`, open app in browser
+2. Open DevTools Network tab, verify Electric headers are exposed
+3. Enter scores, go offline (DevTools throttling), verify pending indicator
+4. Go online, verify scores sync
+5. Open second tab, verify real-time sync between tabs
+
+---
+
 ## TODO - Phase 7: Sync & Auth (Continued)
 
 ### 7.2b Electric SQL Testing & Deployment
