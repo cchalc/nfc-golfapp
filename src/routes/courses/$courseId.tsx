@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
 import {
   Container,
   Flex,
@@ -8,15 +9,19 @@ import {
   Badge,
   Button,
   Dialog,
+  AlertDialog,
   Table,
   TextField,
   Grid,
+  Spinner,
 } from '@radix-ui/themes'
-import { ArrowLeft, MapPin, Flag, Edit, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, MapPin, Flag, Edit, Plus, Trash2, RefreshCw } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
-import { courseCollection, holeCollection, teeBoxCollection } from '../../db/collections'
+import { courseCollection, holeCollection, teeBoxCollection, roundCollection } from '../../db/collections'
 import { CourseForm } from '../../components/courses/CourseForm'
 import { useDialogState } from '../../hooks/useDialogState'
+import { getCourse, getAllTees, getPrimaryTee } from '../../lib/golfCourseApi'
+import { resyncCourseDetails } from '../../server/mutations'
 
 export const Route = createFileRoute('/courses/$courseId')({
   ssr: false,
@@ -25,8 +30,10 @@ export const Route = createFileRoute('/courses/$courseId')({
 
 function CourseDetailPage() {
   const { courseId } = Route.useParams()
+  const navigate = useNavigate()
   const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-course-${courseId}`)
   const [addHoleDialogOpen, setAddHoleDialogOpen] = useDialogState(`add-hole-${courseId}`)
+  const [isResyncing, setIsResyncing] = useState(false)
 
   const { data: courses } = useLiveQuery(
     (q) => q.from({ course: courseCollection }).where(({ course }) => eq(course.id, courseId)),
@@ -51,6 +58,16 @@ function CourseDetailPage() {
         .orderBy(({ tee }) => tee.totalYards, 'desc'),
     [courseId]
   )
+
+  // Check if course is used by any rounds
+  const { data: roundsUsingCourse } = useLiveQuery(
+    (q) =>
+      q
+        .from({ round: roundCollection })
+        .where(({ round }) => eq(round.courseId, courseId)),
+    [courseId]
+  )
+  const isInUse = (roundsUsingCourse?.length ?? 0) > 0
 
   function handleAddHole(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -91,6 +108,72 @@ function CourseDetailPage() {
         strokeIndex: strokeIndices[i],
         yardage: null,
       })
+    }
+  }
+
+  function handleDeleteCourse() {
+    courseCollection.delete(courseId)
+    navigate({ to: '/courses' })
+  }
+
+  async function handleResyncCourse() {
+    if (!course?.apiId) return
+
+    setIsResyncing(true)
+    try {
+      // Fetch fresh data from API
+      const fullCourse = await getCourse(course.apiId)
+      if (!fullCourse) {
+        throw new Error('Failed to fetch course details')
+      }
+
+      // Get primary tee for default ratings
+      const primaryTee = getPrimaryTee(fullCourse)
+
+      // Build course updates
+      const courseUpdates = {
+        name: fullCourse.course_name,
+        clubName: fullCourse.club_name,
+        courseRating: primaryTee?.course_rating ?? null,
+        slopeRating: primaryTee?.slope_rating ?? null,
+        totalPar: primaryTee?.par_total ?? 72,
+      }
+
+      // Build new tee boxes
+      const allTees = getAllTees(fullCourse)
+      const newTeeBoxes = allTees.map((tee) => ({
+        id: crypto.randomUUID(),
+        courseId,
+        teeName: tee.tee_name,
+        gender: tee.gender as 'male' | 'female',
+        courseRating: tee.course_rating,
+        slopeRating: tee.slope_rating,
+        totalYards: tee.total_yards,
+        parTotal: tee.par_total,
+      }))
+
+      // Build new holes
+      const teesWithHoles = allTees.filter((t) => t.holes && t.holes.length > 0)
+      const teeForHoles = teesWithHoles.find((t) => t.gender === 'male') || teesWithHoles[0]
+      const newHoles = (teeForHoles?.holes || []).map((hole, i) => ({
+        id: crypto.randomUUID(),
+        courseId,
+        holeNumber: i + 1,
+        par: hole.par,
+        strokeIndex: hole.handicap,
+        yardage: hole.yardage,
+      }))
+
+      // Resync via batched transaction (deletes old, inserts new)
+      const result = await resyncCourseDetails({
+        data: { courseId, courseUpdates, teeBoxes: newTeeBoxes, holes: newHoles },
+      })
+
+      console.log(`Resynced course with ${result.teeBoxCount} tee boxes and ${result.holeCount} holes (txid: ${result.txid})`)
+    } catch (error) {
+      console.error('Failed to resync course:', error)
+    } finally {
+      setIsResyncing(false)
     }
   }
 
@@ -152,26 +235,87 @@ function CourseDetailPage() {
               </Flex>
             </Flex>
 
-            <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-              <Dialog.Trigger>
-                <Button variant="soft" size="1">
-                  <Edit size={14} />
-                  Edit
+            <Flex gap="2">
+              {/* Resync button - only show if course has API ID */}
+              {course.apiId && (
+                <Button
+                  variant="soft"
+                  size="1"
+                  onClick={handleResyncCourse}
+                  disabled={isResyncing}
+                >
+                  {isResyncing ? <Spinner size="1" /> : <RefreshCw size={14} />}
+                  Resync
                 </Button>
-              </Dialog.Trigger>
-              <Dialog.Content maxWidth="450px">
-                <Dialog.Title>Edit Course</Dialog.Title>
-                <Flex direction="column" gap="4" pt="4">
-                  <CourseForm
-                    courseId={course.id}
-                    initialData={course}
-                    onSuccess={() => setEditDialogOpen(false)}
-                  />
-                </Flex>
-              </Dialog.Content>
-            </Dialog.Root>
+              )}
+
+              <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                <Dialog.Trigger>
+                  <Button variant="soft" size="1">
+                    <Edit size={14} />
+                    Edit
+                  </Button>
+                </Dialog.Trigger>
+                <Dialog.Content maxWidth="450px">
+                  <Dialog.Title>Edit Course</Dialog.Title>
+                  <Flex direction="column" gap="4" pt="4">
+                    <CourseForm
+                      courseId={course.id}
+                      initialData={course}
+                      onSuccess={() => setEditDialogOpen(false)}
+                    />
+                  </Flex>
+                </Dialog.Content>
+              </Dialog.Root>
+
+              {/* Delete button - only if not used by any rounds */}
+              <AlertDialog.Root>
+                <AlertDialog.Trigger>
+                  <Button
+                    variant="soft"
+                    color="red"
+                    size="1"
+                    disabled={isInUse}
+                    title={isInUse ? 'Course is used by rounds and cannot be deleted' : 'Delete course'}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </AlertDialog.Trigger>
+                <AlertDialog.Content maxWidth="450px">
+                  <AlertDialog.Title>Delete Course</AlertDialog.Title>
+                  <AlertDialog.Description size="2">
+                    Are you sure you want to delete "{course.name}"? This will also delete all
+                    hole and tee box data. This action cannot be undone.
+                  </AlertDialog.Description>
+                  <Flex gap="3" mt="4" justify="end">
+                    <AlertDialog.Cancel>
+                      <Button variant="soft" color="gray">
+                        Cancel
+                      </Button>
+                    </AlertDialog.Cancel>
+                    <AlertDialog.Action>
+                      <Button variant="solid" color="red" onClick={handleDeleteCourse}>
+                        Delete Course
+                      </Button>
+                    </AlertDialog.Action>
+                  </Flex>
+                </AlertDialog.Content>
+              </AlertDialog.Root>
+            </Flex>
           </Flex>
         </Card>
+
+        {/* Usage warning */}
+        {isInUse && (
+          <Card>
+            <Flex align="center" gap="2" py="1">
+              <Badge color="amber" variant="soft">In Use</Badge>
+              <Text size="2" color="gray">
+                This course is used by {roundsUsingCourse?.length} round(s) and cannot be deleted.
+              </Text>
+            </Flex>
+          </Card>
+        )}
 
         {/* Tee Boxes section */}
         {teeBoxes && teeBoxes.length > 0 && (

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Container, Flex, Heading, Button, Card, Text, Badge } from '@radix-ui/themes'
-import { Plus, ChevronRight } from 'lucide-react'
+import { Container, Flex, Heading, Button, Card, Text, Badge, AlertDialog } from '@radix-ui/themes'
+import { Plus, ChevronRight, Trash2 } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
   tripCollection,
@@ -47,6 +47,10 @@ function RoundsPage() {
 
   const courseMap = new Map((courses || []).map((c) => [c.id, c]))
 
+  function handleDeleteRound(roundId: string) {
+    roundCollection.delete(roundId)
+  }
+
   if (!trip) {
     return (
       <Container size="2" py="6">
@@ -76,13 +80,13 @@ function RoundsPage() {
             {rounds.map((round) => {
               const course = courseMap.get(round.courseId)
               return (
-                <Link
-                  key={round.id}
-                  to="/trips/$tripId/rounds/$roundId"
-                  params={{ tripId, roundId: round.id }}
-                >
-                  <Card asChild>
-                    <Flex justify="between" align="center">
+                <Card key={round.id}>
+                  <Flex justify="between" align="center">
+                    <Link
+                      to="/trips/$tripId/rounds/$roundId"
+                      params={{ tripId, roundId: round.id }}
+                      style={{ flex: 1, textDecoration: 'none' }}
+                    >
                       <Flex direction="column" gap="3">
                         <Flex align="center" gap="2">
                           <Badge>Round {round.roundNumber}</Badge>
@@ -99,10 +103,48 @@ function RoundsPage() {
                           </Text>
                         )}
                       </Flex>
-                      <ChevronRight size={16} />
+                    </Link>
+                    <Flex align="center" gap="2">
+                      <Link
+                        to="/trips/$tripId/rounds/$roundId"
+                        params={{ tripId, roundId: round.id }}
+                      >
+                        <ChevronRight size={16} style={{ color: 'var(--gray-9)' }} />
+                      </Link>
+                      <AlertDialog.Root>
+                        <AlertDialog.Trigger>
+                          <Button variant="ghost" size="1" color="red">
+                            <Trash2 size={14} />
+                          </Button>
+                        </AlertDialog.Trigger>
+                        <AlertDialog.Content maxWidth="400px">
+                          <AlertDialog.Title>Delete Round</AlertDialog.Title>
+                          <AlertDialog.Description size="2">
+                            Are you sure you want to delete Round {round.roundNumber} at{' '}
+                            {course?.name || 'Unknown Course'}? This will permanently remove all
+                            scores for this round.
+                          </AlertDialog.Description>
+                          <Flex gap="3" mt="4" justify="end">
+                            <AlertDialog.Cancel>
+                              <Button variant="soft" color="gray">
+                                Cancel
+                              </Button>
+                            </AlertDialog.Cancel>
+                            <AlertDialog.Action>
+                              <Button
+                                variant="solid"
+                                color="red"
+                                onClick={() => handleDeleteRound(round.id)}
+                              >
+                                Delete Round
+                              </Button>
+                            </AlertDialog.Action>
+                          </Flex>
+                        </AlertDialog.Content>
+                      </AlertDialog.Root>
                     </Flex>
-                  </Card>
-                </Link>
+                  </Flex>
+                </Card>
               )
             })}
           </Flex>

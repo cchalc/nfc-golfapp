@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
   Container,
   Flex,
@@ -10,6 +10,7 @@ import {
   Badge,
   Switch,
   Tooltip,
+  AlertDialog,
 } from '@radix-ui/themes'
 import {
   Calendar,
@@ -20,6 +21,7 @@ import {
   ChevronRight,
   Target,
   Calculator,
+  Trash2,
 } from 'lucide-react'
 import { useLiveQuery, eq, count } from '@tanstack/react-db'
 import {
@@ -46,6 +48,7 @@ function formatDate(date: Date): string {
 
 function TripDashboard() {
   const { tripId } = Route.useParams()
+  const navigate = useNavigate()
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -108,12 +111,47 @@ function TripDashboard() {
     })
   }
 
+  function handleDeleteTrip() {
+    tripCollection.delete(tripId)
+    navigate({ to: '/trips' })
+  }
+
   return (
     <Container size="2" py="6">
       <Flex direction="column" gap="6">
         {/* Header */}
         <Flex direction="column" gap="3">
-          <Heading size="8">{trip.name}</Heading>
+          <Flex justify="between" align="start">
+            <Heading size="8">{trip.name}</Heading>
+            <AlertDialog.Root>
+              <AlertDialog.Trigger>
+                <Button variant="soft" color="red" size="1">
+                  <Trash2 size={14} />
+                  Delete Trip
+                </Button>
+              </AlertDialog.Trigger>
+              <AlertDialog.Content maxWidth="450px">
+                <AlertDialog.Title>Delete Trip</AlertDialog.Title>
+                <AlertDialog.Description size="2">
+                  Are you sure you want to delete "{trip.name}"? This will permanently remove all
+                  rounds, scores, and challenges associated with this trip. This action cannot be
+                  undone.
+                </AlertDialog.Description>
+                <Flex gap="3" mt="4" justify="end">
+                  <AlertDialog.Cancel>
+                    <Button variant="soft" color="gray">
+                      Cancel
+                    </Button>
+                  </AlertDialog.Cancel>
+                  <AlertDialog.Action>
+                    <Button variant="solid" color="red" onClick={handleDeleteTrip}>
+                      Delete Trip
+                    </Button>
+                  </AlertDialog.Action>
+                </Flex>
+              </AlertDialog.Content>
+            </AlertDialog.Root>
+          </Flex>
           {trip.description && (
             <Text size="3" color="gray">
               {trip.description}

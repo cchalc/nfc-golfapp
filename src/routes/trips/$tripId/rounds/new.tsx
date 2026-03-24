@@ -69,6 +69,7 @@ function NewRoundPage() {
       roundDate,
       roundNumber: nextRoundNumber,
       notes,
+      includedInScoring: true,
     })
 
     navigate({

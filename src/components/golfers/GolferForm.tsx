@@ -56,6 +56,23 @@ export function GolferForm({ initialData, golferId, onSuccess }: GolferFormProps
       return
     }
 
+    // Check for duplicate names when creating new golfers
+    if (!isEditing) {
+      const normalizedName = result.data.name.toLowerCase().trim()
+      const existingGolfer = [...golferCollection].find(
+        ([, g]) => g.name.toLowerCase().trim() === normalizedName
+      )
+      if (existingGolfer) {
+        formErrorCollection.insert({
+          id: crypto.randomUUID(),
+          formId,
+          field: 'name',
+          message: `A golfer named "${existingGolfer[1].name}" already exists`,
+        })
+        return
+      }
+    }
+
     if (isEditing && golferId) {
       golferCollection.update(golferId, (draft) => {
         draft.name = result.data.name

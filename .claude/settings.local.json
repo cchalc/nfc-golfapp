@@ -83,7 +83,17 @@
       "Bash(xattr:*)",
       "Bash(git config:*)",
       "Bash(git add:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(claude mcp:*)",
+      "Bash(npx -y @neondatabase/mcp-server-neon --version)",
+      "Bash(nslookup registry.npmjs.org)",
+      "Bash(npm config:*)",
+      "Bash(psql:*)",
+      "WebFetch(domain:neon.com)",
+      "WebFetch(domain:dashboard.electric-sql.cloud)",
+      "Bash(npx @electric-sql/cli:*)",
+      "Bash(npx:*)",
+      "Bash(source:*)"
     ]
   },
   "enabledPlugins": {

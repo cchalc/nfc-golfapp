@@ -27,6 +27,122 @@ This project uses [Tidewave](https://github.com/tidewave-ai/tidewave_js) MCP for
 - Use `project_eval` to test code snippets in the actual project context
 - Use `get_logs` to debug runtime issues
 
+## Electric SQL Sync
+
+This project uses [Electric SQL Cloud](https://electric-sql.com/product/cloud) for real-time sync between PostgreSQL and the client. Data flows through TanStack DB collections with optimistic mutations.
+
+### Architecture
+
+```
+Client (TanStack DB) <--> Electric Proxy Routes <--> Electric Cloud <--> Neon PostgreSQL
+```
+
+1. **Electric shapes** stream changes from PostgreSQL to the client
+2. **Mutations** go client → server function → PostgreSQL → txid → Electric sync
+
+### Setup
+
+1. **Enable logical replication in Neon**: Settings → Logical Replication → Enable
+2. **Sign up for Electric Cloud**: https://dashboard.electric-sql.cloud/
+3. **Connect your Neon database**: Use the direct (non-pooled) connection string
+4. **Get credentials**: Electric Cloud will provide `source_id` and `secret`
+5. **Set environment variables** in `.envrc`
+
+### Environment Variables
+
+```fish
+# .envrc
+export ELECTRIC_URL="https://api.electric-sql.cloud"
+export ELECTRIC_SOURCE_ID="your-source-id"    # From Electric Cloud dashboard
+export ELECTRIC_SECRET="your-secret"          # From Electric Cloud dashboard
+```
+
+### Proxy Routes
+
+Electric shape requests are proxied through TanStack Start API routes at `/api/electric/<table>`:
+
+- `/api/electric/trips`, `/api/electric/golfers`, etc.
+
+The proxy routes inject `source_id` and `secret` server-side (never exposed to client).
+
+### Mutation Flow
+
+Collections wire up `onInsert`/`onUpdate`/`onDelete` handlers that:
+1. Call server mutation functions in `src/server/mutations/`
+2. Mutations execute SQL + `txid_current()` in a transaction
+3. Return `{ txid }` for Electric reconciliation
+
+## Neon PostgreSQL
+
+This project uses [Neon](https://neon.tech) PostgreSQL with **two connection strings**:
+
+| Variable | Type | Use Case |
+|----------|------|----------|
+| `DATABASE_URL` | Pooled | App queries via Neon serverless driver |
+| `DATABASE_URL_DIRECT` | Direct | Electric SQL logical replication |
+
+### Pooled vs Direct Connections
+
+**Pooled** (has `-pooler` in hostname):
+```
+postgresql://...@ep-xxx-pooler.region.aws.neon.tech/...
+```
+- Routes through PgBouncer connection pooler
+- Good for serverless/edge functions with many short-lived connections
+- **Cannot** do logical replication
+
+**Direct** (no `-pooler`):
+```
+postgresql://...@ep-xxx.region.aws.neon.tech/...
+```
+- Connects straight to Postgres
+- Required for logical replication (Electric SQL)
+- Use for any operation needing persistent connections
+
+### Electric SQL Requirement
+
+Electric SQL **must** use the direct connection string. The pooled connection will fail with "Unable to connect in replication mode" because PgBouncer doesn't support logical replication.
+
+### Database Access
+
+Use `psql` directly for all database operations:
+
+```fish
+# Run a query
+psql "$DATABASE_URL" -c "SELECT * FROM users LIMIT 10"
+
+# Interactive session
+psql "$DATABASE_URL"
+
+# Run a SQL file
+psql "$DATABASE_URL" -f migrations/001_init.sql
+```
+
+### Common Operations
+
+```fish
+# List all tables
+psql "$DATABASE_URL" -c "\\dt"
+
+# Describe a table
+psql "$DATABASE_URL" -c "\\d tablename"
+
+# Run migrations
+psql "$DATABASE_URL" -f db/schema.sql
+```
+
+### Neon MCP (Optional)
+
+The Neon MCP server provides additional tools but requires npm registry access. If npm is blocked (e.g., corporate VPN), use `psql` instead.
+
+To set up the MCP server (requires npm access):
+
+```fish
+claude mcp add neon -s local -e NEON_API_KEY=<your-api-key> -- npx -y @neondatabase/mcp-server-neon start
+```
+
+Then restart Claude Code. If it fails to connect, check `npm ping` to verify registry access.
+
 ## Shell Environment
 
 - **Fish Shell Only**: This computer runs fish shell. Always use fish shell syntax, not bash/zsh.

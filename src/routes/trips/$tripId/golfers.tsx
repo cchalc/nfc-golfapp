@@ -101,11 +101,26 @@ function TripGolfersPage() {
   )
 
   function toggleGolfer(golferId: string) {
-    const existing = tripGolfers?.find((tg) => tg.golferId === golferId)
+    // Check for existing entry using both the live query data AND a fresh collection lookup
+    // This prevents race conditions when rapidly clicking
+    const existingFromQuery = tripGolfers?.find((tg) => tg.golferId === golferId)
+    const existingFromCollection = [...tripGolferCollection].find(
+      ([, tg]) => tg.tripId === tripId && tg.golferId === golferId
+    )
+    const existing = existingFromQuery || (existingFromCollection ? existingFromCollection[1] : null)
 
     if (existing) {
       tripGolferCollection.delete(existing.id)
     } else {
+      // Double-check no duplicate exists before inserting
+      const duplicateCheck = [...tripGolferCollection].some(
+        ([, tg]) => tg.tripId === tripId && tg.golferId === golferId
+      )
+      if (duplicateCheck) {
+        console.warn(`Golfer ${golferId} already in trip ${tripId}, skipping duplicate`)
+        return
+      }
+
       // Capture the golfer's current handicap when adding them to the trip
       // This ensures the trip uses a locked-in handicap that won't change
       // if the golfer's main handicap is updated later
@@ -120,6 +135,7 @@ function TripGolfersPage() {
         invitedAt: new Date(),
         acceptedAt: new Date(),
         handicapOverride: capturedHandicap,
+        includedInScoring: true,
       })
     }
   }

@@ -307,17 +307,162 @@ just db-push      # Push schema directly (dev only)
 
 ---
 
+## Completed - Phase 7.2: Electric SQL Integration
+
+### Session 2026-03-23: Electric SQL Bug Fixes
+
+#### Dialog State Race Condition Fix
+- [x] **Root cause**: `useDialogState` hook used stale closure values from `useLiveQuery`
+- [x] **Fix**: Query collection directly in `setOpen` callback to get fresh state
+- [x] **File**: `src/hooks/useDialogState.ts` - Added `useCallback` and direct collection iteration
+
+#### Round Creation Missing Field Fix
+- [x] **Root cause**: `roundCollection.insert()` didn't include `includedInScoring` field
+- [x] **Fix**: Added `includedInScoring: true` explicitly to insert call
+- [x] **File**: `src/routes/trips/$tripId/rounds/new.tsx`
+
+#### Scorecard Navigation Fix
+- [x] **Root cause**: `Card asChild` pattern inside Link caused click issues
+- [x] **Fix**: Removed `asChild`, added `style={{ cursor: 'pointer' }}` for visual feedback
+- [x] **Files**:
+  - `src/routes/trips/$tripId/rounds/$roundId/index.tsx` - Player scorecard links
+  - `src/routes/golfers/$golferId.tsx` - Recent rounds links
+
+#### Delete Functionality for Trips and Golfers
+- [x] **Feature**: Added delete buttons with confirmation dialogs
+- [x] **Trip delete**: Button in trip header with AlertDialog confirmation
+- [x] **Golfer delete**: Button next to Edit with AlertDialog confirmation
+- [x] **Files**:
+  - `src/routes/trips/$tripId/index.tsx` - Delete trip button
+  - `src/routes/golfers/$golferId.tsx` - Delete golfer button
+
+#### Files Modified
+- `src/hooks/useDialogState.ts` - Race condition fix with direct collection lookup
+- `src/routes/trips/$tripId/rounds/new.tsx` - Added missing includedInScoring field
+- `src/routes/trips/$tripId/rounds/$roundId/index.tsx` - Fixed Card asChild, enabled scorecard clicks
+- `src/routes/golfers/$golferId.tsx` - Fixed Card asChild, added delete button
+- `src/routes/trips/$tripId/index.tsx` - Added delete trip button
+
+#### Course Import Batching Fix
+- [x] **Issue**: Holes disappeared after course import due to 18+ concurrent mutations
+- [x] **Root cause**: Each insert fired separately, causing Electric sync issues
+- [x] **Solution**: Created `importCourseWithDetails` server function that inserts course, tee boxes, and holes in a single database transaction
+- [x] **Files**:
+  - `src/server/mutations/course-import.ts` - New batched import function
+  - `src/server/mutations/index.ts` - Export new function
+  - `src/components/courses/CourseSearch.tsx` - Use batched import instead of collection inserts
+
+#### Course Management Features
+- [x] **Resync Course**: "Resync" button for courses imported from API
+  - Fetches fresh data from Golf Course API
+  - Uses batched `resyncCourseDetails` server function
+  - Deletes old tee boxes/holes, inserts new ones in single transaction
+- [x] **Delete Course**: Delete button with confirmation dialog
+  - Disabled when course is used by rounds
+  - Shows "In Use" warning badge with round count
+- [x] **Files**:
+  - `src/server/mutations/course-import.ts` - Added `resyncCourseDetails` function
+  - `src/routes/courses/$courseId.tsx` - Added Resync/Delete buttons
+
+#### Round Deletion
+- [x] Added delete button to each round in the rounds list
+- [x] Confirmation dialog before deletion
+- [x] Fixed Card asChild click issues in rounds list
+- [x] **File**: `src/routes/trips/$tripId/rounds/index.tsx`
+
+#### Duplicate Golfer Prevention
+- [x] **GolferForm**: Duplicate name check when creating new golfers
+  - Case-insensitive comparison
+  - Shows error message with existing golfer name
+- [x] **Trip Golfers**: Race condition protection in toggleGolfer
+  - Double-checks collection directly before inserting
+  - Prevents rapid-click duplicates
+- [x] **Files**:
+  - `src/components/golfers/GolferForm.tsx`
+  - `src/routes/trips/$tripId/golfers.tsx`
+
+---
+
+### Session 2026-03-23: Electric SQL Sync Implementation
+
+#### Electric Proxy Routes Created
+- [x] Created `src/server/electric-proxy.ts` - shared utility for Electric proxy requests
+- [x] Created 13 API routes in `src/routes/api/electric/`:
+  - `trips.ts`, `golfers.ts`, `trip-golfers.ts`, `courses.ts`
+  - `tee-boxes.ts`, `holes.ts`, `rounds.ts`, `scores.ts`
+  - `round-summaries.ts`, `teams.ts`, `team-members.ts`
+  - `challenges.ts`, `challenge-results.ts`
+- [x] Routes proxy Electric protocol params and inject server credentials
+
+#### Server Mutation Functions Created
+- [x] Created `src/server/mutations/db.ts` - Neon SQL client helper
+- [x] Created mutation files for all 13 tables:
+  - Each file has `insert`, `update`, `delete` functions
+  - All mutations use Neon's `sql.transaction()` for atomicity
+  - Each mutation returns `{ id, txid }` for Electric reconciliation
+  - Uses `txid_current()` to get transaction ID in same transaction
+
+#### Collections Converted to Electric
+- [x] Updated `src/db/collections.ts`:
+  - Imported `electricCollectionOptions` from `@tanstack/electric-db-collection`
+  - Converted 13 collections from `localOnlyCollectionOptions` to `electricCollectionOptions`
+  - Added `shapeOptions.url` pointing to proxy routes
+  - Added `timestamptz` parser for collections with timestamp columns
+  - Wired up `onInsert`, `onUpdate`, `onDelete` callbacks to server mutations
+  - Kept `uiStateCollection` and `formErrorCollection` as local-only
+
+#### DataLoader Updated
+- [x] Removed `seedData()` call from `DataLoader.tsx`
+- [x] Electric shapes now auto-populate collections from PostgreSQL
+
+#### Environment Configuration
+- [x] Added Electric environment variables to `.envrc`:
+  - `ELECTRIC_URL` - Electric service URL
+  - `DATABASE_URL_DIRECT` - Direct Neon connection for logical replication
+  - `ELECTRIC_SOURCE_ID` / `ELECTRIC_SECRET` - for Electric Cloud
+- [x] Created `docker-compose.yml` for local Electric development
+
+#### Documentation Updated
+- [x] Updated `CLAUDE.md` with Electric SQL section:
+  - Architecture diagram (Client ↔ Electric Proxy ↔ Electric ↔ PostgreSQL)
+  - Local development setup with Docker
+  - Environment variable configuration
+  - Proxy routes and mutation flow explanation
+
+#### Files Created
+- `src/server/electric-proxy.ts`
+- `src/server/mutations/db.ts`
+- `src/server/mutations/index.ts`
+- `src/server/mutations/trips.ts` (+ 12 more table files)
+- `src/routes/api/electric/trips.ts` (+ 12 more route files)
+
+#### Files Modified
+- `src/db/collections.ts` - Electric collections
+- `src/components/DataLoader.tsx` - removed seeding
+- `.envrc` - Electric environment variables
+- `CLAUDE.md` - Electric documentation
+
+#### Next Steps for Testing
+1. Enable logical replication in Neon: Settings → Logical Replication → Enable
+2. Sign up for Electric Cloud: https://dashboard.electric-sql.cloud/
+3. Connect Neon database (use direct connection string, not pooled)
+4. Get `source_id` and `secret` from dashboard, add to `.envrc`
+5. Run `direnv allow` to load new env vars
+6. Start dev server: `pnpm dev`
+7. Test: Create golfer → Refresh page → Verify persistence
+8. Check database: `psql "$DATABASE_URL" -c "SELECT * FROM golfers"`
+
+---
+
 ## TODO - Phase 7: Sync & Auth (Continued)
 
-### 7.2 Electric SQL Integration
-- [ ] Install Electric SQL proxy/service on Neon
-- [ ] Create API route for Electric SQL proxy in TanStack Start
-- [ ] Install `@electric-sql/client` package
-- [ ] Configure Electric SQL proxy/service
-- [ ] Define shapes for each collection (what data to sync)
-- [ ] Switch collections from `localOnlyCollectionOptions` to `electricCollectionOptions`
-- [ ] Test offline support and sync conflict resolution
-- [ ] Verify real-time updates across browser tabs
+### 7.2b Electric SQL Testing & Deployment
+- [ ] Enable logical replication in Neon dashboard
+- [ ] Sign up for Electric Cloud at https://dashboard.electric-sql.cloud/
+- [ ] Connect Neon database and get `source_id` + `secret`
+- [ ] Add credentials to `.envrc` and run `direnv allow`
+- [ ] Test data persistence (create → refresh → verify)
+- [ ] Test real-time sync across browser tabs
 
 ### 7.3 Authentication
 - [ ] Install Auth.js (NextAuth) dependencies

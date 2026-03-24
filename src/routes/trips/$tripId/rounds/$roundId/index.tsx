@@ -169,8 +169,9 @@ function RoundOverview() {
                     to="/trips/$tripId/rounds/$roundId/scorecard"
                     params={{ tripId, roundId }}
                     search={{ golferId: golfer.id }}
+                    style={{ textDecoration: 'none' }}
                   >
-                    <Card asChild>
+                    <Card style={{ cursor: 'pointer' }}>
                       <Flex justify="between" align="center">
                         <Flex direction="column" gap="3">
                           <Text weight="medium">{golfer.name}</Text>

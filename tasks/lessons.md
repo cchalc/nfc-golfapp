@@ -186,6 +186,166 @@ getComputedStyle(cardElement).gap      // "48px" - set but ignored
 
 **When asChild IS okay**: For horizontal Flex layouts where you just need `justify-between` and `align-center` without vertical stacking gaps.
 
+## Neon MCP vs psql
+
+**Issue**: The Neon MCP server uses `npx -y @neondatabase/mcp-server-neon start` which requires npm registry access. On corporate VPNs or networks that block npm, the MCP server will fail to connect on every Claude Code restart.
+
+**Diagnosis**: Run `npm ping` or `curl https://registry.npmjs.org/` - if ECONNREFUSED, npm is blocked.
+
+**Solution**: Use `psql "$DATABASE_URL"` directly for all database operations. The DATABASE_URL is set in `.envrc` and works regardless of npm access.
+
+```fish
+# Query the database
+psql "$DATABASE_URL" -c "SELECT * FROM users LIMIT 10"
+
+# List tables
+psql "$DATABASE_URL" -c "\\dt"
+
+# Run migrations
+psql "$DATABASE_URL" -f db/schema.sql
+```
+
+**Note**: If MCP features are needed (branch management, project creation), disconnect from VPN and restart Claude Code.
+
+## Neon Pooled vs Direct Connections
+
+**Issue**: Electric SQL fails to connect with error "Unable to connect to your database in replication mode" when using Neon's pooled connection string.
+
+**Root cause**: Neon provides two connection types:
+- **Pooled** (hostname contains `-pooler`): Routes through PgBouncer, doesn't support logical replication
+- **Direct** (no `-pooler`): Connects straight to Postgres, supports logical replication
+
+**Example**:
+```
+# Pooled - WON'T work with Electric
+postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/db
+
+# Direct - REQUIRED for Electric
+postgresql://user:pass@ep-xxx.region.aws.neon.tech/db
+```
+
+**Solution**: Use two connection strings in `.envrc`:
+```fish
+# For app queries (serverless driver)
+export DATABASE_URL="postgresql://...@ep-xxx-pooler.region.aws.neon.tech/db"
+
+# For Electric SQL (logical replication)
+export DATABASE_URL_DIRECT="postgresql://...@ep-xxx.region.aws.neon.tech/db"
+```
+
+**Additional requirement**: Enable logical replication in Neon dashboard (Settings → Logical Replication → Enable). This is a one-time, permanent change that briefly restarts the database.
+
+## Electric SQL Snake Case to Camel Case Column Mapping
+
+**Issue**: Electric shapes return data from PostgreSQL with snake_case column names (e.g., `start_date`), but the Zod schemas expect camelCase (e.g., `startDate`). Fields end up as `undefined`.
+
+**Symptom**: `Cannot read properties of undefined (reading 'toLocaleDateString')` when accessing date fields.
+
+**Root cause**: PostgreSQL uses snake_case column names. Without column mapping, the Electric shape delivers `{ start_date: '2026-03-27' }` but the schema expects `{ startDate: Date }`.
+
+**Solution**: Use `snakeCamelMapper` from `@electric-sql/client`:
+
+```tsx
+import { snakeCamelMapper } from '@electric-sql/client'
+
+// Create mapper once
+const columnMapper = snakeCamelMapper()
+
+// Add to every Electric collection's shapeOptions
+export const tripCollection = createCollection(
+  electricCollectionOptions({
+    id: 'trips',
+    schema: tripSchema,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/trips'),
+      parser: { timestamptz: (date: string) => new Date(date) },
+      columnMapper,  // <-- Add this
+    },
+    // ...
+  })
+)
+```
+
+**Note**: The column mapper handles bidirectional mapping:
+- Read: `start_date` → `startDate`
+- Write: `startDate` → `start_date` (in WHERE clauses)
+
+## TanStack Start Server Functions (Not Plain Async Functions)
+
+**Issue**: Plain async functions in server files cannot be called from the client. They must be wrapped with `createServerFn` to be callable across the server/client boundary.
+
+**Root cause**: TanStack Start server functions use RPC under the hood. Plain async functions only exist on the server and aren't exposed as callable endpoints.
+
+**Symptom**: Calling a plain async function from client code either silently fails or throws "not a function" errors at runtime.
+
+**Solution**: Always use `createServerFn` for functions that need to be called from the client:
+
+```tsx
+// ❌ DON'T - plain async function (server-only)
+export async function insertGolfer(golfer: Golfer) {
+  const sql = getDb()
+  // This won't be callable from the client
+}
+
+// ✅ DO - server function (callable from client)
+export const insertGolfer = createServerFn({ method: 'POST' })
+  .inputValidator((data: Golfer) => data)
+  .handler(async ({ data: golfer }) => {
+    const sql = getDb()
+    // Now callable from client via RPC
+  })
+```
+
+## TanStack Start Server Function Call Signature
+
+**Issue**: Server functions created with `createServerFn().inputValidator().handler()` require callers to wrap the data in `{ data: ... }`.
+
+**Root cause**: The `.inputValidator()` method expects the input in a specific format. TypeScript error: `Property 'data' is missing in type '...' but required in type 'RequiredFetcherDataOptions<...>'`.
+
+**Solution**: Always call server functions with `{ data: ... }` wrapper:
+
+```tsx
+// Server function definition
+export const insertGolfer = createServerFn({ method: 'POST' })
+  .inputValidator((data: Golfer) => data)
+  .handler(async ({ data: golfer }) => {
+    // data comes unwrapped here
+  })
+
+export const updateGolfer = createServerFn({ method: 'POST' })
+  .inputValidator((data: { id: string; changes: Partial<Golfer> }) => data)
+  .handler(async ({ data: { id, changes } }) => {
+    // destructure from data
+  })
+
+// ❌ DON'T - missing data wrapper
+await insertGolfer(golfer)
+await updateGolfer({ id, changes })
+
+// ✅ DO - wrap in { data: ... }
+await insertGolfer({ data: golfer })
+await updateGolfer({ data: { id, changes } })
+```
+
+**Pattern for Electric collections**:
+```tsx
+onInsert: async ({ transaction }) => {
+  const { modified: item } = transaction.mutations[0]
+  const { txid } = await insertItem({ data: item })  // Wrap in { data }
+  return { txid }
+},
+onUpdate: async ({ transaction }) => {
+  const { modified: item } = transaction.mutations[0]
+  const { txid } = await updateItem({ data: { id: item.id, changes: item } })
+  return { txid }
+},
+onDelete: async ({ transaction }) => {
+  const { original: item } = transaction.mutations[0]
+  const { txid } = await deleteItem({ data: { id: item.id } })
+  return { txid }
+},
+```
+
 ## Radix Dialog Closing Pattern
 
 **Issue**: Using `document.querySelector('[data-radix-dialog-close]')?.click()` to close dialogs fails when no `<Dialog.Close>` element exists in the dialog. The selector returns `null` and the dialog stays open after form submission.
@@ -240,3 +400,120 @@ function MyPage() {
 - Follows TanStack DB state management pattern (no useState)
 - Dialog state persists correctly through re-renders
 - Clean separation between form logic and dialog control
+
+## Dialog State Race Condition with Electric SQL
+
+**Issue**: When using `useDialogState` with Electric SQL sync, the `setOpen` callback captures a stale reference to `uiState` from the `useLiveQuery` closure. This causes:
+1. Multiple inserts instead of updates (duplicate UI state entries)
+2. Dialogs that won't close after form submission
+
+**Root cause**: The callback checks `if (uiState) {...}` but `uiState` comes from `useLiveQuery`, which returns data asynchronously. By the time `setOpen` is called, the queried state may be stale or not yet exist.
+
+**Symptom**: Clicking "Add" opens the dialog, but after form submission, calling `setOpen(false)` doesn't close it. Console may show multiple inserts.
+
+**Solution**: Query the collection directly in the callback to get fresh state:
+
+```tsx
+import { useCallback } from 'react'
+
+export function useDialogState(dialogId: string): [boolean, (open: boolean) => void] {
+  const { data: uiStates } = useLiveQuery(
+    (q) => q.from({ ui: uiStateCollection }).where(({ ui }) => eq(ui.dialogId, dialogId)),
+    [dialogId]
+  )
+  const isOpen = uiStates?.[0]?.isOpen ?? false
+
+  // Query collection directly to avoid stale closure
+  const setOpen = useCallback(
+    (open: boolean) => {
+      const entries = [...uiStateCollection]  // Direct iteration
+      const existing = entries.find(([, s]) => s.dialogId === dialogId)
+
+      if (existing) {
+        uiStateCollection.update(existing[0], (d) => { d.isOpen = open })
+      } else {
+        uiStateCollection.insert({
+          id: crypto.randomUUID(),
+          dialogId,
+          isOpen: open,
+        })
+      }
+    },
+    [dialogId]
+  )
+
+  return [isOpen, setOpen]
+}
+```
+
+**Key insight**: TanStack DB collections are iterable and can be queried synchronously via spread (`[...collection]`), which returns `[key, value]` tuples. This avoids the async timing issues with `useLiveQuery`.
+
+## Electric SQL: Batch Multiple Inserts in a Transaction
+
+**Issue**: When importing related data (e.g., a course with 18 holes and multiple tee boxes), inserting each record separately via `collection.insert()` causes:
+1. Each insert triggers an `onInsert` callback → server mutation
+2. Multiple concurrent mutations overwhelm Electric's sync
+3. Data may appear then disappear as Electric reconciles
+4. Race conditions between inserts and the Electric shape subscription
+
+**Symptom**: Imported course holes show up initially, then vanish. Or only some holes persist.
+
+**Root cause**: TanStack DB's `collection.insert()` is optimistic - it adds to local state immediately and fires the `onInsert` mutation asynchronously. When 20+ inserts fire in rapid succession:
+- The server receives 20+ concurrent mutation requests
+- Each returns a different `txid`
+- Electric tries to reconcile all of them
+- Timing issues cause some data to be dropped
+
+**Solution**: For batch operations, bypass the collection and use a single server function that runs everything in one database transaction:
+
+```tsx
+// src/server/mutations/course-import.ts
+export const importCourseWithDetails = createServerFn({ method: 'POST' })
+  .inputValidator((data: { course: Course, teeBoxes: TeeBox[], holes: Hole[] }) => data)
+  .handler(async ({ data: { course, teeBoxes, holes } }) => {
+    const sql = neon(process.env.DATABASE_URL!)
+
+    const results = await sql.transaction((txn) => {
+      const queries = []
+
+      // Insert course
+      queries.push(txn`INSERT INTO courses (...) VALUES (...)`)
+
+      // Insert all tee boxes
+      for (const tee of teeBoxes) {
+        queries.push(txn`INSERT INTO tee_boxes (...) VALUES (...)`)
+      }
+
+      // Insert all holes
+      for (const hole of holes) {
+        queries.push(txn`INSERT INTO holes (...) VALUES (...)`)
+      }
+
+      // Get single txid for Electric reconciliation
+      queries.push(txn`SELECT txid_current()::text AS txid`)
+
+      return queries
+    })
+
+    return { txid: parseInt(results[results.length - 1][0].txid) }
+  })
+
+// In component - call server function directly, not collection.insert()
+const result = await importCourseWithDetails({
+  data: { course, teeBoxes, holes },
+})
+// Electric syncs the data back to collections automatically
+```
+
+**Benefits**:
+- Single database transaction ensures atomicity
+- Single `txid` for Electric to reconcile
+- No race conditions between inserts
+- Data appears all at once after Electric syncs
+- Better error handling (entire import succeeds or fails together)
+
+**When to use this pattern**:
+- Importing data from external APIs (courses, tournaments)
+- Creating related records together (trip + golfers + rounds)
+- Any operation that creates 5+ records at once
+- Migrating or bulk-inserting data

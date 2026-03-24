@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
   Container,
   Flex,
@@ -9,10 +9,11 @@ import {
   Badge,
   Button,
   Dialog,
+  AlertDialog,
   Separator,
   Grid,
 } from '@radix-ui/themes'
-import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight, Trash2 } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useDialogState } from '../../hooks/useDialogState'
 import {
@@ -41,7 +42,13 @@ function getInitials(name: string): string {
 
 function GolferDetailPage() {
   const { golferId } = Route.useParams()
+  const navigate = useNavigate()
   const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-golfer-${golferId}`)
+
+  function handleDeleteGolfer() {
+    golferCollection.delete(golferId)
+    navigate({ to: '/golfers' })
+  }
 
   const { data: golfers } = useLiveQuery(
     (q) =>
@@ -154,29 +161,57 @@ function GolferDetailPage() {
                     HCP {golfer.handicap.toFixed(1)}
                   </Badge>
                 </Flex>
-                <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                  <Dialog.Trigger>
-                    <Button variant="soft" size="1">
-                      <Edit size={14} />
-                      Edit
-                    </Button>
-                  </Dialog.Trigger>
-                  <Dialog.Content maxWidth="400px">
-                    <Dialog.Title>Edit Golfer</Dialog.Title>
-                    <Flex direction="column" gap="4" pt="4">
-                      <GolferForm
-                        golferId={golfer.id}
-                        initialData={{
-                          name: golfer.name,
-                          email: golfer.email,
-                          phone: golfer.phone,
-                          handicap: golfer.handicap,
-                        }}
-                        onSuccess={() => setEditDialogOpen(false)}
-                      />
-                    </Flex>
-                  </Dialog.Content>
-                </Dialog.Root>
+                <Flex gap="2">
+                  <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                    <Dialog.Trigger>
+                      <Button variant="soft" size="1">
+                        <Edit size={14} />
+                        Edit
+                      </Button>
+                    </Dialog.Trigger>
+                    <Dialog.Content maxWidth="400px">
+                      <Dialog.Title>Edit Golfer</Dialog.Title>
+                      <Flex direction="column" gap="4" pt="4">
+                        <GolferForm
+                          golferId={golfer.id}
+                          initialData={{
+                            name: golfer.name,
+                            email: golfer.email,
+                            phone: golfer.phone,
+                            handicap: golfer.handicap,
+                          }}
+                          onSuccess={() => setEditDialogOpen(false)}
+                        />
+                      </Flex>
+                    </Dialog.Content>
+                  </Dialog.Root>
+                  <AlertDialog.Root>
+                    <AlertDialog.Trigger>
+                      <Button variant="soft" color="red" size="1">
+                        <Trash2 size={14} />
+                      </Button>
+                    </AlertDialog.Trigger>
+                    <AlertDialog.Content maxWidth="450px">
+                      <AlertDialog.Title>Delete Golfer</AlertDialog.Title>
+                      <AlertDialog.Description size="2">
+                        Are you sure you want to delete {golfer.name}? This will permanently remove
+                        their profile and all associated scores. This action cannot be undone.
+                      </AlertDialog.Description>
+                      <Flex gap="3" mt="4" justify="end">
+                        <AlertDialog.Cancel>
+                          <Button variant="soft" color="gray">
+                            Cancel
+                          </Button>
+                        </AlertDialog.Cancel>
+                        <AlertDialog.Action>
+                          <Button variant="solid" color="red" onClick={handleDeleteGolfer}>
+                            Delete Golfer
+                          </Button>
+                        </AlertDialog.Action>
+                      </Flex>
+                    </AlertDialog.Content>
+                  </AlertDialog.Root>
+                </Flex>
               </Flex>
 
               {/* Contact info */}
@@ -329,8 +364,9 @@ function GolferDetailPage() {
                   to="/trips/$tripId/rounds/$roundId/scorecard"
                   params={{ tripId: round.tripId, roundId: round.roundId }}
                   search={{ golferId }}
+                  style={{ textDecoration: 'none' }}
                 >
-                  <Card asChild>
+                  <Card style={{ cursor: 'pointer' }}>
                     <Flex justify="between" align="center" gap="3">
                       <Flex direction="column" gap="3">
                         <Flex align="center" gap="2">

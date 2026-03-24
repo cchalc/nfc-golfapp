@@ -2,7 +2,50 @@ import {
   createCollection,
   localOnlyCollectionOptions,
 } from '@tanstack/react-db'
+import { electricCollectionOptions } from '@tanstack/electric-db-collection'
+import { snakeCamelMapper } from '@electric-sql/client'
 import { z } from 'zod'
+
+import {
+  insertTrip,
+  updateTrip,
+  deleteTrip,
+  insertGolfer,
+  updateGolfer,
+  deleteGolfer,
+  insertTripGolfer,
+  updateTripGolfer,
+  deleteTripGolfer,
+  insertCourse,
+  updateCourse,
+  deleteCourse,
+  insertTeeBox,
+  updateTeeBox,
+  deleteTeeBox,
+  insertHole,
+  updateHole,
+  deleteHole,
+  insertRound,
+  updateRound,
+  deleteRound,
+  insertScore,
+  updateScore,
+  deleteScore,
+  insertRoundSummary,
+  updateRoundSummary,
+  deleteRoundSummary,
+  insertTeam,
+  updateTeam,
+  deleteTeam,
+  insertTeamMember,
+  deleteTeamMember,
+  insertChallenge,
+  updateChallenge,
+  deleteChallenge,
+  insertChallengeResult,
+  updateChallengeResult,
+  deleteChallengeResult,
+} from '../server/mutations'
 
 // Helper for date fields that can come as string or Date
 const dateField = z
@@ -48,12 +91,12 @@ export const tripGolferSchema = z.object({
   invitedAt: dateField,
   acceptedAt: nullableDateField.default(null),
   includedInScoring: z.boolean().default(true),
-  handicapOverride: z.number().nullable().default(null), // Trip-specific handicap (null = use golfer's default)
+  handicapOverride: z.number().nullable().default(null),
 })
 
 export const courseSchema = z.object({
   id: z.string(),
-  apiId: z.number().nullable().default(null), // Golf Course API ID for reference
+  apiId: z.number().nullable().default(null),
   name: z.string(),
   clubName: z.string().default(''),
   location: z.string().default(''),
@@ -84,7 +127,7 @@ export const holeSchema = z.object({
   courseId: z.string(),
   holeNumber: z.number(),
   par: z.number(),
-  strokeIndex: z.number(), // 1-18
+  strokeIndex: z.number(),
   yardage: z.number().nullable().default(null),
 })
 
@@ -199,99 +242,380 @@ export type UIState = z.output<typeof uiStateSchema>
 export type FormError = z.output<typeof formErrorSchema>
 
 // ============================================================================
-// Collections
+// Helper: Build Electric shape URL
+// ============================================================================
+
+function getShapeUrl(path: string): string {
+  const base =
+    typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://localhost:5173'
+  return new URL(path, base).toString()
+}
+
+// Parser for timestamptz columns - Electric delivers dates as ISO strings
+const timestampParser = { timestamptz: (date: string) => new Date(date) }
+
+// Column mapper to convert snake_case from DB to camelCase in client
+const columnMapper = snakeCamelMapper()
+
+// ============================================================================
+// Electric Collections (synced with PostgreSQL)
 // ============================================================================
 
 export const tripCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'trips',
     schema: tripSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/trips'),
+      parser: timestampParser,
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: trip } = transaction.mutations[0]
+      const { txid } = await insertTrip({ data: trip })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: trip } = transaction.mutations[0]
+      const { txid } = await updateTrip({ data: { id: trip.id, changes: trip } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: trip } = transaction.mutations[0]
+      const { txid } = await deleteTrip({ data: { id: trip.id } })
+      return { txid }
+    },
   })
 )
 
 export const golferCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'golfers',
     schema: golferSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/golfers'),
+      parser: timestampParser,
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: golfer } = transaction.mutations[0]
+      const { txid } = await insertGolfer({ data: golfer })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: golfer } = transaction.mutations[0]
+      const { txid } = await updateGolfer({ data: { id: golfer.id, changes: golfer } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: golfer } = transaction.mutations[0]
+      const { txid } = await deleteGolfer({ data: { id: golfer.id } })
+      return { txid }
+    },
   })
 )
 
 export const tripGolferCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'trip_golfers',
     schema: tripGolferSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/trip-golfers'),
+      parser: timestampParser,
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: tripGolfer } = transaction.mutations[0]
+      const { txid } = await insertTripGolfer({ data: tripGolfer })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: tripGolfer } = transaction.mutations[0]
+      const { txid } = await updateTripGolfer({ data: { id: tripGolfer.id, changes: tripGolfer } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: tripGolfer } = transaction.mutations[0]
+      const { txid } = await deleteTripGolfer({ data: { id: tripGolfer.id } })
+      return { txid }
+    },
   })
 )
 
 export const courseCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'courses',
     schema: courseSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/courses'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: course } = transaction.mutations[0]
+      const { txid } = await insertCourse({ data: course })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: course } = transaction.mutations[0]
+      const { txid } = await updateCourse({ data: { id: course.id, changes: course } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: course } = transaction.mutations[0]
+      const { txid } = await deleteCourse({ data: { id: course.id } })
+      return { txid }
+    },
   })
 )
 
 export const teeBoxCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'tee_boxes',
     schema: teeBoxSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/tee-boxes'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: teeBox } = transaction.mutations[0]
+      const { txid } = await insertTeeBox({ data: teeBox })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: teeBox } = transaction.mutations[0]
+      const { txid } = await updateTeeBox({ data: { id: teeBox.id, changes: teeBox } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: teeBox } = transaction.mutations[0]
+      const { txid } = await deleteTeeBox({ data: { id: teeBox.id } })
+      return { txid }
+    },
   })
 )
 
 export const holeCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'holes',
     schema: holeSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/holes'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: hole } = transaction.mutations[0]
+      const { txid } = await insertHole({ data: hole })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: hole } = transaction.mutations[0]
+      const { txid } = await updateHole({ data: { id: hole.id, changes: hole } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: hole } = transaction.mutations[0]
+      const { txid } = await deleteHole({ data: { id: hole.id } })
+      return { txid }
+    },
   })
 )
 
 export const roundCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'rounds',
     schema: roundSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/rounds'),
+      parser: timestampParser,
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: round } = transaction.mutations[0]
+      const { txid } = await insertRound({ data: round })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: round } = transaction.mutations[0]
+      const { txid } = await updateRound({ data: { id: round.id, changes: round } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: round } = transaction.mutations[0]
+      const { txid } = await deleteRound({ data: { id: round.id } })
+      return { txid }
+    },
   })
 )
 
 export const scoreCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'scores',
     schema: scoreSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/scores'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: score } = transaction.mutations[0]
+      const { txid } = await insertScore({ data: score })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: score } = transaction.mutations[0]
+      const { txid } = await updateScore({ data: { id: score.id, changes: score } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: score } = transaction.mutations[0]
+      const { txid } = await deleteScore({ data: { id: score.id } })
+      return { txid }
+    },
   })
 )
 
 export const roundSummaryCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'round_summaries',
     schema: roundSummarySchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/round-summaries'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: summary } = transaction.mutations[0]
+      const { txid } = await insertRoundSummary({ data: summary })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: summary } = transaction.mutations[0]
+      const { txid } = await updateRoundSummary({ data: { id: summary.id, changes: summary } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: summary } = transaction.mutations[0]
+      const { txid } = await deleteRoundSummary({ data: { id: summary.id } })
+      return { txid }
+    },
   })
 )
 
 export const teamCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'teams',
     schema: teamSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/teams'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: team } = transaction.mutations[0]
+      const { txid } = await insertTeam({ data: team })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: team } = transaction.mutations[0]
+      const { txid } = await updateTeam({ data: { id: team.id, changes: team } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: team } = transaction.mutations[0]
+      const { txid } = await deleteTeam({ data: { id: team.id } })
+      return { txid }
+    },
   })
 )
 
 export const teamMemberCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'team_members',
     schema: teamMemberSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/team-members'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: teamMember } = transaction.mutations[0]
+      const { txid } = await insertTeamMember({ data: teamMember })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: teamMember } = transaction.mutations[0]
+      const { txid } = await deleteTeamMember({ data: { id: teamMember.id } })
+      return { txid }
+    },
   })
 )
 
 export const challengeCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'challenges',
     schema: challengeSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/challenges'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: challenge } = transaction.mutations[0]
+      const { txid } = await insertChallenge({ data: challenge })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: challenge } = transaction.mutations[0]
+      const { txid } = await updateChallenge({ data: { id: challenge.id, changes: challenge } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: challenge } = transaction.mutations[0]
+      const { txid } = await deleteChallenge({ data: { id: challenge.id } })
+      return { txid }
+    },
   })
 )
 
 export const challengeResultCollection = createCollection(
-  localOnlyCollectionOptions({
-    getKey: (item) => item.id,
+  electricCollectionOptions({
+    id: 'challenge_results',
     schema: challengeResultSchema,
+    getKey: (item) => item.id,
+    shapeOptions: {
+      url: getShapeUrl('/api/electric/challenge-results'),
+      columnMapper,
+    },
+    onInsert: async ({ transaction }) => {
+      const { modified: result } = transaction.mutations[0]
+      const { txid } = await insertChallengeResult({ data: result })
+      return { txid }
+    },
+    onUpdate: async ({ transaction }) => {
+      const { modified: result } = transaction.mutations[0]
+      const { txid } = await updateChallengeResult({ data: { id: result.id, changes: result } })
+      return { txid }
+    },
+    onDelete: async ({ transaction }) => {
+      const { original: result } = transaction.mutations[0]
+      const { txid } = await deleteChallengeResult({ data: { id: result.id } })
+      return { txid }
+    },
   })
 )
+
+// ============================================================================
+// Local-only Collections (UI state, not synced)
+// ============================================================================
 
 export const uiStateCollection = createCollection(
   localOnlyCollectionOptions({

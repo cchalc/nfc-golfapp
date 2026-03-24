@@ -9,11 +9,7 @@ import {
   isApiConfigured,
   type ApiCourse,
 } from '../../lib/golfCourseApi'
-import {
-  courseCollection,
-  teeBoxCollection,
-  holeCollection,
-} from '../../db/collections'
+import { importCourseWithDetails } from '../../server/mutations'
 import { CourseForm } from './CourseForm'
 
 interface CourseSearchProps {
@@ -70,12 +66,11 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
 
       // Get primary tee for default ratings
       const primaryTee = getPrimaryTee(fullCourse)
-
-      // Create the course
       const courseId = crypto.randomUUID()
       const location = fullCourse.location
 
-      courseCollection.insert({
+      // Build course data
+      const course = {
         id: courseId,
         apiId: fullCourse.id,
         name: fullCourse.course_name,
@@ -90,47 +85,51 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
         courseRating: primaryTee?.course_rating ?? null,
         slopeRating: primaryTee?.slope_rating ?? null,
         totalPar: primaryTee?.par_total ?? 72,
-      })
-
-      // Import all tee boxes
-      const allTees = getAllTees(fullCourse)
-      for (const tee of allTees) {
-        teeBoxCollection.insert({
-          id: crypto.randomUUID(),
-          courseId,
-          teeName: tee.tee_name,
-          gender: tee.gender,
-          courseRating: tee.course_rating,
-          slopeRating: tee.slope_rating,
-          totalYards: tee.total_yards,
-          parTotal: tee.par_total,
-        })
       }
 
-      // Import holes from primary tee (or first available)
+      // Build tee box data
+      const allTees = getAllTees(fullCourse)
+      const teeBoxes = allTees.map((tee) => ({
+        id: crypto.randomUUID(),
+        courseId,
+        teeName: tee.tee_name,
+        gender: tee.gender as 'male' | 'female',
+        courseRating: tee.course_rating,
+        slopeRating: tee.slope_rating,
+        totalYards: tee.total_yards,
+        parTotal: tee.par_total,
+      }))
+
+      // Build hole data from primary tee (or first available with holes)
       const teesWithHoles = allTees.filter((t) => t.holes && t.holes.length > 0)
       const teeForHoles = teesWithHoles.find((t) => t.gender === 'male') || teesWithHoles[0]
 
-      if (teeForHoles?.holes) {
-        for (let i = 0; i < teeForHoles.holes.length; i++) {
-          const hole = teeForHoles.holes[i]
-          holeCollection.insert({
-            id: crypto.randomUUID(),
-            courseId,
-            holeNumber: i + 1,
-            par: hole.par,
-            strokeIndex: hole.handicap, // API uses 'handicap' for stroke index
-            yardage: hole.yardage,
-          })
-        }
-      }
+      const holes = (teeForHoles?.holes || []).map((hole, i) => ({
+        id: crypto.randomUUID(),
+        courseId,
+        holeNumber: i + 1,
+        par: hole.par,
+        strokeIndex: hole.handicap, // API uses 'handicap' for stroke index
+        yardage: hole.yardage,
+      }))
+
+      // Import everything in a single batched transaction
+      const result = await importCourseWithDetails({
+        data: { course, teeBoxes, holes },
+      })
+
+      console.log(
+        `Imported course "${course.name}" with ${result.teeBoxCount} tee boxes and ${result.holeCount} holes (txid: ${result.txid})`
+      )
 
       setImportedId(apiCourse.id)
+      // Give Electric a moment to sync before closing dialog
       setTimeout(() => {
         onSuccess?.()
-      }, 500)
+      }, 1000)
     } catch (error) {
       console.error('Failed to import course:', error)
+      setSearchError('Failed to import course. Please try again.')
     } finally {
       setIsImporting(null)
     }
