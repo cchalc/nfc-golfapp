@@ -1,10 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
+import { setCookie, deleteCookie } from '@tanstack/react-start/server'
 import { getDb } from '../mutations/db'
 import {
   generateMagicCode,
   generateSessionToken,
-  createSessionCookie,
-  clearSessionCookie,
+  SESSION_COOKIE_NAME,
+  SESSION_COOKIE_MAX_AGE,
   getSessionTokenFromRequest,
   getUserAgent,
   getClientIp,
@@ -49,11 +50,12 @@ export const requestMagicLink = createServerFn({ method: 'POST' })
       VALUES (${normalizedEmail}, ${code}, ${expiresAt})
     `
 
-    // Send email (or log to console in development)
+    // Always log code to console for development
+    console.log(`[Magic Link] Code for ${normalizedEmail}: ${code}`)
+
+    // Also send email if API key is configured
     if (process.env.RESEND_API_KEY) {
       await sendMagicLinkEmail(normalizedEmail, code)
-    } else {
-      console.log(`[Magic Link] Code for ${normalizedEmail}: ${code}`)
     }
 
     return { success: true }
@@ -71,7 +73,6 @@ export const verifyMagicLink = createServerFn({ method: 'POST' })
     }): Promise<{
       success: boolean
       error?: string
-      setCookie?: string
     }> => {
       const sql = getDb()
       const normalizedEmail = email.toLowerCase().trim()
@@ -161,10 +162,16 @@ export const verifyMagicLink = createServerFn({ method: 'POST' })
         VALUES (${identityId}, ${token}, ${expiresAt}, NOW(), ${userAgent}, ${ipAddress})
       `
 
-      return {
-        success: true,
-        setCookie: createSessionCookie(token),
-      }
+      // Set cookie server-side via response header
+      setCookie(SESSION_COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: SESSION_COOKIE_MAX_AGE,
+      })
+
+      return { success: true }
     }
   )
 
@@ -215,7 +222,7 @@ export const getSession = createServerFn({ method: 'GET' }).handler(
 // ============================================================================
 
 export const logout = createServerFn({ method: 'POST' }).handler(
-  async (): Promise<{ success: boolean; setCookie: string }> => {
+  async (): Promise<{ success: boolean }> => {
     const token = getSessionTokenFromRequest()
 
     if (token) {
@@ -223,10 +230,12 @@ export const logout = createServerFn({ method: 'POST' }).handler(
       await sql`DELETE FROM sessions WHERE token = ${token}`
     }
 
-    return {
-      success: true,
-      setCookie: clearSessionCookie(),
-    }
+    // Clear cookie server-side via response header
+    deleteCookie(SESSION_COOKIE_NAME, {
+      path: '/',
+    })
+
+    return { success: true }
   }
 )
 
@@ -235,28 +244,37 @@ export const logout = createServerFn({ method: 'POST' }).handler(
 // ============================================================================
 
 async function sendMagicLinkEmail(email: string, code: string): Promise<void> {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: process.env.EMAIL_FROM || 'Golf Trip <noreply@golftrip.app>',
-      to: email,
-      subject: 'Your Golf Trip login code',
-      html: `
-        <h1>Your login code</h1>
-        <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">
-          ${code}
-        </p>
-        <p>This code expires in 15 minutes.</p>
-        <p>If you didn't request this code, you can safely ignore this email.</p>
-      `,
-    }),
-  })
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        // Use Resend's test domain - for production, verify your own domain
+        from: process.env.EMAIL_FROM || 'Golf Trip <onboarding@resend.dev>',
+        to: email,
+        subject: 'Your Golf Trip login code',
+        html: `
+          <h1>Your login code</h1>
+          <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">
+            ${code}
+          </p>
+          <p>This code expires in 15 minutes.</p>
+          <p>If you didn't request this code, you can safely ignore this email.</p>
+        `,
+      }),
+    })
 
-  if (!response.ok) {
-    console.error('[Email Error]', await response.text())
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('[Email Error]', errorText)
+      // Don't throw - we still created the magic link, just couldn't send email
+    }
+  } catch (error) {
+    console.error('[Email Error] Failed to send:', error)
+    // Don't throw - log code to console as fallback
+    console.log(`[Magic Link] Code for ${email}: ${code}`)
   }
 }

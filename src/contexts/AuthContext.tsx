@@ -12,7 +12,7 @@ interface AuthContextValue {
   session: AuthSession | null
   isLoading: boolean
   isAuthenticated: boolean
-  refresh: () => Promise<void>
+  refresh: (force?: boolean) => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -21,9 +21,15 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [hasChecked, setHasChecked] = useState(false)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = false) => {
+    // Prevent multiple simultaneous checks on initial load
+    // But allow forced refreshes (e.g., after login)
+    if (!force && hasChecked && !isLoading) return
+
     try {
+      setIsLoading(true)
       const result = await getSession()
       setSession(result)
     } catch (error) {
@@ -31,17 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(null)
     } finally {
       setIsLoading(false)
+      setHasChecked(true)
     }
-  }, [])
+  }, [hasChecked, isLoading])
 
   const signOut = useCallback(async () => {
     try {
-      const result = await logout()
-      // Apply the cookie clear
-      if (result.setCookie) {
-        // The cookie is set via response header, but we also clear local state
-        document.cookie = result.setCookie
-      }
+      await logout()
+      // Cookie is cleared server-side via response header
       setSession(null)
     } catch (error) {
       console.error('[Auth] Failed to logout:', error)

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { Container, Flex, Heading, Text, Button, Badge, Select, Card } from '@radix-ui/themes'
-import { ArrowLeft, Trophy, ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { Container, Flex, Heading, Text, Button, Select, Card } from '@radix-ui/themes'
+import { ArrowLeft, Trophy, ChevronLeft, ChevronRight, Users, Calendar } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
   roundCollection,
@@ -41,12 +41,30 @@ function ScorecardPage() {
   )
   const trip = trips?.[0]
 
-  const { data: rounds } = useLiveQuery(
+  // Get all rounds for this trip (for navigation)
+  const { data: allRounds } = useLiveQuery(
     (q) =>
-      q.from({ round: roundCollection }).where(({ round }) => eq(round.id, roundId)),
-    [roundId]
+      q
+        .from({ round: roundCollection })
+        .where(({ round }) => eq(round.tripId, tripId))
+        .orderBy(({ round }) => round.roundNumber, 'asc'),
+    [tripId]
   )
-  const round = rounds?.[0]
+
+  const round = allRounds?.find((r) => r.id === roundId)
+
+  // Find current round index for prev/next navigation
+  const currentRoundIndex = allRounds?.findIndex((r) => r.id === roundId) ?? -1
+  const prevRound = currentRoundIndex > 0 ? allRounds?.[currentRoundIndex - 1] : null
+  const nextRound = allRounds && currentRoundIndex < allRounds.length - 1 ? allRounds[currentRoundIndex + 1] : null
+
+  function navigateToRound(newRoundId: string) {
+    navigate({
+      to: '/trips/$tripId/rounds/$roundId/scorecard',
+      params: { tripId, roundId: newRoundId },
+      search: { golferId },
+    })
+  }
 
   const { data: courses } = useLiveQuery(
     (q) =>
@@ -264,12 +282,54 @@ function ScorecardPage() {
 
         {/* Header with course and round info */}
         <Flex direction="column" gap="2">
-          <Flex align="center" gap="2">
-            <Badge size="2">Round {round.roundNumber}</Badge>
-            <Heading size="6">{course.name}</Heading>
-          </Flex>
+          <Heading size="6">{course.name}</Heading>
           <Text size="2" color="gray">{trip?.name}</Text>
         </Flex>
+
+        {/* Round selector with prev/next */}
+        {allRounds && allRounds.length > 1 && (
+          <Card>
+            <Flex justify="between" align="center">
+              <Button
+                variant="ghost"
+                size="1"
+                disabled={!prevRound}
+                onClick={() => prevRound && navigateToRound(prevRound.id)}
+              >
+                <ChevronLeft size={16} />
+                {prevRound ? `R${prevRound.roundNumber}` : 'Prev'}
+              </Button>
+
+              <Flex direction="column" align="center" gap="1">
+                <Select.Root value={roundId} onValueChange={navigateToRound}>
+                  <Select.Trigger>
+                    <Flex align="center" gap="2">
+                      <Calendar size={14} />
+                      Round {round.roundNumber}
+                    </Flex>
+                  </Select.Trigger>
+                  <Select.Content>
+                    {allRounds.map((r) => (
+                      <Select.Item key={r.id} value={r.id}>
+                        Round {r.roundNumber}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+              </Flex>
+
+              <Button
+                variant="ghost"
+                size="1"
+                disabled={!nextRound}
+                onClick={() => nextRound && navigateToRound(nextRound.id)}
+              >
+                {nextRound ? `R${nextRound.roundNumber}` : 'Next'}
+                <ChevronRight size={16} />
+              </Button>
+            </Flex>
+          </Card>
+        )}
 
         {/* Golfer selector with prev/next */}
         <Card>

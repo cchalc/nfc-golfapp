@@ -90,13 +90,9 @@ function VerifyPage() {
         return
       }
 
-      // Set the cookie if provided
-      if (result.setCookie) {
-        document.cookie = result.setCookie
-      }
-
-      // Refresh auth context
-      await refresh()
+      // Cookie is set server-side via response header
+      // Refresh auth context (force=true to bypass the check)
+      await refresh(true)
 
       // Redirect to destination
       navigate({ to: redirectTo })

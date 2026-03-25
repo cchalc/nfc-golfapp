@@ -1,4 +1,4 @@
-import { getRequest } from '@tanstack/react-start/server'
+import { getRequest, getCookie } from '@tanstack/react-start/server'
 import crypto from 'node:crypto'
 
 // Characters without ambiguous glyphs (no I, O, 0, 1, l)
@@ -56,23 +56,11 @@ export function clearSessionCookie(): string {
  * Parse session token from request cookies.
  */
 export function getSessionTokenFromRequest(): string | null {
-  let request: Request
   try {
-    request = getRequest()
+    return getCookie(SESSION_COOKIE_NAME) || null
   } catch {
     return null
   }
-
-  const cookieHeader = request.headers.get('cookie')
-  if (!cookieHeader) return null
-
-  const cookies = cookieHeader.split(';').map((c: string) => c.trim())
-  const sessionCookie = cookies.find((c: string) =>
-    c.startsWith(`${SESSION_COOKIE_NAME}=`)
-  )
-  if (!sessionCookie) return null
-
-  return sessionCookie.slice(SESSION_COOKIE_NAME.length + 1)
 }
 
 /**

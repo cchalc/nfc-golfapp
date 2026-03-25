@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, useNavigate, Outlet, useMatch } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
 import {
   Container,
   Flex,
@@ -20,19 +20,29 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Check if we're at the exact /login path or a child route
+  const loginMatch = useMatch({ from: '/login', shouldThrow: false })
+  const isExactLoginPath = loginMatch !== undefined && !window.location.pathname.includes('/verify')
 
   // Get redirect param from URL
   const searchParams = new URLSearchParams(window.location.search)
   const redirectTo = searchParams.get('redirect') || '/'
 
-  // If already authenticated, redirect
-  if (isAuthenticated) {
-    navigate({ to: redirectTo })
-    return null
+  // If already authenticated, redirect (in useEffect to avoid render loop)
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate({ to: redirectTo })
+    }
+  }, [isLoading, isAuthenticated, navigate, redirectTo])
+
+  // Show nothing while checking auth or redirecting
+  if (isLoading || isAuthenticated) {
+    return <Outlet />
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -60,6 +70,11 @@ function LoginPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // If at a child route (like /login/verify), render the child
+  if (!isExactLoginPath) {
+    return <Outlet />
   }
 
   return (

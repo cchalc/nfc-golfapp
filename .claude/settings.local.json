@@ -97,7 +97,15 @@
       "Bash(direnv export:*)",
       "Bash(jj git fetch:*)",
       "Bash(jj squash:*)",
-      "WebFetch(domain:api.github.com)"
+      "WebFetch(domain:api.github.com)",
+      "Bash(xargs cat:*)",
+      "WebFetch(domain:steveklabnik.github.io)",
+      "WebFetch(domain:www.joshualyman.com)",
+      "WebFetch(domain:slavakurilyak.com)",
+      "WebFetch(domain:gist.github.com)",
+      "Bash(jj workspace add:*)",
+      "Bash(jj abandon:*)",
+      "Bash(jj edit:*)"
     ]
   },
   "enabledPlugins": {
