@@ -96,7 +96,8 @@
       "Bash(source:*)",
       "Bash(direnv export:*)",
       "Bash(jj git fetch:*)",
-      "Bash(jj squash:*)"
+      "Bash(jj squash:*)",
+      "WebFetch(domain:api.github.com)"
     ]
   },
   "enabledPlugins": {

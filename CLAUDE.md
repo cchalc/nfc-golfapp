@@ -1,354 +1,264 @@
-# Kyle's Stack
+# Golf Trip Planner
 
-A starter for building apps with TanStack Start, Radix UI, and capsize typography.
+A real-time golf trip management app with TanStack Start, Electric SQL, and Radix UI.
 
-## Tidewave MCP
+## Development Commands
 
-This project uses [Tidewave](https://github.com/tidewave-ai/tidewave_js) MCP for enhanced development tooling. The MCP server runs on the Vite dev server.
+```fish
+pnpm dev              # Start dev server (port 5173)
+pnpm build            # Production build
+pnpm check            # Biome lint & format
 
-### Setup Requirements
+# Database
+psql "$DATABASE_URL" -c "\\dt"                    # List tables
+psql "$DATABASE_URL" -f src/db/drizzle/migrations/XXXX.sql  # Run migration
 
-1. **Dev server must be running** before starting a session for MCP tools to connect
-2. Start the dev server: `pnpm dev` (runs on port 5173)
-3. MCP is configured with SSE transport at `http://localhost:5173/tidewave/mcp`
+# Version Control (Jujutsu only - never use git)
+jj status             # Show changes
+jj diff               # Show diff
+jj new -m "message"   # Create new commit
+jj git push           # Push to remote
+```
 
-### Available Tools
+## Architecture
 
-| Tool | Description |
-|------|-------------|
-| `get_docs` | Get TypeScript/JavaScript documentation and type info for symbols |
-| `get_source_location` | Find source locations for symbols in project or dependencies |
-| `project_eval` | Evaluate JS/TS code in the project runtime context |
-| `get_logs` | Retrieve application logs for debugging |
-
-### Usage
-
-- Use `get_docs` to look up types, functions, and API documentation
-- Use `project_eval` to test code snippets in the actual project context
-- Use `get_logs` to debug runtime issues
-
-## Electric SQL Sync
-
-This project uses [Electric SQL Cloud](https://electric-sql.com/product/cloud) for real-time sync between PostgreSQL and the client. Data flows through TanStack DB collections with optimistic mutations.
-
-### Architecture
+**Stack Foundation**: Electric SQL for reads, server functions for writes, TanStack DB for optimistic updates.
 
 ```
 Client (TanStack DB) <--> Electric Proxy Routes <--> Electric Cloud <--> Neon PostgreSQL
 ```
 
-1. **Electric shapes** stream changes from PostgreSQL to the client
-2. **Mutations** go client → server function → PostgreSQL → txid → Electric sync
+### Data Flow
 
-### Setup
+**Reading data** — Use Electric SQL shapes via TanStack DB collections:
+```tsx
+// In components, use useLiveQuery with dependency array
+const { data: trips } = useLiveQuery(
+  (q) => q.from({ trip: tripCollection }).select(),
+  []
+)
+```
 
-1. **Enable logical replication in Neon**: Settings → Logical Replication → Enable
-2. **Sign up for Electric Cloud**: https://dashboard.electric-sql.cloud/
-3. **Connect your Neon database**: Use the direct (non-pooled) connection string
-4. **Get credentials**: Electric Cloud will provide `source_id` and `secret`
-5. **Set environment variables** in `.envrc`
+**Writing data** — Call collection methods directly (triggers server mutations):
+```tsx
+// Insert (optimistic update + server mutation)
+tripCollection.insert({ id: crypto.randomUUID(), name: 'New Trip', ... })
+
+// Update
+tripCollection.update({ id: tripId, name: 'Updated Name' })
+
+// Delete
+tripCollection.delete({ id: tripId })
+```
+
+### Directory Organization
+
+```
+src/
+├── components/       # UI components (PascalCase.tsx)
+├── contexts/         # React contexts (AuthContext, ThemeContext)
+├── db/
+│   ├── collections.ts    # TanStack DB schemas + Electric collections
+│   ├── drizzle/
+│   │   ├── schema.ts     # Drizzle table definitions
+│   │   └── migrations/   # SQL migration files
+│   └── sync-status.ts    # Offline sync status
+├── hooks/            # Custom hooks (useDialogState, useRequireAuth, useTripRole)
+├── lib/              # Utilities (scoring.ts, challenges.ts, errors.ts)
+├── routes/
+│   ├── api/electric/     # Electric proxy routes (one per table)
+│   └── ...               # Page routes
+└── server/
+    ├── auth/             # Authentication (mutations, authorization, invites)
+    ├── electric-proxy.ts # Shared Electric proxy handler
+    └── mutations/        # Server mutation functions (one per table)
+```
+
+### Naming Standards
+
+| Context | Convention | Example |
+|---------|------------|---------|
+| Database fields | snake_case | `created_at`, `golfer_id` |
+| TypeScript/Zod | camelCase | `createdAt`, `golferId` |
+| Files | kebab-case or PascalCase | `trip-golfers.ts`, `TripCard.tsx` |
+| Routes | kebab-case | `/api/electric/trip-golfers` |
+
+## Critical Constraints
+
+- **NEVER** read data via server functions — only Electric SQL shapes
+- **NEVER** use `useState` for data — use TanStack DB collections (even for UI state)
+- **NEVER** use `git` commands — use `jj` (Jujutsu) only
+- **NEVER** use bash syntax — use fish shell syntax only
+- **ALWAYS** include `txid_current()` in mutations for Electric reconciliation
+- **ALWAYS** use `REPLICA IDENTITY FULL` on synced tables
+- **ALWAYS** use pooled connection (`DATABASE_URL`) for queries, direct for Electric
+
+## Electric SQL Sync
 
 ### Environment Variables
 
 ```fish
 # .envrc
+export DATABASE_URL="postgresql://...@ep-xxx-pooler..."      # Pooled (queries)
+export DATABASE_URL_DIRECT="postgresql://...@ep-xxx..."      # Direct (Electric)
 export ELECTRIC_URL="https://api.electric-sql.cloud"
-export ELECTRIC_SOURCE_ID="your-source-id"    # From Electric Cloud dashboard
-export ELECTRIC_SECRET="your-secret"          # From Electric Cloud dashboard
+export ELECTRIC_SOURCE_ID="your-source-id"
+export ELECTRIC_SECRET="your-secret"
 ```
 
-### Proxy Routes
+### Adding a New Synced Table
 
-Electric shape requests are proxied through TanStack Start API routes at `/api/electric/<table>`:
+1. **Create migration** in `src/db/drizzle/migrations/`
+2. **Add to Drizzle schema** in `src/db/drizzle/schema.ts`
+3. **Add Zod schema + collection** in `src/db/collections.ts`
+4. **Create server mutations** in `src/server/mutations/`
+5. **Create Electric proxy route** in `src/routes/api/electric/`
+6. **Run migration**: `psql "$DATABASE_URL" -f src/db/drizzle/migrations/XXXX.sql`
 
-- `/api/electric/trips`, `/api/electric/golfers`, etc.
+### Mutation Pattern
 
-The proxy routes inject `source_id` and `secret` server-side (never exposed to client).
+```typescript
+// src/server/mutations/trips.ts
+export const insertTrip = createServerFn({ method: 'POST' })
+  .inputValidator((data: TripInput) => data)
+  .handler(async ({ data: trip }) => {
+    return wrapMutation('insertTrip', async () => {
+      const sql = getDb()
+      const [result, txidResult] = await sql.transaction((txn) => [
+        txn`INSERT INTO trips (...) VALUES (...) RETURNING id`,
+        txn`SELECT txid_current()::text AS txid`,
+      ])
+      return { id: result[0].id, txid: parseInt(txidResult[0].txid) }
+    })
+  })
+```
 
-### Mutation Flow
+## Authentication
 
-Collections wire up `onInsert`/`onUpdate`/`onDelete` handlers that:
-1. Call server mutation functions in `src/server/mutations/`
-2. Mutations execute SQL + `txid_current()` in a transaction
-3. Return `{ txid }` for Electric reconciliation
+Magic link email authentication with two user roles:
+- **Organizer**: Full access to create/manage trips
+- **Participant**: View trips, enter their own scores
+
+### Auth Flow
+
+```
+1. POST /api/auth/login { email }     → Generate 6-char code, send email
+2. POST /api/auth/verify { email, code } → Validate, create session, set cookie
+3. GET /api/auth/me                   → Return session or null
+4. POST /api/auth/logout              → Delete session, clear cookie
+```
+
+### Using Auth in Components
+
+```tsx
+import { useAuth } from '../contexts/AuthContext'
+import { useTripRole } from '../hooks/useTripRole'
+
+function TripPage() {
+  const { session, isAuthenticated } = useAuth()
+  const { role, canManage } = useTripRole(tripId)
+
+  return (
+    <>
+      {canManage && <ManagementControls />}
+      <TripContent />
+    </>
+  )
+}
+```
 
 ## Neon PostgreSQL
 
-This project uses [Neon](https://neon.tech) PostgreSQL with **two connection strings**:
+**Two connection strings** — pooled for queries, direct for Electric:
 
 | Variable | Type | Use Case |
 |----------|------|----------|
-| `DATABASE_URL` | Pooled | App queries via Neon serverless driver |
+| `DATABASE_URL` | Pooled (`-pooler`) | App queries via Neon serverless driver |
 | `DATABASE_URL_DIRECT` | Direct | Electric SQL logical replication |
 
-### Pooled vs Direct Connections
+Electric SQL **must** use the direct connection. Pooled connections fail with "Unable to connect in replication mode".
 
-**Pooled** (has `-pooler` in hostname):
-```
-postgresql://...@ep-xxx-pooler.region.aws.neon.tech/...
-```
-- Routes through PgBouncer connection pooler
-- Good for serverless/edge functions with many short-lived connections
-- **Cannot** do logical replication
+## Tidewave MCP
 
-**Direct** (no `-pooler`):
-```
-postgresql://...@ep-xxx.region.aws.neon.tech/...
-```
-- Connects straight to Postgres
-- Required for logical replication (Electric SQL)
-- Use for any operation needing persistent connections
+Dev server must be running for MCP tools. Start with `pnpm dev`.
 
-### Electric SQL Requirement
-
-Electric SQL **must** use the direct connection string. The pooled connection will fail with "Unable to connect in replication mode" because PgBouncer doesn't support logical replication.
-
-### Database Access
-
-Use `psql` directly for all database operations:
-
-```fish
-# Run a query
-psql "$DATABASE_URL" -c "SELECT * FROM users LIMIT 10"
-
-# Interactive session
-psql "$DATABASE_URL"
-
-# Run a SQL file
-psql "$DATABASE_URL" -f migrations/001_init.sql
-```
-
-### Common Operations
-
-```fish
-# List all tables
-psql "$DATABASE_URL" -c "\\dt"
-
-# Describe a table
-psql "$DATABASE_URL" -c "\\d tablename"
-
-# Run migrations
-psql "$DATABASE_URL" -f db/schema.sql
-```
-
-### Neon MCP (Optional)
-
-The Neon MCP server provides additional tools but requires npm registry access. If npm is blocked (e.g., corporate VPN), use `psql` instead.
-
-To set up the MCP server (requires npm access):
-
-```fish
-claude mcp add neon -s local -e NEON_API_KEY=<your-api-key> -- npx -y @neondatabase/mcp-server-neon start
-```
-
-Then restart Claude Code. If it fails to connect, check `npm ping` to verify registry access.
-
-## Shell Environment
-
-- **Fish Shell Only**: This computer runs fish shell. Always use fish shell syntax, not bash/zsh.
-- No `for x in ...; do ... done` - use `for x in ...; ...; end`
-- No `$()` for command substitution in variable assignment - use `set VAR (command)`
-- No `export VAR=value` - use `set -x VAR value`
-- **No Homebrew**: Never use `brew` commands on this computer.
-- **Jujutsu Only**: Use `jj` for version control, not `git` commands.
-- **No New Shells**: Never open tmux, screen, or new shell sessions. Run all commands directly in the current fish shell.
-
-## Workflow Orchestration
-
-### 1. Plan Node Default
-- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
-- If something goes sideways, STOP and re-plan immediately - don't keep pushing
-- Use plan mode for verification steps, not just building
-- Write detailed specs upfront to reduce ambiguity
-
-### 2. Subagent Strategy
-- Use subagents liberally to keep main context window clean
-- Offload research, exploration, and parallel analysis to subagents
-- For complex problems, throw more compute at it via subagents
-- One tack per subagent for focused execution
-
-### 3. Self-Improvement Loop
-- After ANY correction from the user: update `tasks/lessons.md` with the pattern
-- Write rules for yourself that prevent the same mistake
-- Ruthlessly iterate on these lessons until mistake rate drops
-- Review lessons at session start for relevant project
-
-### 4. Verification Before Done
-- Never mark a task complete without proving it works
-- Diff behavior between main and your changes when relevant
-- Ask yourself: "Would a staff engineer approve this?"
-- Run tests, check logs, demonstrate correctness
-
-### 5. Demand Elegance (Balanced)
-- For non-trivial changes: pause and ask "is there a more elegant way?"
-- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
-- Skip this for simple, obvious fixes - don't over-engineer
-- Challenge your own work before presenting it
-
-### 6. Autonomous Bug Fixing
-- When given a bug report: just fix it. Don't ask for hand-holding
-- Point at logs, errors, failing tests - then resolve them
-- Zero context switching required from the user
-- Go fix failing CI tests without being told how
-
-## Task Management
-
-1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
-2. **Verify Plan**: Check in before starting implementation
-3. **Track Progress**: Mark items complete as you go
-4. **Explain Changes**: High-level summary at each step
-5. **Document Results**: Add review section to `tasks/todo.md`
-6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
-
-## Core Principles
-
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
-
-## Stack
-
-- **TanStack Start** - Full-stack React framework (SPA/SSR, deploys everywhere)
-- **Radix UI** - Accessible component library with themes
-- **vite-plugin-capsize-radix** - Pixel-perfect typography
-- **Dozens of font pairings included** - Ask the agent to set one up
-
-## Project Structure
-
-```
-src/
-├── components/
-│   ├── Header.tsx        # App header with ThemePicker
-│   └── ThemePicker.tsx   # Font theme dropdown
-├── contexts/
-│   └── ThemeContext.tsx  # Font theme state + CSS variable switching
-├── routes/
-│   ├── __root.tsx        # Root layout, CSS imports, Theme wrapper
-│   └── index.tsx         # Home page
-├── router.tsx
-└── styles.css            # CSS custom properties for fonts
-```
+| Tool | Description |
+|------|-------------|
+| `get_docs` | TypeScript/JS documentation and type info |
+| `get_source_location` | Find source locations for symbols |
+| `project_eval` | Evaluate code in project runtime context |
+| `get_logs` | Retrieve application logs |
 
 ## Styling Rules
 
-### No spacing props on text elements
+### Capsize Typography
 
-Capsize normalizes text boxes to actual glyph bounds (no extra leading), so spacing between text elements must be controlled via `gap` on the parent container—not margins, padding, or line-height on the text itself.
+Spacing between text elements must use `gap` on parent — never margins/padding on text:
 
 ```tsx
-// ❌ DON'T - line-height hacks, margins, or padding on text
-<Heading style={{ lineHeight: 1.3 }}>
-<Heading mb="2">
-<Heading pb="1">
+// ❌ DON'T
+<Heading mb="2">Title</Heading>
 
-// ✅ DO - use gap on parent Flex container
+// ✅ DO
 <Flex direction="column" gap="3">
   <Heading>Title</Heading>
   <Text>Content</Text>
 </Flex>
 ```
 
-### Spacing scale
+### Radix Spacing Scale
 
-Radix uses 1-9 scale:
-- `gap="2"` - Tight (related items)
-- `gap="3"` - Default
-- `gap="4"` - Comfortable
-- `gap="6"` - Section separation
+- `gap="2"` — Tight (related items)
+- `gap="3"` — Default
+- `gap="4"` — Comfortable
+- `gap="6"` — Section separation
 
-### Avoid inline styles
+### State Management
 
-Use Radix props instead of `style={{}}`. When unsure how to style something, look up the Radix docs at https://www.radix-ui.com/themes/docs
-
-### State management (TanStack DB only)
-
-Use TanStack DB for all state. For client-only UI state, use a local-only collection. Never use `useState`.
-
-## Available Themes
-
-| ID | Name | Fonts | Vibe |
-|----|------|-------|------|
-| inter | Inter | Inter | Clean & modern |
-| source | Source Serif | Source Serif 4 + Source Sans 3 | Elegant editorial |
-| alegreya | Alegreya | Alegreya + Alegreya Sans | Literary & warm |
-| playfair | Playfair + Lato | Playfair Display + Lato | Classic craft |
-| fraunces | Fraunces + Figtree | Fraunces + Figtree | Modern wonky |
-
-Dozens more font pairings available. See https://github.com/KyleAMathews/vite-plugin-capsize-radix-ui/blob/main/SKILL.md for the full list.
-
-## Adding Routes
-
-Create new routes in `src/routes/`:
+Use TanStack DB for all state. For client-only UI state, use a local-only collection:
 
 ```tsx
-// src/routes/about.tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { Container, Flex, Heading, Text } from '@radix-ui/themes'
-
-export const Route = createFileRoute('/about')({
-  component: AboutPage,
-})
-
-function AboutPage() {
-  return (
-    <Container size="2" py="6">
-      <Flex direction="column" gap="4">
-        <Heading size="8">About</Heading>
-        <Text>Your content here.</Text>
-      </Flex>
-    </Container>
-  )
-}
+// Local-only collection for UI state
+export const uiStateCollection = createCollection(
+  localOnlyCollectionOptions({
+    getKey: (item) => item.id,
+    schema: uiStateSchema,
+  })
+)
 ```
+
+## Shell Environment
+
+- **Fish Shell Only** — No bash/zsh syntax
+- **Jujutsu Only** — Use `jj`, not `git`
+- **No Homebrew** — Never use `brew` commands
+- **No New Shells** — No tmux/screen, run commands directly
+
+## Workflow
+
+1. **Plan First** — Write plan to `tasks/todo.md`
+2. **Track Progress** — Mark items complete as you go
+3. **Capture Lessons** — Update `tasks/lessons.md` after corrections
+4. **Verify Before Done** — Run tests, demonstrate correctness
 
 ## Included Skills
 
-Skills ship inside the library packages via `@tanstack/intent`. To list all available skills:
-
-```bash
-npx @tanstack/intent@latest list
-```
-
 <!-- intent-skills:start -->
-# Skill mappings — when working in these areas, load the linked skill file into context.
-
 ### TanStack DB (`@tanstack/db`, `@tanstack/react-db`)
 
-- **Setting up collections or adding a new data source** → `node_modules/@tanstack/db/skills/db-core/collection-setup/SKILL.md`
-- **Writing live queries, filtering, joining, or aggregating data** → `node_modules/@tanstack/db/skills/db-core/live-queries/SKILL.md`
-- **Mutations, optimistic updates, or server sync** → `node_modules/@tanstack/db/skills/db-core/mutations-optimistic/SKILL.md`
-- **Building a custom collection adapter** → `node_modules/@tanstack/db/skills/db-core/custom-adapter/SKILL.md`
-- **TanStack DB overview or general questions** → `node_modules/@tanstack/db/skills/db-core/SKILL.md`
-- **Integrating DB with TanStack Start or other meta-frameworks** → `node_modules/@tanstack/db/skills/meta-framework/SKILL.md`
-- **Using TanStack DB in React (useLiveQuery, hooks)** → `node_modules/@tanstack/react-db/skills/react-db/SKILL.md`
-- **Offline support and transaction persistence** → `node_modules/@tanstack/offline-transactions/skills/offline/SKILL.md`
+- **Setting up collections** → `node_modules/@tanstack/db/skills/db-core/collection-setup/SKILL.md`
+- **Live queries** → `node_modules/@tanstack/db/skills/db-core/live-queries/SKILL.md`
+- **Mutations & optimistic updates** → `node_modules/@tanstack/db/skills/db-core/mutations-optimistic/SKILL.md`
+- **Offline support** → `node_modules/@tanstack/offline-transactions/skills/offline/SKILL.md`
 
 ### Electric (`@electric-sql/client`)
 
-- **Adding a new synced feature end-to-end** → `node_modules/@electric-sql/client/skills/electric-new-feature/SKILL.md`
-- **Configuring shapes, ShapeStream, or sync options** → `node_modules/@electric-sql/client/skills/electric-shapes/SKILL.md`
-- **Designing Postgres schema and shape definitions** → `node_modules/@electric-sql/client/skills/electric-schema-shapes/SKILL.md`
-- **Using Electric with Drizzle or Prisma** → `node_modules/@electric-sql/client/skills/electric-orm/SKILL.md`
-- **Debugging sync issues** → `node_modules/@electric-sql/client/skills/electric-debugging/SKILL.md`
-- **Postgres security for Electric** → `node_modules/@electric-sql/client/skills/electric-postgres-security/SKILL.md`
-- **Setting up auth proxy** → `node_modules/@electric-sql/client/skills/electric-proxy-auth/SKILL.md`
-- **Deploying Electric** → `node_modules/@electric-sql/client/skills/electric-deployment/SKILL.md`
-
-### Durable Streams (`@durable-streams/client`, `@durable-streams/state`)
-
-- **Getting started with Durable Streams** → `node_modules/@durable-streams/client/skills/getting-started/SKILL.md`
-- **Reading from streams (stream(), LiveMode, cursors)** → `node_modules/@durable-streams/client/skills/reading-streams/SKILL.md`
-- **Writing data (append, IdempotentProducer)** → `node_modules/@durable-streams/client/skills/writing-data/SKILL.md`
-- **Server deployment (dev server, Caddy)** → `node_modules/@durable-streams/client/skills/server-deployment/SKILL.md`
-- **Production readiness checklist** → `node_modules/@durable-streams/client/skills/go-to-production/SKILL.md`
-- **Defining state schemas** → `node_modules/@durable-streams/state/skills/state-schema/SKILL.md`
-- **Stream-backed reactive database (createStreamDB)** → `node_modules/@durable-streams/state/skills/stream-db/SKILL.md`
+- **New synced feature** → `node_modules/@electric-sql/client/skills/electric-new-feature/SKILL.md`
+- **Shapes & sync options** → `node_modules/@electric-sql/client/skills/electric-shapes/SKILL.md`
+- **Schema design** → `node_modules/@electric-sql/client/skills/electric-schema-shapes/SKILL.md`
+- **Debugging sync** → `node_modules/@electric-sql/client/skills/electric-debugging/SKILL.md`
 <!-- intent-skills:end -->
 
-## Skills
+### Local Skills
 
-A skill is a set of local instructions in a `SKILL.md` file.
-
-### Available skills
-
-- `frontend-design` - Create distinctive, production-grade frontend interfaces with high design quality. (file: skills/frontend-design/SKILL.md)
+- `frontend-design` — Create distinctive, production-grade frontend interfaces (file: `skills/frontend-design/SKILL.md`)
