@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Container, Flex, Heading, Text, Button, Card, Grid } from '@radix-ui/themes'
-import { Flag, Users, Trophy } from 'lucide-react'
+import { Flag, Users, Trophy, LogIn } from 'lucide-react'
 import { useLiveQuery, count } from '@tanstack/react-db'
 import { tripCollection, golferCollection, roundCollection } from '../db/collections'
+import { useAuth } from '../contexts/AuthContext'
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -10,6 +11,9 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
+  const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
+
   const { data: tripStats } = useLiveQuery(
     (q) =>
       q.from({ trip: tripCollection }).select(({ trip }) => ({
@@ -100,7 +104,23 @@ function HomePage() {
           </Link>
         </Grid>
 
-        {tripCount === 0 && (
+        {!isAuthenticated && (
+          <Flex direction="column" align="center" gap="3" py="4" className="animate-reveal-4">
+            <Text color="gray" align="center">
+              Sign in to create and manage trips
+            </Text>
+            <Button
+              size="3"
+              color="grass"
+              onClick={() => navigate({ to: '/login' })}
+            >
+              <LogIn size={16} />
+              Sign In
+            </Button>
+          </Flex>
+        )}
+
+        {isAuthenticated && tripCount === 0 && (
           <Flex direction="column" align="center" gap="4" py="4" className="animate-reveal-4">
             <Flex align="center" gap="2">
               <Trophy size={20} style={{ color: 'var(--amber-9)' }} />

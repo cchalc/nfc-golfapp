@@ -8,6 +8,7 @@ import { GolferCard } from '../../components/golfers/GolferCard'
 import { GolferForm } from '../../components/golfers/GolferForm'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardSkeleton } from '../../components/ui/Skeleton'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export const Route = createFileRoute('/golfers/')({
   ssr: false,
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/golfers/')({
 })
 
 function GolfersPage() {
+  useRequireAuth()
   const [addDialogOpen, setAddDialogOpen] = useDialogState('add-golfer')
 
   const { data: golfers, isLoading } = useLiveQuery(

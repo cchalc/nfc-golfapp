@@ -22,6 +22,7 @@ import { CourseForm } from '../../components/courses/CourseForm'
 import { useDialogState } from '../../hooks/useDialogState'
 import { getCourse, getAllTees, getPrimaryTee } from '../../lib/golfCourseApi'
 import { resyncCourseDetails } from '../../server/mutations'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export const Route = createFileRoute('/courses/$courseId')({
   ssr: false,
@@ -29,6 +30,7 @@ export const Route = createFileRoute('/courses/$courseId')({
 })
 
 function CourseDetailPage() {
+  useRequireAuth()
   const { courseId } = Route.useParams()
   const navigate = useNavigate()
   const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-course-${courseId}`)

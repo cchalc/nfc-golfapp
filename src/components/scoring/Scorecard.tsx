@@ -24,6 +24,7 @@ interface ScorecardProps {
   scores: HoleScore[]
   onScoreChange: (holeId: string, grossScore: number) => void
   handicapOverride?: number | null // Trip-level handicap override
+  readOnly?: boolean // Disable score editing
 }
 
 export function Scorecard({
@@ -35,6 +36,7 @@ export function Scorecard({
   scores,
   onScoreChange,
   handicapOverride,
+  readOnly = false,
 }: ScorecardProps) {
   // Use trip handicap override if provided, otherwise use golfer's default
   const effectiveHandicap = handicapOverride ?? golfer.handicap
@@ -141,6 +143,7 @@ export function Scorecard({
             netScore={h.netScore}
             stablefordPoints={h.stablefordPoints}
             onChange={(gross) => onScoreChange(h.hole.id, gross)}
+            readOnly={readOnly}
           />
         ))}
         <Flex justify="end" gap="4" py="2" data-testid="front-nine-totals">
@@ -177,6 +180,7 @@ export function Scorecard({
             netScore={h.netScore}
             stablefordPoints={h.stablefordPoints}
             onChange={(gross) => onScoreChange(h.hole.id, gross)}
+            readOnly={readOnly}
           />
         ))}
         <Flex justify="end" gap="4" py="2" data-testid="back-nine-totals">
