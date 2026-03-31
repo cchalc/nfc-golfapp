@@ -32,6 +32,7 @@ import {
   challengeCollection,
 } from '../../../db/collections'
 import { StatCard } from '../../../components/ui/StatCard'
+import { useTripRole } from '../../../hooks/useTripRole'
 
 export const Route = createFileRoute('/trips/$tripId/')({
   ssr: false,
@@ -49,6 +50,7 @@ function formatDate(date: Date): string {
 function TripDashboard() {
   const { tripId } = Route.useParams()
   const navigate = useNavigate()
+  const { canManage } = useTripRole(tripId)
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -123,34 +125,36 @@ function TripDashboard() {
         <Flex direction="column" gap="3">
           <Flex justify="between" align="start">
             <Heading size="8">{trip.name}</Heading>
-            <AlertDialog.Root>
-              <AlertDialog.Trigger>
-                <Button variant="soft" color="red" size="1">
-                  <Trash2 size={14} />
-                  Delete Trip
-                </Button>
-              </AlertDialog.Trigger>
-              <AlertDialog.Content maxWidth="450px">
-                <AlertDialog.Title>Delete Trip</AlertDialog.Title>
-                <AlertDialog.Description size="2">
-                  Are you sure you want to delete "{trip.name}"? This will permanently remove all
-                  rounds, scores, and challenges associated with this trip. This action cannot be
-                  undone.
-                </AlertDialog.Description>
-                <Flex gap="3" mt="4" justify="end">
-                  <AlertDialog.Cancel>
-                    <Button variant="soft" color="gray">
-                      Cancel
-                    </Button>
-                  </AlertDialog.Cancel>
-                  <AlertDialog.Action>
-                    <Button variant="solid" color="red" onClick={handleDeleteTrip}>
-                      Delete Trip
-                    </Button>
-                  </AlertDialog.Action>
-                </Flex>
-              </AlertDialog.Content>
-            </AlertDialog.Root>
+            {canManage && (
+              <AlertDialog.Root>
+                <AlertDialog.Trigger>
+                  <Button variant="soft" color="red" size="1">
+                    <Trash2 size={14} />
+                    Delete Trip
+                  </Button>
+                </AlertDialog.Trigger>
+                <AlertDialog.Content maxWidth="450px">
+                  <AlertDialog.Title>Delete Trip</AlertDialog.Title>
+                  <AlertDialog.Description size="2">
+                    Are you sure you want to delete "{trip.name}"? This will permanently remove all
+                    rounds, scores, and challenges associated with this trip. This action cannot be
+                    undone.
+                  </AlertDialog.Description>
+                  <Flex gap="3" mt="4" justify="end">
+                    <AlertDialog.Cancel>
+                      <Button variant="soft" color="gray">
+                        Cancel
+                      </Button>
+                    </AlertDialog.Cancel>
+                    <AlertDialog.Action>
+                      <Button variant="solid" color="red" onClick={handleDeleteTrip}>
+                        Delete Trip
+                      </Button>
+                    </AlertDialog.Action>
+                  </Flex>
+                </AlertDialog.Content>
+              </AlertDialog.Root>
+            )}
           </Flex>
           {trip.description && (
             <Text size="3" color="gray">
@@ -258,11 +262,13 @@ function TripDashboard() {
         <Flex direction="column" gap="3">
           <Flex justify="between" align="center">
             <Heading size="4">Rounds</Heading>
-            <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
-              <Button variant="soft" size="1">
-                Add Round
-              </Button>
-            </Link>
+            {canManage && (
+              <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+                <Button variant="soft" size="1">
+                  Add Round
+                </Button>
+              </Link>
+            )}
           </Flex>
 
           {rounds && rounds.length > 0 ? (
@@ -288,27 +294,29 @@ function TripDashboard() {
                         </Flex>
                       </Link>
                       <Flex align="center" gap="3">
-                        <Tooltip content={round.includedInScoring ? 'Included in scoring' : 'Excluded from scoring'}>
-                          <Flex
-                            align="center"
-                            gap="2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Calculator
-                              size={14}
-                              style={{
-                                color: round.includedInScoring ? 'var(--grass-9)' : 'var(--gray-8)',
-                              }}
-                            />
-                            <Switch
-                              size="1"
-                              checked={round.includedInScoring}
-                              onCheckedChange={() =>
-                                toggleRoundScoring(round.id, round.includedInScoring)
-                              }
-                            />
-                          </Flex>
-                        </Tooltip>
+                        {canManage && (
+                          <Tooltip content={round.includedInScoring ? 'Included in scoring' : 'Excluded from scoring'}>
+                            <Flex
+                              align="center"
+                              gap="2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Calculator
+                                size={14}
+                                style={{
+                                  color: round.includedInScoring ? 'var(--grass-9)' : 'var(--gray-8)',
+                                }}
+                              />
+                              <Switch
+                                size="1"
+                                checked={round.includedInScoring}
+                                onCheckedChange={() =>
+                                  toggleRoundScoring(round.id, round.includedInScoring)
+                                }
+                              />
+                            </Flex>
+                          </Tooltip>
+                        )}
                         <Link
                           to="/trips/$tripId/rounds/$roundId"
                           params={{ tripId, roundId: round.id }}
@@ -325,11 +333,13 @@ function TripDashboard() {
             <Card>
               <Flex direction="column" align="center" gap="2" py="4">
                 <Text color="gray">No rounds yet</Text>
-                <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
-                  <Button variant="soft" size="1">
-                    Add First Round
-                  </Button>
-                </Link>
+                {canManage && (
+                  <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+                    <Button variant="soft" size="1">
+                      Add First Round
+                    </Button>
+                  </Link>
+                )}
               </Flex>
             </Card>
           )}

@@ -8,6 +8,7 @@ import {
   courseCollection,
 } from '../../../../db/collections'
 import { EmptyState } from '../../../../components/ui/EmptyState'
+import { useTripRole } from '../../../../hooks/useTripRole'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/')({
   ssr: false,
@@ -24,6 +25,7 @@ function formatDate(date: Date): string {
 
 function RoundsPage() {
   const { tripId } = Route.useParams()
+  const { canManage } = useTripRole(tripId)
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -67,12 +69,14 @@ function RoundsPage() {
             <Heading size="7">Rounds</Heading>
             <Text color="gray">{trip.name}</Text>
           </Flex>
-          <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
-            <Button>
-              <Plus size={16} />
-              Add Round
-            </Button>
-          </Link>
+          {canManage && (
+            <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+              <Button>
+                <Plus size={16} />
+                Add Round
+              </Button>
+            </Link>
+          )}
         </Flex>
 
         {rounds && rounds.length > 0 ? (
@@ -111,37 +115,39 @@ function RoundsPage() {
                       >
                         <ChevronRight size={16} style={{ color: 'var(--gray-9)' }} />
                       </Link>
-                      <AlertDialog.Root>
-                        <AlertDialog.Trigger>
-                          <Button variant="ghost" size="1" color="red">
-                            <Trash2 size={14} />
-                          </Button>
-                        </AlertDialog.Trigger>
-                        <AlertDialog.Content maxWidth="400px">
-                          <AlertDialog.Title>Delete Round</AlertDialog.Title>
-                          <AlertDialog.Description size="2">
-                            Are you sure you want to delete Round {round.roundNumber} at{' '}
-                            {course?.name || 'Unknown Course'}? This will permanently remove all
-                            scores for this round.
-                          </AlertDialog.Description>
-                          <Flex gap="3" mt="4" justify="end">
-                            <AlertDialog.Cancel>
-                              <Button variant="soft" color="gray">
-                                Cancel
-                              </Button>
-                            </AlertDialog.Cancel>
-                            <AlertDialog.Action>
-                              <Button
-                                variant="solid"
-                                color="red"
-                                onClick={() => handleDeleteRound(round.id)}
-                              >
-                                Delete Round
-                              </Button>
-                            </AlertDialog.Action>
-                          </Flex>
-                        </AlertDialog.Content>
-                      </AlertDialog.Root>
+                      {canManage && (
+                        <AlertDialog.Root>
+                          <AlertDialog.Trigger>
+                            <Button variant="ghost" size="1" color="red">
+                              <Trash2 size={14} />
+                            </Button>
+                          </AlertDialog.Trigger>
+                          <AlertDialog.Content maxWidth="400px">
+                            <AlertDialog.Title>Delete Round</AlertDialog.Title>
+                            <AlertDialog.Description size="2">
+                              Are you sure you want to delete Round {round.roundNumber} at{' '}
+                              {course?.name || 'Unknown Course'}? This will permanently remove all
+                              scores for this round.
+                            </AlertDialog.Description>
+                            <Flex gap="3" mt="4" justify="end">
+                              <AlertDialog.Cancel>
+                                <Button variant="soft" color="gray">
+                                  Cancel
+                                </Button>
+                              </AlertDialog.Cancel>
+                              <AlertDialog.Action>
+                                <Button
+                                  variant="solid"
+                                  color="red"
+                                  onClick={() => handleDeleteRound(round.id)}
+                                >
+                                  Delete Round
+                                </Button>
+                              </AlertDialog.Action>
+                            </Flex>
+                          </AlertDialog.Content>
+                        </AlertDialog.Root>
+                      )}
                     </Flex>
                   </Flex>
                 </Card>
@@ -153,12 +159,14 @@ function RoundsPage() {
             title="No rounds yet"
             description="Add your first round to start tracking scores"
             action={
-              <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
-                <Button>
-                  <Plus size={16} />
-                  Add Round
-                </Button>
-              </Link>
+              canManage ? (
+                <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+                  <Button>
+                    <Plus size={16} />
+                    Add Round
+                  </Button>
+                </Link>
+              ) : undefined
             }
           />
         )}
