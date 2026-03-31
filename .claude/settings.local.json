@@ -106,7 +106,9 @@
       "Bash(jj workspace add:*)",
       "Bash(jj abandon:*)",
       "Bash(jj edit:*)",
-      "Bash(jj commit:*)"
+      "Bash(jj commit:*)",
+      "Bash(jj workspace:*)",
+      "Bash(jj workspace forget:*)"
     ]
   },
   "enabledPlugins": {
