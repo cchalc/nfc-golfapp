@@ -11,7 +11,7 @@ import {
   Dialog,
 } from '@radix-ui/themes'
 import { ChevronLeft, Search } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
   tripCollection,
@@ -19,6 +19,7 @@ import {
   roundCollection,
 } from '../../../../db/collections'
 import { CourseSearch } from '../../../../components/courses/CourseSearch'
+import { useTripRole } from '../../../../hooks/useTripRole'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/new')({
   ssr: false,
@@ -29,6 +30,14 @@ function NewRoundPage() {
   const { tripId } = Route.useParams()
   const navigate = useNavigate()
   const [addCourseDialogOpen, setAddCourseDialogOpen] = useState(false)
+  const { canManage } = useTripRole(tripId)
+
+  // Redirect non-organizers
+  useEffect(() => {
+    if (!canManage) {
+      navigate({ to: '/trips/$tripId/rounds', params: { tripId } })
+    }
+  }, [canManage, navigate, tripId])
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -78,10 +87,10 @@ function NewRoundPage() {
     })
   }
 
-  if (!trip) {
+  if (!trip || !canManage) {
     return (
       <Container size="2" py="6">
-        <Text>Trip not found</Text>
+        <Text>Loading...</Text>
       </Container>
     )
   }

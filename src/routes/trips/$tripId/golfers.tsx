@@ -34,6 +34,7 @@ import {
   calculateStablefordPoints,
   isBirdieOrBetter,
 } from '../../../lib/scoring'
+import { useTripRole } from '../../../hooks/useTripRole'
 
 export const Route = createFileRoute('/trips/$tripId/golfers')({
   ssr: false,
@@ -42,6 +43,7 @@ export const Route = createFileRoute('/trips/$tripId/golfers')({
 
 function TripGolfersPage() {
   const { tripId } = Route.useParams()
+  const { canManage } = useTripRole(tripId)
   const [editingHandicap, setEditingHandicap] = useState<string | null>(null)
   const [handicapValue, setHandicapValue] = useState('')
 
@@ -307,76 +309,93 @@ function TripGolfersPage() {
                 return (
                   <Card key={golfer.id}>
                     <Flex align="center" gap="3">
-                      <Checkbox
-                        checked={true}
-                        onCheckedChange={() => toggleGolfer(golfer.id)}
-                      />
+                      {canManage && (
+                        <Checkbox
+                          checked={true}
+                          onCheckedChange={() => toggleGolfer(golfer.id)}
+                        />
+                      )}
                       <Flex style={{ flex: 1 }} align="center" justify="between">
                         <GolferCard golfer={golfer} />
                         <Flex direction="column" align="end" gap="1">
-                          {editingHandicap === tripGolfer?.id ? (
-                            <Flex align="center" gap="1">
-                              <TextField.Root
-                                size="1"
-                                type="number"
-                                value={handicapValue}
-                                onChange={(e) => setHandicapValue(e.target.value)}
-                                style={{ width: 60 }}
-                                min={0}
-                                max={54}
-                                step={0.1}
-                              />
-                              <IconButton
-                                size="1"
-                                variant="soft"
-                                color="grass"
-                                onClick={() => saveHandicapOverride(tripGolfer!.id, golfer.id)}
-                              >
-                                <Check size={14} />
-                              </IconButton>
-                              <IconButton
-                                size="1"
-                                variant="soft"
-                                color="gray"
-                                onClick={cancelEditingHandicap}
-                              >
-                                <X size={14} />
-                              </IconButton>
-                            </Flex>
+                          {canManage ? (
+                            <>
+                              {editingHandicap === tripGolfer?.id ? (
+                                <Flex align="center" gap="1">
+                                  <TextField.Root
+                                    size="1"
+                                    type="number"
+                                    value={handicapValue}
+                                    onChange={(e) => setHandicapValue(e.target.value)}
+                                    style={{ width: 60 }}
+                                    min={0}
+                                    max={54}
+                                    step={0.1}
+                                  />
+                                  <IconButton
+                                    size="1"
+                                    variant="soft"
+                                    color="grass"
+                                    onClick={() => saveHandicapOverride(tripGolfer!.id, golfer.id)}
+                                  >
+                                    <Check size={14} />
+                                  </IconButton>
+                                  <IconButton
+                                    size="1"
+                                    variant="soft"
+                                    color="gray"
+                                    onClick={cancelEditingHandicap}
+                                  >
+                                    <X size={14} />
+                                  </IconButton>
+                                </Flex>
+                              ) : (
+                                <Flex align="center" gap="1">
+                                  <Tooltip
+                                    content={`Trip handicap used for scoring. Current: ${golfer.handicap.toFixed(1)}`}
+                                  >
+                                    <Badge
+                                      color="grass"
+                                      variant="solid"
+                                      style={{ cursor: 'pointer' }}
+                                      onClick={() =>
+                                        startEditingHandicap(tripGolfer!, golfer.handicap)
+                                      }
+                                    >
+                                      HCP {effectiveHandicap?.toFixed(1)}
+                                    </Badge>
+                                  </Tooltip>
+                                  <Tooltip content="Edit trip handicap">
+                                    <IconButton
+                                      size="1"
+                                      variant="ghost"
+                                      color="gray"
+                                      onClick={() =>
+                                        startEditingHandicap(tripGolfer!, golfer.handicap)
+                                      }
+                                    >
+                                      <Edit2 size={12} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Flex>
+                              )}
+                              {isOverrideDifferent && (
+                                <Text size="1" color="gray">
+                                  Current: {golfer.handicap.toFixed(1)}
+                                </Text>
+                              )}
+                            </>
                           ) : (
-                            <Flex align="center" gap="1">
-                              <Tooltip
-                                content={`Trip handicap used for scoring. Current: ${golfer.handicap.toFixed(1)}`}
-                              >
-                                <Badge
-                                  color="grass"
-                                  variant="solid"
-                                  style={{ cursor: 'pointer' }}
-                                  onClick={() =>
-                                    startEditingHandicap(tripGolfer!, golfer.handicap)
-                                  }
-                                >
-                                  HCP {effectiveHandicap?.toFixed(1)}
-                                </Badge>
-                              </Tooltip>
-                              <Tooltip content="Edit trip handicap">
-                                <IconButton
-                                  size="1"
-                                  variant="ghost"
-                                  color="gray"
-                                  onClick={() =>
-                                    startEditingHandicap(tripGolfer!, golfer.handicap)
-                                  }
-                                >
-                                  <Edit2 size={12} />
-                                </IconButton>
-                              </Tooltip>
-                            </Flex>
-                          )}
-                          {isOverrideDifferent && (
-                            <Text size="1" color="gray">
-                              Current: {golfer.handicap.toFixed(1)}
-                            </Text>
+                            <>
+                              <Badge color="grass" variant="solid">
+                                HCP {effectiveHandicap?.toFixed(1)}
+                              </Badge>
+                              {isOverrideDifferent && (
+                                <Text size="1" color="gray">
+                                  Current: {golfer.handicap.toFixed(1)}
+                                </Text>
+                              )}
+                            </>
                           )}
                         </Flex>
                       </Flex>
@@ -395,7 +414,7 @@ function TripGolfersPage() {
         </Flex>
 
         {/* Available Golfers */}
-        {availableGolfers.length > 0 && (
+        {canManage && availableGolfers.length > 0 && (
           <Flex direction="column" gap="3">
             <Heading size="4">Add Golfers</Heading>
             <Flex direction="column" gap="2">

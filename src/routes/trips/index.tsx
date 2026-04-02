@@ -7,6 +7,7 @@ import { tripCollection, tripGolferCollection } from '../../db/collections'
 import { TripCard } from '../../components/trips/TripCard'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardSkeleton } from '../../components/ui/Skeleton'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export const Route = createFileRoute('/trips/')({
   ssr: false,
@@ -14,6 +15,8 @@ export const Route = createFileRoute('/trips/')({
 })
 
 function TripsPage() {
+  useRequireAuth()
+
   const { data: trips, isLoading } = useLiveQuery(
     (q) =>
       q.from({ trip: tripCollection }).orderBy(({ trip }) => trip.startDate, 'desc'),

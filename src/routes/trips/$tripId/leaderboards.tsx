@@ -10,10 +10,13 @@ import {
   Dialog,
   Button,
   Switch,
+  Spinner,
 } from '@radix-ui/themes'
 import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useState } from 'react'
+import { useRequireAuth } from '../../../hooks/useRequireAuth'
+import { useTripRole } from '../../../hooks/useTripRole'
 import {
   tripCollection,
   golferCollection,
@@ -37,6 +40,9 @@ export const Route = createFileRoute('/trips/$tripId/leaderboards')({
 
 function LeaderboardsPage() {
   const { tripId } = Route.useParams()
+
+  useRequireAuth()
+  const { role, isLoading: roleLoading } = useTripRole(tripId)
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -298,6 +304,27 @@ function LeaderboardsPage() {
       }
     })
     .sort((a, b) => b.totalPoints - a.totalPoints)
+
+  if (roleLoading) {
+    return (
+      <Container size="2" py="6">
+        <Flex justify="center" align="center" style={{ minHeight: '200px' }}>
+          <Spinner size="3" />
+        </Flex>
+      </Container>
+    )
+  }
+
+  if (role === 'none') {
+    return (
+      <Container size="2" py="6">
+        <Flex direction="column" gap="3" align="center" style={{ minHeight: '200px' }} justify="center">
+          <Text size="5" weight="medium">Access Denied</Text>
+          <Text color="gray">You don't have permission to view this trip.</Text>
+        </Flex>
+      </Container>
+    )
+  }
 
   if (!trip) {
     return (

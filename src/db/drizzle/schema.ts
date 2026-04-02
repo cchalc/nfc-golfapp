@@ -34,6 +34,11 @@ export const challengeScopeEnum = pgEnum('challenge_scope', [
   'trip',
 ])
 
+export const tripOrganizerRoleEnum = pgEnum('trip_organizer_role', [
+  'owner',
+  'organizer',
+])
+
 // ============================================================================
 // Tables
 // ============================================================================
@@ -215,4 +220,75 @@ export const challengeResults = pgTable('challenge_results', {
   resultValue: text('result_value').notNull().default(''),
   resultNumeric: real('result_numeric'),
   isWinner: boolean('is_winner').notNull().default(false),
+})
+
+// ============================================================================
+// Authentication Tables
+// ============================================================================
+
+export const identities = pgTable('identities', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull().unique(),
+  golferId: uuid('golfer_id').references(() => golfers.id, {
+    onDelete: 'set null',
+  }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+})
+
+export const sessions = pgTable('sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  identityId: uuid('identity_id')
+    .notNull()
+    .references(() => identities.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
+  userAgent: text('user_agent'),
+  ipAddress: text('ip_address'),
+})
+
+export const magicLinks = pgTable('magic_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').notNull(),
+  code: text('code').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
+
+export const tripOrganizers = pgTable('trip_organizers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tripId: uuid('trip_id')
+    .notNull()
+    .references(() => trips.id, { onDelete: 'cascade' }),
+  identityId: uuid('identity_id')
+    .notNull()
+    .references(() => identities.id, { onDelete: 'cascade' }),
+  role: tripOrganizerRoleEnum('role').notNull().default('organizer'),
+  addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const tripInvites = pgTable('trip_invites', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tripId: uuid('trip_id')
+    .notNull()
+    .references(() => trips.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  createdBy: uuid('created_by')
+    .notNull()
+    .references(() => identities.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  maxUses: integer('max_uses'),
+  useCount: integer('use_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })

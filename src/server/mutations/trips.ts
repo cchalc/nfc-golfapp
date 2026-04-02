@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getDb, wrapMutation, type MutationResult } from './db'
 import type { Trip } from '../../db/collections'
+import { getSession } from '../auth'
 
 type TripInput = Omit<Trip, 'createdAt'> & { createdAt?: Date }
 
@@ -10,8 +11,12 @@ export const insertTrip = createServerFn({ method: 'POST' })
     return wrapMutation('insertTrip', async () => {
       const sql = getDb()
 
-      const [insertResult, txidResult] = await sql.transaction((txn) => [
-        txn`
+      // Get current session to auto-add creator as owner
+      const session = await getSession()
+
+      const [insertResult, _organizerResult, txidResult] = await sql.transaction(
+        (txn) => [
+          txn`
           INSERT INTO trips (id, name, description, start_date, end_date, location, created_by, created_at)
           VALUES (
             ${trip.id},
@@ -25,8 +30,17 @@ export const insertTrip = createServerFn({ method: 'POST' })
           )
           RETURNING id
         `,
-        txn`SELECT txid_current()::text AS txid`,
-      ])
+          // Auto-add creator as owner if authenticated
+          session?.identityId
+            ? txn`
+            INSERT INTO trip_organizers (trip_id, identity_id, role)
+            VALUES (${trip.id}, ${session.identityId}, 'owner')
+            ON CONFLICT (trip_id, identity_id) DO UPDATE SET role = 'owner'
+          `
+            : txn`SELECT 1`,
+          txn`SELECT txid_current()::text AS txid`,
+        ]
+      )
 
       return {
         id: insertResult[0].id as string,

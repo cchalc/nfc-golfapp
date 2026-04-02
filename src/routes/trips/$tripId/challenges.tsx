@@ -12,6 +12,7 @@ import { Plus, Trophy } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useEffect, useRef } from 'react'
 import { useDialogState } from '../../../hooks/useDialogState'
+import { useTripRole } from '../../../hooks/useTripRole'
 import {
   tripCollection,
   challengeCollection,
@@ -39,6 +40,7 @@ export const Route = createFileRoute('/trips/$tripId/challenges')({
 
 function ChallengesPage() {
   const { tripId } = Route.useParams()
+  const { canManage } = useTripRole(tripId)
   const [addChallengeDialogOpen, setAddChallengeDialogOpen] = useDialogState(`add-challenge-${tripId}`)
 
   // Fetch trip
@@ -309,23 +311,25 @@ function ChallengesPage() {
             <Text color="gray">{trip.name}</Text>
           </Flex>
 
-          <Dialog.Root open={addChallengeDialogOpen} onOpenChange={setAddChallengeDialogOpen}>
-            <Dialog.Trigger>
-              <Button data-testid="add-challenge-btn">
-                <Plus size={16} />
-                Add Challenge
-              </Button>
-            </Dialog.Trigger>
-            <Dialog.Content maxWidth="400px">
-              <Dialog.Title>Create Challenge</Dialog.Title>
-              <Flex direction="column" gap="4" pt="4">
-                <ChallengeForm
-                  tripId={tripId}
-                  onSuccess={() => setAddChallengeDialogOpen(false)}
-                />
-              </Flex>
-            </Dialog.Content>
-          </Dialog.Root>
+          {canManage && (
+            <Dialog.Root open={addChallengeDialogOpen} onOpenChange={setAddChallengeDialogOpen}>
+              <Dialog.Trigger>
+                <Button data-testid="add-challenge-btn">
+                  <Plus size={16} />
+                  Add Challenge
+                </Button>
+              </Dialog.Trigger>
+              <Dialog.Content maxWidth="400px">
+                <Dialog.Title>Create Challenge</Dialog.Title>
+                <Flex direction="column" gap="4" pt="4">
+                  <ChallengeForm
+                    tripId={tripId}
+                    onSuccess={() => setAddChallengeDialogOpen(false)}
+                  />
+                </Flex>
+              </Dialog.Content>
+            </Dialog.Root>
+          )}
         </Flex>
 
         {hasChallenges ? (
@@ -348,6 +352,7 @@ function ChallengesPage() {
                       tripGolferList={tripGolferList}
                       results={resultsByChallengeId.get(challenge.id) || []}
                       onDelete={() => handleDeleteChallenge(challenge.id)}
+                      canManage={canManage}
                     />
                   ))}
                 </Flex>
@@ -375,6 +380,7 @@ function ChallengesPage() {
                       tripGolferList={tripGolferList}
                       results={resultsByChallengeId.get(challenge.id) || []}
                       onDelete={() => handleDeleteChallenge(challenge.id)}
+                      canManage={canManage}
                     />
                   ))}
                 </Flex>
@@ -386,23 +392,25 @@ function ChallengesPage() {
             title="No challenges yet"
             description="Create challenges like Closest to Pin or Longest Drive"
             action={
-              <Dialog.Root open={addChallengeDialogOpen} onOpenChange={setAddChallengeDialogOpen}>
-                <Dialog.Trigger>
-                  <Button>
-                    <Plus size={16} />
-                    Create Challenge
-                  </Button>
-                </Dialog.Trigger>
-                <Dialog.Content maxWidth="400px">
-                  <Dialog.Title>Create Challenge</Dialog.Title>
-                  <Flex direction="column" gap="4" pt="4">
-                    <ChallengeForm
-                      tripId={tripId}
-                      onSuccess={() => setAddChallengeDialogOpen(false)}
-                    />
-                  </Flex>
-                </Dialog.Content>
-              </Dialog.Root>
+              canManage ? (
+                <Dialog.Root open={addChallengeDialogOpen} onOpenChange={setAddChallengeDialogOpen}>
+                  <Dialog.Trigger>
+                    <Button>
+                      <Plus size={16} />
+                      Create Challenge
+                    </Button>
+                  </Dialog.Trigger>
+                  <Dialog.Content maxWidth="400px">
+                    <Dialog.Title>Create Challenge</Dialog.Title>
+                    <Flex direction="column" gap="4" pt="4">
+                      <ChallengeForm
+                        tripId={tripId}
+                        onSuccess={() => setAddChallengeDialogOpen(false)}
+                      />
+                    </Flex>
+                  </Dialog.Content>
+                </Dialog.Root>
+              ) : undefined
             }
           />
         )}
@@ -423,6 +431,7 @@ interface ChallengeCardWithDialogsProps {
   tripGolferList: Array<ReturnType<typeof golferCollection.get> & {}>
   results: ChallengeResult[]
   onDelete: () => void
+  canManage: boolean
 }
 
 function ChallengeCardWithDialogs({
@@ -436,6 +445,7 @@ function ChallengeCardWithDialogs({
   tripGolferList,
   results,
   onDelete,
+  canManage,
 }: ChallengeCardWithDialogsProps) {
   const [resultDialogOpen, setResultDialogOpen] = useDialogState(`results-${challenge.id}`)
   const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-${challenge.id}`)
@@ -472,8 +482,8 @@ function ChallengeCardWithDialogs({
         course={course}
         holes={holesForRound}
         onCardClick={() => setResultDialogOpen(true)}
-        onEdit={() => setEditDialogOpen(true)}
-        onDelete={() => setDeleteDialogOpen(true)}
+        onEdit={canManage ? () => setEditDialogOpen(true) : undefined}
+        onDelete={canManage ? () => setDeleteDialogOpen(true) : undefined}
       />
 
       {/* Results dialog for manual challenges - opened by clicking card */}

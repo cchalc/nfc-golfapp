@@ -8,6 +8,7 @@ import { CourseSearch } from '../../components/courses/CourseSearch'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardSkeleton } from '../../components/ui/Skeleton'
 import { useDialogState } from '../../hooks/useDialogState'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export const Route = createFileRoute('/courses/')({
   ssr: false,
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/courses/')({
 })
 
 function CoursesPage() {
+  useRequireAuth()
   const [addDialogOpen, setAddDialogOpen] = useDialogState('add-course')
 
   const { data: courses, isLoading } = useLiveQuery(

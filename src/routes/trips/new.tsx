@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Container, Flex, Heading } from '@radix-ui/themes'
 import { TripForm } from '../../components/trips/TripForm'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export const Route = createFileRoute('/trips/new')({
   ssr: false,
@@ -8,6 +9,7 @@ export const Route = createFileRoute('/trips/new')({
 })
 
 function NewTripPage() {
+  useRequireAuth()
   const navigate = useNavigate()
 
   return (

@@ -22,6 +22,7 @@ import {
   teamMemberCollection,
 } from '../../../db/collections'
 import { EmptyState } from '../../../components/ui/EmptyState'
+import { useTripRole } from '../../../hooks/useTripRole'
 
 export const Route = createFileRoute('/trips/$tripId/teams')({
   ssr: false,
@@ -48,6 +49,7 @@ const TEAM_COLORS = [
 
 function TeamsPage() {
   const { tripId } = Route.useParams()
+  const { canManage } = useTripRole(tripId)
   const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState(`add-team-${tripId}`)
 
   const { data: trips } = useLiveQuery(
@@ -163,61 +165,63 @@ function TeamsPage() {
             <Text color="gray">{trip.name}</Text>
           </Flex>
 
-          <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
-            <Dialog.Trigger>
-              <Button>
-                <Plus size={16} />
-                Add Team
-              </Button>
-            </Dialog.Trigger>
-            <Dialog.Content maxWidth="350px">
-              <Dialog.Title>Create Team</Dialog.Title>
-              <form onSubmit={handleCreateTeam}>
-                <Flex direction="column" gap="4" pt="2">
-                  <Flex direction="column" gap="1">
-                    <Text as="label" size="2" weight="medium">
-                      Team Name
-                    </Text>
-                    <TextField.Root
-                      name="name"
-                      placeholder="Team Alpha"
-                      required
-                    />
-                  </Flex>
-
-                  <Flex direction="column" gap="2">
-                    <Text size="2" weight="medium">
-                      Color
-                    </Text>
-                    <Flex gap="2" wrap="wrap">
-                      {TEAM_COLORS.map((color, idx) => (
-                        <label key={color.value}>
-                          <input
-                            type="radio"
-                            name="color"
-                            value={color.value}
-                            defaultChecked={idx === (teams?.length || 0) % TEAM_COLORS.length}
-                            style={{ display: 'none' }}
-                          />
-                          <Badge
-                            size="2"
-                            style={{
-                              backgroundColor: color.value,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {color.name}
-                          </Badge>
-                        </label>
-                      ))}
+          {canManage && (
+            <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
+              <Dialog.Trigger>
+                <Button>
+                  <Plus size={16} />
+                  Add Team
+                </Button>
+              </Dialog.Trigger>
+              <Dialog.Content maxWidth="350px">
+                <Dialog.Title>Create Team</Dialog.Title>
+                <form onSubmit={handleCreateTeam}>
+                  <Flex direction="column" gap="4" pt="2">
+                    <Flex direction="column" gap="1">
+                      <Text as="label" size="2" weight="medium">
+                        Team Name
+                      </Text>
+                      <TextField.Root
+                        name="name"
+                        placeholder="Team Alpha"
+                        required
+                      />
                     </Flex>
-                  </Flex>
 
-                  <Button type="submit">Create Team</Button>
-                </Flex>
-              </form>
-            </Dialog.Content>
-          </Dialog.Root>
+                    <Flex direction="column" gap="2">
+                      <Text size="2" weight="medium">
+                        Color
+                      </Text>
+                      <Flex gap="2" wrap="wrap">
+                        {TEAM_COLORS.map((color, idx) => (
+                          <label key={color.value}>
+                            <input
+                              type="radio"
+                              name="color"
+                              value={color.value}
+                              defaultChecked={idx === (teams?.length || 0) % TEAM_COLORS.length}
+                              style={{ display: 'none' }}
+                            />
+                            <Badge
+                              size="2"
+                              style={{
+                                backgroundColor: color.value,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {color.name}
+                            </Badge>
+                          </label>
+                        ))}
+                      </Flex>
+                    </Flex>
+
+                    <Button type="submit">Create Team</Button>
+                  </Flex>
+                </form>
+              </Dialog.Content>
+            </Dialog.Root>
+          )}
         </Flex>
 
         {teams && teams.length > 0 ? (
@@ -236,14 +240,16 @@ function TeamsPage() {
                           {members.length} members
                         </Text>
                       </Flex>
-                      <Button
-                        variant="ghost"
-                        color="red"
-                        size="1"
-                        onClick={() => deleteTeam(team.id)}
-                      >
-                        Delete
-                      </Button>
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          color="red"
+                          size="1"
+                          onClick={() => deleteTeam(team.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
                     </Flex>
 
                     {members.length > 0 ? (
@@ -260,17 +266,19 @@ function TeamsPage() {
                                   radius="full"
                                 />
                                 {golfer.name}
-                                <button
-                                  type="button"
-                                  onClick={() => removeFromTeam(golferId)}
-                                  style={{
-                                    all: 'unset',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                  }}
-                                >
-                                  <X size={12} />
-                                </button>
+                                {canManage && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFromTeam(golferId)}
+                                    style={{
+                                      all: 'unset',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                    }}
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                )}
                               </Flex>
                             </Badge>
                           )
@@ -282,7 +290,7 @@ function TeamsPage() {
                       </Text>
                     )}
 
-                    {unassignedGolfers.length > 0 && (
+                    {canManage && unassignedGolfers.length > 0 && (
                       <Flex gap="2" wrap="wrap">
                         {unassignedGolfers.map((golfer) => (
                           <Button
@@ -307,27 +315,29 @@ function TeamsPage() {
             title="No teams yet"
             description="Create teams to track team competitions"
             action={
-              <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
-                <Dialog.Trigger>
-                  <Button>
-                    <Plus size={16} />
-                    Create Team
-                  </Button>
-                </Dialog.Trigger>
-                <Dialog.Content maxWidth="350px">
-                  <Dialog.Title>Create Team</Dialog.Title>
-                  <form onSubmit={handleCreateTeam}>
-                    <Flex direction="column" gap="4" pt="2">
-                      <TextField.Root
-                        name="name"
-                        placeholder="Team Name"
-                        required
-                      />
-                      <Button type="submit">Create Team</Button>
-                    </Flex>
-                  </form>
-                </Dialog.Content>
-              </Dialog.Root>
+              canManage ? (
+                <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
+                  <Dialog.Trigger>
+                    <Button>
+                      <Plus size={16} />
+                      Create Team
+                    </Button>
+                  </Dialog.Trigger>
+                  <Dialog.Content maxWidth="350px">
+                    <Dialog.Title>Create Team</Dialog.Title>
+                    <form onSubmit={handleCreateTeam}>
+                      <Flex direction="column" gap="4" pt="2">
+                        <TextField.Root
+                          name="name"
+                          placeholder="Team Name"
+                          required
+                        />
+                        <Button type="submit">Create Team</Button>
+                      </Flex>
+                    </form>
+                  </Dialog.Content>
+                </Dialog.Root>
+              ) : undefined
             }
           />
         )}

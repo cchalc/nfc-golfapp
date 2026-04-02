@@ -25,6 +25,7 @@ import {
   courseCollection,
 } from '../../db/collections'
 import { GolferForm } from '../../components/golfers/GolferForm'
+import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export const Route = createFileRoute('/golfers/$golferId')({
   ssr: false,
@@ -41,6 +42,7 @@ function getInitials(name: string): string {
 }
 
 function GolferDetailPage() {
+  useRequireAuth()
   const { golferId } = Route.useParams()
   const navigate = useNavigate()
   const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-golfer-${golferId}`)

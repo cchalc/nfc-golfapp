@@ -21,6 +21,7 @@ import {
   isBirdieOrBetter,
 } from '../../../../../lib/scoring'
 import type { RoundSummary } from '../../../../../db/collections'
+import { useTripRole } from '../../../../../hooks/useTripRole'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/$roundId/scorecard')({
   ssr: false,
@@ -34,6 +35,12 @@ function ScorecardPage() {
   const { tripId, roundId } = Route.useParams()
   const { golferId } = Route.useSearch()
   const navigate = useNavigate()
+  const { access, canManage } = useTripRole(tripId)
+
+  // Per-golfer edit permission: organizers can edit all, participants can only edit their own
+  const canEditGolfer = (targetGolferId: string): boolean => {
+    return canManage || access?.golferId === targetGolferId
+  }
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -331,6 +338,7 @@ function ScorecardPage() {
             scores={holeScores}
             onScoreChange={handleScoreChange}
             handicapOverride={tripGolferMap.get(golferId)?.handicapOverride}
+            readOnly={!canEditGolfer(golferId)}
           />
         )}
       </Flex>

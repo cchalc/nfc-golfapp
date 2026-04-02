@@ -9,6 +9,7 @@ interface ScoreEntryProps {
   stablefordPoints: number | null
   onChange: (grossScore: number) => void
   compact?: boolean
+  readOnly?: boolean
 }
 
 function getScoreColor(
@@ -32,6 +33,7 @@ export function ScoreEntry({
   stablefordPoints,
   onChange,
   compact = false,
+  readOnly = false,
 }: ScoreEntryProps) {
   const scoreColor = getScoreColor(netScore, hole.par)
 
@@ -59,6 +61,7 @@ export function ScoreEntry({
             }
           }}
           style={{ width: '40px', textAlign: 'center' }}
+          disabled={readOnly}
         />
         {netScore !== null && (
           <Badge size="1" color={scoreColor}>
@@ -120,6 +123,7 @@ export function ScoreEntry({
           style={{ width: '56px', textAlign: 'center' }}
           placeholder="-"
           data-testid={`gross-score-${hole.holeNumber}`}
+          disabled={readOnly}
         />
 
         {/* Score display - fixed width */}
