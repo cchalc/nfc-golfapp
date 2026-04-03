@@ -35,33 +35,15 @@ interface TripDataProviderProps {
  * Provider for trip-scoped collections
  *
  * Creates trip-specific collection instances with filtered Electric shapes.
- * Eagerly loads critical data for instant page access.
+ * Collections will automatically sync when queried via useLiveQuery.
  */
 export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
   // Create trip-scoped collections (memoized by tripId)
   const collections = useMemo(() => createTripCollections(tripId), [tripId])
 
-  // Eagerly subscribe to critical collections to trigger shape loading
+  // Cleanup collections when unmounting or tripId changes
   useEffect(() => {
-    const criticalCollections = [
-      collections.rounds,
-      collections.roundSummaries,
-      collections.tripGolfers,
-      collections.teams,
-      collections.golfers,
-    ]
-
-    // Subscribe to trigger shape loading (even if not actively queried)
-    const unsubscribes = criticalCollections.map((col) =>
-      col.utils.subscribe(() => {
-        // No-op subscriber - just triggers shape loading
-      })
-    )
-
     return () => {
-      // Cleanup subscriptions
-      unsubscribes.forEach((unsub) => unsub())
-      // Cleanup collections
       collections.cleanup()
     }
   }, [collections])
