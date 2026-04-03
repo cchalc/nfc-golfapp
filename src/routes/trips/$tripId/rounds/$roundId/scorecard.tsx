@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Container, Flex, Heading, Text, Button, Badge, Select, Card } from '@radix-ui/themes'
 import { ArrowLeft, Trophy, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useMemo, useCallback } from 'react'
 import {
   roundCollection,
   courseCollection,
@@ -86,27 +87,50 @@ function ScorecardPage() {
         .where(({ tg }) => eq(tg.status, 'accepted')),
     [tripId]
   )
-  const tripGolferIds = (tripGolfers || []).map((tg) => tg.golferId)
-  const tripGolferMap = new Map((tripGolfers || []).map((tg) => [tg.golferId, tg]))
+
+  // Memoize lookup maps
+  const tripGolferIds = useMemo(
+    () => (tripGolfers || []).map((tg) => tg.golferId),
+    [tripGolfers]
+  )
+
+  const tripGolferMap = useMemo(
+    () => new Map((tripGolfers || []).map((tg) => [tg.golferId, tg])),
+    [tripGolfers]
+  )
 
   const { data: allGolfers } = useLiveQuery(
     (q) => q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
     []
   )
-  const golferMap = new Map((allGolfers || []).map((g) => [g.id, g]))
+
+  const golferMap = useMemo(
+    () => new Map((allGolfers || []).map((g) => [g.id, g])),
+    [allGolfers]
+  )
 
   // Get golfers in this trip, sorted by name
-  const playingGolfers = tripGolferIds
-    .map((id) => golferMap.get(id))
-    .filter((g): g is NonNullable<typeof g> => !!g)
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const playingGolfers = useMemo(
+    () => tripGolferIds
+      .map((id) => golferMap.get(id))
+      .filter((g): g is NonNullable<typeof g> => !!g)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [tripGolferIds, golferMap]
+  )
 
-  const golfer = golferMap.get(golferId)
+  const golfer = useMemo(
+    () => golferMap.get(golferId),
+    [golferMap, golferId]
+  )
 
   // Find current golfer index for prev/next navigation
-  const currentGolferIndex = playingGolfers.findIndex((g) => g.id === golferId)
-  const prevGolfer = currentGolferIndex > 0 ? playingGolfers[currentGolferIndex - 1] : null
-  const nextGolfer = currentGolferIndex < playingGolfers.length - 1 ? playingGolfers[currentGolferIndex + 1] : null
+  const { prevGolfer, nextGolfer } = useMemo(() => {
+    const index = playingGolfers.findIndex((g) => g.id === golferId)
+    return {
+      prevGolfer: index > 0 ? playingGolfers[index - 1] : null,
+      nextGolfer: index < playingGolfers.length - 1 ? playingGolfers[index + 1] : null,
+    }
+  }, [playingGolfers, golferId])
 
   const { data: scores } = useLiveQuery(
     (q) =>
@@ -117,62 +141,15 @@ function ScorecardPage() {
     [roundId, golferId]
   )
 
-  function navigateToGolfer(newGolferId: string) {
+  const navigateToGolfer = useCallback((newGolferId: string) => {
     navigate({
       to: '/trips/$tripId/rounds/$roundId/scorecard',
       params: { tripId, roundId },
       search: { golferId: newGolferId },
     })
-  }
+  }, [navigate, tripId, roundId])
 
-  function handleScoreChange(holeId: string, grossScore: number) {
-    if (!golfer || !holes || !course) return
-
-    const hole = holes.find((h) => h.id === holeId)
-    if (!hole) return
-
-    // Use trip handicap override if set
-    const tripGolfer = tripGolferMap.get(golferId)
-    const effectiveHandicap = tripGolfer?.handicapOverride ?? golfer.handicap
-
-    const playingHandicap = getPlayingHandicap(
-      effectiveHandicap,
-      course.slopeRating,
-      course.courseRating,
-      course.totalPar
-    )
-
-    const handicapStrokes = getHandicapStrokes(hole.strokeIndex, playingHandicap)
-    const netScore = calculateNetScore(grossScore, handicapStrokes)
-    const stablefordPoints = calculateStablefordPoints(netScore, hole.par)
-
-    const existingScore = scores?.find((s) => s.holeId === holeId)
-
-    if (existingScore) {
-      scoreCollection.update(existingScore.id, (draft) => {
-        draft.grossScore = grossScore
-        draft.handicapStrokes = handicapStrokes
-        draft.netScore = netScore
-        draft.stablefordPoints = stablefordPoints
-      })
-    } else {
-      scoreCollection.insert({
-        id: crypto.randomUUID(),
-        roundId,
-        golferId,
-        holeId,
-        grossScore,
-        handicapStrokes,
-        netScore,
-        stablefordPoints,
-      })
-    }
-
-    // Update round summary
-    updateRoundSummary()
-  }
-
-  function updateRoundSummary() {
+  const updateRoundSummary = useCallback(() => {
     if (!golfer || !holes || !course) return
 
     // Re-query to get latest scores
@@ -224,7 +201,64 @@ function ScorecardPage() {
         kps: 0,
       })
     }
-  }
+  }, [golfer, holes, course, roundId, golferId, scores])
+
+  const handleScoreChange = useCallback((holeId: string, grossScore: number) => {
+    if (!golfer || !holes || !course) return
+
+    const hole = holes.find((h) => h.id === holeId)
+    if (!hole) return
+
+    // Use trip handicap override if set
+    const tripGolfer = tripGolferMap.get(golferId)
+    const effectiveHandicap = tripGolfer?.handicapOverride ?? golfer.handicap
+
+    const playingHandicap = getPlayingHandicap(
+      effectiveHandicap,
+      course.slopeRating,
+      course.courseRating,
+      course.totalPar
+    )
+
+    const handicapStrokes = getHandicapStrokes(hole.strokeIndex, playingHandicap)
+    const netScore = calculateNetScore(grossScore, handicapStrokes)
+    const stablefordPoints = calculateStablefordPoints(netScore, hole.par)
+
+    const existingScore = scores?.find((s) => s.holeId === holeId)
+
+    if (existingScore) {
+      scoreCollection.update(existingScore.id, (draft) => {
+        draft.grossScore = grossScore
+        draft.handicapStrokes = handicapStrokes
+        draft.netScore = netScore
+        draft.stablefordPoints = stablefordPoints
+      })
+    } else {
+      scoreCollection.insert({
+        id: crypto.randomUUID(),
+        roundId,
+        golferId,
+        holeId,
+        grossScore,
+        handicapStrokes,
+        netScore,
+        stablefordPoints,
+      })
+    }
+
+    // Update round summary
+    updateRoundSummary()
+  }, [golfer, holes, course, golferId, roundId, scores, tripGolferMap, updateRoundSummary])
+
+  // Eliminate O(n²) pattern with Map lookup
+  const holeScores = useMemo(() => {
+    if (!holes) return []
+    const scoreMap = new Map(scores?.map(s => [s.holeId, s]) || [])
+    return holes.map((hole) => ({
+      holeId: hole.id,
+      grossScore: scoreMap.get(hole.id)?.grossScore ?? null,
+    }))
+  }, [holes, scores])
 
   if (!round || !course || !golfer) {
     return (
@@ -233,15 +267,6 @@ function ScorecardPage() {
       </Container>
     )
   }
-
-  const holeScores =
-    holes?.map((hole) => {
-      const score = scores?.find((s) => s.holeId === hole.id)
-      return {
-        holeId: hole.id,
-        grossScore: score?.grossScore ?? null,
-      }
-    }) ?? []
 
   return (
     <Container size="2" py="6">

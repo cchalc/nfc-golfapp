@@ -1,4 +1,5 @@
 import { Flex, Heading, Text, Separator } from '@radix-ui/themes'
+import { useMemo, memo } from 'react'
 import type { Hole, Golfer } from '../../db/collections'
 import { ScoreEntry } from './ScoreEntry'
 import { ScoreSummary } from './ScoreSummary'
@@ -27,7 +28,7 @@ interface ScorecardProps {
   readOnly?: boolean // Disable score editing
 }
 
-export function Scorecard({
+export const Scorecard = memo(function Scorecard({
   golfer,
   holes,
   courseRating,
@@ -40,73 +41,93 @@ export function Scorecard({
 }: ScorecardProps) {
   // Use trip handicap override if provided, otherwise use golfer's default
   const effectiveHandicap = handicapOverride ?? golfer.handicap
-  const playingHandicap = getPlayingHandicap(
-    effectiveHandicap,
-    slopeRating,
-    courseRating,
-    coursePar
+
+  const playingHandicap = useMemo(
+    () => getPlayingHandicap(effectiveHandicap, slopeRating, courseRating, coursePar),
+    [effectiveHandicap, slopeRating, courseRating, coursePar]
   )
 
-  const scoreMap = new Map(scores.map((s) => [s.holeId, s.grossScore]))
+  // Memoize scoreMap
+  const scoreMap = useMemo(
+    () => new Map(scores.map((s) => [s.holeId, s.grossScore])),
+    [scores]
+  )
 
-  // Calculate totals
-  let totalGross = 0
-  let totalNet = 0
-  let totalStableford = 0
-  let birdiesOrBetter = 0
-  let holesPlayed = 0
+  // Memoize holeData and totals together
+  const { holeData, totalGross, totalNet, totalStableford, birdiesOrBetter, holesPlayed } = useMemo(() => {
+    let tGross = 0
+    let tNet = 0
+    let tStableford = 0
+    let tBirdies = 0
+    let tPlayed = 0
 
-  const holeData = holes.map((hole) => {
-    const grossScore = scoreMap.get(hole.id) ?? null
-    const handicapStrokes = getHandicapStrokes(hole.strokeIndex, playingHandicap)
+    const data = holes.map((hole) => {
+      const grossScore = scoreMap.get(hole.id) ?? null
+      const handicapStrokes = getHandicapStrokes(hole.strokeIndex, playingHandicap)
 
-    let netScore: number | null = null
-    let stablefordPoints: number | null = null
+      let netScore: number | null = null
+      let stablefordPoints: number | null = null
 
-    if (grossScore !== null) {
-      netScore = calculateNetScore(grossScore, handicapStrokes)
-      stablefordPoints = calculateStablefordPoints(netScore, hole.par)
+      if (grossScore !== null) {
+        netScore = calculateNetScore(grossScore, handicapStrokes)
+        stablefordPoints = calculateStablefordPoints(netScore, hole.par)
 
-      totalGross += grossScore
-      totalNet += netScore
-      totalStableford += stablefordPoints
-      holesPlayed++
+        tGross += grossScore
+        tNet += netScore
+        tStableford += stablefordPoints
+        tPlayed++
 
-      if (isBirdieOrBetter(netScore, hole.par)) {
-        birdiesOrBetter++
+        if (isBirdieOrBetter(netScore, hole.par)) {
+          tBirdies++
+        }
       }
-    }
+
+      return {
+        hole,
+        grossScore,
+        handicapStrokes,
+        netScore,
+        stablefordPoints,
+      }
+    })
 
     return {
-      hole,
-      grossScore,
-      handicapStrokes,
-      netScore,
-      stablefordPoints,
+      holeData: data,
+      totalGross: tGross,
+      totalNet: tNet,
+      totalStableford: tStableford,
+      birdiesOrBetter: tBirdies,
+      holesPlayed: tPlayed,
     }
-  })
+  }, [holes, scoreMap, playingHandicap])
 
-  const frontNine = holeData.slice(0, 9)
-  const backNine = holeData.slice(9, 18)
+  const frontNine = useMemo(() => holeData.slice(0, 9), [holeData])
+  const backNine = useMemo(() => holeData.slice(9, 18), [holeData])
 
-  const frontTotals = frontNine.reduce(
-    (acc, h) => ({
-      gross: acc.gross + (h.grossScore ?? 0),
-      net: acc.net + (h.netScore ?? 0),
-      stableford: acc.stableford + (h.stablefordPoints ?? 0),
-      par: acc.par + h.hole.par,
-    }),
-    { gross: 0, net: 0, stableford: 0, par: 0 }
+  const frontTotals = useMemo(
+    () => frontNine.reduce(
+      (acc, h) => ({
+        gross: acc.gross + (h.grossScore ?? 0),
+        net: acc.net + (h.netScore ?? 0),
+        stableford: acc.stableford + (h.stablefordPoints ?? 0),
+        par: acc.par + h.hole.par,
+      }),
+      { gross: 0, net: 0, stableford: 0, par: 0 }
+    ),
+    [frontNine]
   )
 
-  const backTotals = backNine.reduce(
-    (acc, h) => ({
-      gross: acc.gross + (h.grossScore ?? 0),
-      net: acc.net + (h.netScore ?? 0),
-      stableford: acc.stableford + (h.stablefordPoints ?? 0),
-      par: acc.par + h.hole.par,
-    }),
-    { gross: 0, net: 0, stableford: 0, par: 0 }
+  const backTotals = useMemo(
+    () => backNine.reduce(
+      (acc, h) => ({
+        gross: acc.gross + (h.grossScore ?? 0),
+        net: acc.net + (h.netScore ?? 0),
+        stableford: acc.stableford + (h.stablefordPoints ?? 0),
+        par: acc.par + h.hole.par,
+      }),
+      { gross: 0, net: 0, stableford: 0, par: 0 }
+    ),
+    [backNine]
   )
 
   return (
@@ -210,4 +231,4 @@ export function Scorecard({
       )}
     </Flex>
   )
-}
+})
