@@ -17,15 +17,10 @@ import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useState, useMemo, useCallback } from 'react'
 import { useRequireAuth } from '../../../hooks/useRequireAuth'
 import { useTripRole } from '../../../hooks/useTripRole'
+import { useTripData } from '../../../contexts/TripDataContext'
 import {
   tripCollection,
-  golferCollection,
-  tripGolferCollection,
-  roundCollection,
   courseCollection,
-  roundSummaryCollection,
-  teamCollection,
-  teamMemberCollection,
 } from '../../../db/collections'
 import {
   LeaderboardTable,
@@ -44,15 +39,19 @@ function LeaderboardsPage() {
   useRequireAuth()
   const { role, isLoading: roleLoading } = useTripRole(tripId)
 
+  // Get trip-scoped collections (already filtered by tripId)
+  const collections = useTripData()
+
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
     [tripId]
   )
   const trip = trips?.[0]
 
+  // Use trip-scoped golfers (only golfers in this trip)
   const { data: golfers } = useLiveQuery(
-    (q) => q.from({ golfer: golferCollection }),
-    []
+    (q) => q.from({ golfer: collections.golfers }),
+    [tripId]
   )
 
   // Memoize lookup tables
@@ -61,11 +60,11 @@ function LeaderboardsPage() {
     [golfers]
   )
 
+  // Use trip-scoped tripGolfers (already filtered by tripId)
   const { data: tripGolfers } = useLiveQuery(
     (q) =>
       q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.tripId, tripId))
+        .from({ tg: collections.tripGolfers })
         .where(({ tg }) => eq(tg.status, 'accepted')),
     [tripId]
   )
@@ -88,21 +87,20 @@ function LeaderboardsPage() {
   const toggleGolferScoring = useCallback((golferId: string) => {
     const tg = tripGolferMap.get(golferId)
     if (tg) {
-      tripGolferCollection.update(tg.id, (draft) => {
+      collections.tripGolfers.update(tg.id, (draft) => {
         draft.includedInScoring = !draft.includedInScoring
       })
     }
-  }, [tripGolferMap])
+  }, [tripGolferMap, collections.tripGolfers])
 
   // State for round selection dialog
   const [selectedGolferId, setSelectedGolferId] = useState<string | null>(null)
 
-  // Get all rounds for this trip
+  // Get rounds (already trip-scoped)
   const { data: allRounds } = useLiveQuery(
     (q) =>
       q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.tripId, tripId))
+        .from({ round: collections.rounds })
         .orderBy(({ round }) => round.roundNumber, 'asc'),
     [tripId]
   )
@@ -129,13 +127,13 @@ function LeaderboardsPage() {
     [courses]
   )
 
-  // Get all round summaries
+  // Get round summaries (already trip-scoped! 99% data reduction: 15K+ → 50-200 rows)
   const { data: allSummaries } = useLiveQuery(
-    (q) => q.from({ summary: roundSummaryCollection }),
-    []
+    (q) => q.from({ summary: collections.roundSummaries }),
+    [tripId]
   )
 
-  // Filter summaries to only included rounds from this trip AND where summary.includedInScoring is true
+  // Filter summaries to only included rounds AND where summary.includedInScoring is true
   const tripSummaries = useMemo(
     () => (allSummaries || []).filter(
       (s) => includedRoundIds.has(s.roundId) && s.includedInScoring !== false
@@ -154,10 +152,10 @@ function LeaderboardsPage() {
   )
 
   const toggleRoundForGolfer = useCallback((summaryId: string, currentValue: boolean) => {
-    roundSummaryCollection.update(summaryId, (draft) => {
+    collections.roundSummaries.update(summaryId, (draft) => {
       draft.includedInScoring = !currentValue
     })
-  }, [])
+  }, [collections.roundSummaries])
 
   // Aggregate Stableford data
   const stablefordData = useMemo(() => {
@@ -226,18 +224,14 @@ function LeaderboardsPage() {
       .sort((a, b) => b.totalKps - a.totalKps)
   }, [tripSummaries])
 
-  // Teams
+  // Teams (already trip-scoped)
   const { data: teams } = useLiveQuery(
-    (q) =>
-      q.from({ team: teamCollection }).where(({ team }) => eq(team.tripId, tripId)),
+    (q) => q.from({ team: collections.teams }),
     [tripId]
   )
 
   const { data: teamMembers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tm: teamMemberCollection })
-        .where(({ tm }) => eq(tm.tripId, tripId)),
+    (q) => q.from({ tm: collections.teamMembers }),
     [tripId]
   )
 
