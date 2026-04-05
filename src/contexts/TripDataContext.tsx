@@ -75,6 +75,7 @@ export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
 	}, [tripId]);
 
 	// Track sync status by querying each collection
+	// We just need to know if data has arrived, so select one row with orderBy for determinism
 	// Critical tier: tripGolfers, rounds, roundSummaries
 	const { data: tripGolfersData } = useLiveQuery(
 		(q) =>
@@ -82,6 +83,7 @@ export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
 				? q
 						.from({ tg: collections.tripGolfers })
 						.select(({ tg }) => ({ id: tg.id }))
+						.orderBy(({ tg }) => tg.id)
 						.limit(1)
 				: null,
 		[tripId, collections],
@@ -92,6 +94,7 @@ export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
 				? q
 						.from({ r: collections.rounds })
 						.select(({ r }) => ({ id: r.id }))
+						.orderBy(({ r }) => r.id)
 						.limit(1)
 				: null,
 		[tripId, collections],
@@ -102,6 +105,7 @@ export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
 				? q
 						.from({ s: collections.roundSummaries })
 						.select(({ s }) => ({ id: s.id }))
+						.orderBy(({ s }) => s.id)
 						.limit(1)
 				: null,
 		[tripId, collections],
@@ -114,6 +118,7 @@ export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
 				? q
 						.from({ g: collections.golfers })
 						.select(({ g }) => ({ id: g.id }))
+						.orderBy(({ g }) => g.id)
 						.limit(1)
 				: null,
 		[tripId, collections],
@@ -124,6 +129,7 @@ export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
 				? q
 						.from({ t: collections.teams })
 						.select(({ t }) => ({ id: t.id }))
+						.orderBy(({ t }) => t.id)
 						.limit(1)
 				: null,
 		[tripId, collections],
@@ -136,6 +142,7 @@ export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
 				? q
 						.from({ s: collections.scores })
 						.select(({ s }) => ({ id: s.id }))
+						.orderBy(({ s }) => s.id)
 						.limit(1)
 				: null,
 		[tripId, collections],
