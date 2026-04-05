@@ -70,6 +70,32 @@ import {
 } from '../server/mutations'
 
 // ============================================================================
+// Priority Tiers
+// ============================================================================
+
+/**
+ * Priority tiers for trip data loading
+ * - critical: Blocks dashboard UI (tripGolfers, rounds, roundSummaries)
+ * - high: Needed for most subpages (golfers, teams, challenges)
+ * - normal: Large datasets loaded progressively (scores)
+ */
+export type PriorityTier = 'critical' | 'high' | 'normal'
+
+export const COLLECTION_PRIORITIES: Record<keyof Omit<TripCollections, 'cleanup'>, PriorityTier> = {
+  tripGolfers: 'critical',
+  rounds: 'critical',
+  roundSummaries: 'critical',
+  golfers: 'high',
+  teams: 'high',
+  teamMembers: 'high',
+  challenges: 'high',
+  challengeResults: 'high',
+  scores: 'normal',
+  courses: 'high',
+  holes: 'high',
+}
+
+// ============================================================================
 // Helpers
 // ============================================================================
 
