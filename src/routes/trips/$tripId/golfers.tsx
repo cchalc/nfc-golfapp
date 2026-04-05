@@ -27,6 +27,8 @@ import {
 } from '../../../db/collections'
 import { GolferCard } from '../../../components/golfers/GolferCard'
 import { EmptyState } from '../../../components/ui/EmptyState'
+import { GolfersSkeleton } from '../../../components/ui/PageSkeletons'
+import { useTripData } from '../../../contexts/TripDataContext'
 import {
   getPlayingHandicap,
   getHandicapStrokes,
@@ -44,6 +46,7 @@ export const Route = createFileRoute('/trips/$tripId/golfers')({
 function TripGolfersPage() {
   const { tripId } = Route.useParams()
   const { canManage } = useTripRole(tripId)
+  const { isReady } = useTripData()
   const [editingHandicap, setEditingHandicap] = useState<string | null>(null)
   const [handicapValue, setHandicapValue] = useState('')
 
@@ -253,6 +256,14 @@ function TripGolfersPage() {
   function cancelEditingHandicap() {
     setEditingHandicap(null)
     setHandicapValue('')
+  }
+
+  if (!isReady('high')) {
+    return (
+      <Container size="2" py="6">
+        <GolfersSkeleton />
+      </Container>
+    )
   }
 
   if (!trip) {

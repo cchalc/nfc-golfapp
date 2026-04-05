@@ -10,7 +10,6 @@ import {
   Dialog,
   Button,
   Switch,
-  Spinner,
 } from '@radix-ui/themes'
 import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
@@ -22,6 +21,7 @@ import {
   tripCollection,
   courseCollection,
 } from '../../../db/collections'
+import { LeaderboardSkeleton } from '../../../components/ui/PageSkeletons'
 import {
   LeaderboardTable,
   type LeaderboardEntry,
@@ -40,7 +40,7 @@ function LeaderboardsPage() {
   const { role, isLoading: roleLoading } = useTripRole(tripId)
 
   // Get trip-scoped collections (already filtered by tripId)
-  const collections = useTripData()
+  const { collections, isReady } = useTripData()
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -351,12 +351,11 @@ function LeaderboardsPage() {
     [teams, teamMembers, stablefordData]
   )
 
-  if (roleLoading) {
+  // Show skeleton while data loads
+  if (!isReady('high') || roleLoading) {
     return (
       <Container size="2" py="6">
-        <Flex justify="center" align="center" style={{ minHeight: '200px' }}>
-          <Spinner size="3" />
-        </Flex>
+        <LeaderboardSkeleton />
       </Container>
     )
   }

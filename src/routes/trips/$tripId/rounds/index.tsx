@@ -1,176 +1,201 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { Container, Flex, Heading, Button, Card, Text, Badge, AlertDialog } from '@radix-ui/themes'
-import { Plus, ChevronRight, Trash2 } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
-  tripCollection,
-  roundCollection,
-  courseCollection,
-} from '../../../../db/collections'
-import { EmptyState } from '../../../../components/ui/EmptyState'
-import { useTripRole } from '../../../../hooks/useTripRole'
+	AlertDialog,
+	Badge,
+	Button,
+	Card,
+	Container,
+	Flex,
+	Heading,
+	Text,
+} from "@radix-ui/themes";
+import { eq, useLiveQuery } from "@tanstack/react-db";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChevronRight, Plus, Trash2 } from "lucide-react";
+import { EmptyState } from "../../../../components/ui/EmptyState";
+import { RoundsSkeleton } from "../../../../components/ui/PageSkeletons";
+import { useTripData } from "../../../../contexts/TripDataContext";
+import {
+	courseCollection,
+	roundCollection,
+	tripCollection,
+} from "../../../../db/collections";
+import { useTripRole } from "../../../../hooks/useTripRole";
 
-export const Route = createFileRoute('/trips/$tripId/rounds/')({
-  ssr: false,
-  component: RoundsPage,
-})
+export const Route = createFileRoute("/trips/$tripId/rounds/")({
+	ssr: false,
+	component: RoundsPage,
+});
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  })
+	return date.toLocaleDateString("en-US", {
+		weekday: "long",
+		month: "short",
+		day: "numeric",
+	});
 }
 
 function RoundsPage() {
-  const { tripId } = Route.useParams()
-  const { canManage } = useTripRole(tripId)
+	const { tripId } = Route.useParams();
+	const { canManage } = useTripRole(tripId);
+	const { isReady } = useTripData();
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
+	const { data: trips } = useLiveQuery(
+		(q) =>
+			q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
+		[tripId],
+	);
+	const trip = trips?.[0];
 
-  const { data: rounds } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.tripId, tripId))
-        .orderBy(({ round }) => round.roundNumber, 'asc'),
-    [tripId]
-  )
+	const { data: rounds } = useLiveQuery(
+		(q) =>
+			q
+				.from({ round: roundCollection })
+				.where(({ round }) => eq(round.tripId, tripId))
+				.orderBy(({ round }) => round.roundNumber, "asc"),
+		[tripId],
+	);
 
-  const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }),
-    []
-  )
+	const { data: courses } = useLiveQuery(
+		(q) => q.from({ course: courseCollection }),
+		[],
+	);
 
-  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
+	const courseMap = new Map((courses || []).map((c) => [c.id, c]));
 
-  function handleDeleteRound(roundId: string) {
-    roundCollection.delete(roundId)
-  }
+	function handleDeleteRound(roundId: string) {
+		roundCollection.delete(roundId);
+	}
 
-  if (!trip) {
-    return (
-      <Container size="2" py="6">
-        <Text>Trip not found</Text>
-      </Container>
-    )
-  }
+	if (!isReady("critical")) {
+		return (
+			<Container size="2" py="6">
+				<RoundsSkeleton />
+			</Container>
+		);
+	}
 
-  return (
-    <Container size="2" py="6">
-      <Flex direction="column" gap="5">
-        <Flex justify="between" align="center">
-          <Flex direction="column" gap="3">
-            <Heading size="7">Rounds</Heading>
-            <Text color="gray">{trip.name}</Text>
-          </Flex>
-          {canManage && (
-            <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
-              <Button>
-                <Plus size={16} />
-                Add Round
-              </Button>
-            </Link>
-          )}
-        </Flex>
+	if (!trip) {
+		return (
+			<Container size="2" py="6">
+				<Text>Trip not found</Text>
+			</Container>
+		);
+	}
 
-        {rounds && rounds.length > 0 ? (
-          <Flex direction="column" gap="2">
-            {rounds.map((round) => {
-              const course = courseMap.get(round.courseId)
-              return (
-                <Card key={round.id}>
-                  <Flex justify="between" align="center">
-                    <Link
-                      to="/trips/$tripId/rounds/$roundId"
-                      params={{ tripId, roundId: round.id }}
-                      style={{ flex: 1, textDecoration: 'none' }}
-                    >
-                      <Flex direction="column" gap="3">
-                        <Flex align="center" gap="2">
-                          <Badge>Round {round.roundNumber}</Badge>
-                          <Text weight="medium">
-                            {course?.name || 'Unknown Course'}
-                          </Text>
-                        </Flex>
-                        <Text size="2" color="gray">
-                          {formatDate(round.roundDate)}
-                        </Text>
-                        {round.notes && (
-                          <Text size="2" color="gray">
-                            {round.notes}
-                          </Text>
-                        )}
-                      </Flex>
-                    </Link>
-                    <Flex align="center" gap="2">
-                      <Link
-                        to="/trips/$tripId/rounds/$roundId"
-                        params={{ tripId, roundId: round.id }}
-                      >
-                        <ChevronRight size={16} style={{ color: 'var(--gray-9)' }} />
-                      </Link>
-                      {canManage && (
-                        <AlertDialog.Root>
-                          <AlertDialog.Trigger>
-                            <Button variant="ghost" size="1" color="red">
-                              <Trash2 size={14} />
-                            </Button>
-                          </AlertDialog.Trigger>
-                          <AlertDialog.Content maxWidth="400px">
-                            <AlertDialog.Title>Delete Round</AlertDialog.Title>
-                            <AlertDialog.Description size="2">
-                              Are you sure you want to delete Round {round.roundNumber} at{' '}
-                              {course?.name || 'Unknown Course'}? This will permanently remove all
-                              scores for this round.
-                            </AlertDialog.Description>
-                            <Flex gap="3" mt="4" justify="end">
-                              <AlertDialog.Cancel>
-                                <Button variant="soft" color="gray">
-                                  Cancel
-                                </Button>
-                              </AlertDialog.Cancel>
-                              <AlertDialog.Action>
-                                <Button
-                                  variant="solid"
-                                  color="red"
-                                  onClick={() => handleDeleteRound(round.id)}
-                                >
-                                  Delete Round
-                                </Button>
-                              </AlertDialog.Action>
-                            </Flex>
-                          </AlertDialog.Content>
-                        </AlertDialog.Root>
-                      )}
-                    </Flex>
-                  </Flex>
-                </Card>
-              )
-            })}
-          </Flex>
-        ) : (
-          <EmptyState
-            title="No rounds yet"
-            description="Add your first round to start tracking scores"
-            action={
-              canManage ? (
-                <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
-                  <Button>
-                    <Plus size={16} />
-                    Add Round
-                  </Button>
-                </Link>
-              ) : undefined
-            }
-          />
-        )}
-      </Flex>
-    </Container>
-  )
+	return (
+		<Container size="2" py="6">
+			<Flex direction="column" gap="5">
+				<Flex justify="between" align="center">
+					<Flex direction="column" gap="3">
+						<Heading size="7">Rounds</Heading>
+						<Text color="gray">{trip.name}</Text>
+					</Flex>
+					{canManage && (
+						<Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+							<Button>
+								<Plus size={16} />
+								Add Round
+							</Button>
+						</Link>
+					)}
+				</Flex>
+
+				{rounds && rounds.length > 0 ? (
+					<Flex direction="column" gap="2">
+						{rounds.map((round) => {
+							const course = courseMap.get(round.courseId);
+							return (
+								<Card key={round.id}>
+									<Flex justify="between" align="center">
+										<Link
+											to="/trips/$tripId/rounds/$roundId"
+											params={{ tripId, roundId: round.id }}
+											style={{ flex: 1, textDecoration: "none" }}
+										>
+											<Flex direction="column" gap="3">
+												<Flex align="center" gap="2">
+													<Badge>Round {round.roundNumber}</Badge>
+													<Text weight="medium">
+														{course?.name || "Unknown Course"}
+													</Text>
+												</Flex>
+												<Text size="2" color="gray">
+													{formatDate(round.roundDate)}
+												</Text>
+												{round.notes && (
+													<Text size="2" color="gray">
+														{round.notes}
+													</Text>
+												)}
+											</Flex>
+										</Link>
+										<Flex align="center" gap="2">
+											<Link
+												to="/trips/$tripId/rounds/$roundId"
+												params={{ tripId, roundId: round.id }}
+											>
+												<ChevronRight
+													size={16}
+													style={{ color: "var(--gray-9)" }}
+												/>
+											</Link>
+											{canManage && (
+												<AlertDialog.Root>
+													<AlertDialog.Trigger>
+														<Button variant="ghost" size="1" color="red">
+															<Trash2 size={14} />
+														</Button>
+													</AlertDialog.Trigger>
+													<AlertDialog.Content maxWidth="400px">
+														<AlertDialog.Title>Delete Round</AlertDialog.Title>
+														<AlertDialog.Description size="2">
+															Are you sure you want to delete Round{" "}
+															{round.roundNumber} at{" "}
+															{course?.name || "Unknown Course"}? This will
+															permanently remove all scores for this round.
+														</AlertDialog.Description>
+														<Flex gap="3" mt="4" justify="end">
+															<AlertDialog.Cancel>
+																<Button variant="soft" color="gray">
+																	Cancel
+																</Button>
+															</AlertDialog.Cancel>
+															<AlertDialog.Action>
+																<Button
+																	variant="solid"
+																	color="red"
+																	onClick={() => handleDeleteRound(round.id)}
+																>
+																	Delete Round
+																</Button>
+															</AlertDialog.Action>
+														</Flex>
+													</AlertDialog.Content>
+												</AlertDialog.Root>
+											)}
+										</Flex>
+									</Flex>
+								</Card>
+							);
+						})}
+					</Flex>
+				) : (
+					<EmptyState
+						title="No rounds yet"
+						description="Add your first round to start tracking scores"
+						action={
+							canManage ? (
+								<Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
+									<Button>
+										<Plus size={16} />
+										Add Round
+									</Button>
+								</Link>
+							) : undefined
+						}
+					/>
+				)}
+			</Flex>
+		</Container>
+	);
 }
