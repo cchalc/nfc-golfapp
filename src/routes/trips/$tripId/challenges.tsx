@@ -15,8 +15,6 @@ import { ChallengeCard } from "../../../components/challenges/ChallengeCard";
 import { ChallengeForm } from "../../../components/challenges/ChallengeForm";
 import { ChallengeResultEntry } from "../../../components/challenges/ChallengeResultEntry";
 import { EmptyState } from "../../../components/ui/EmptyState";
-import { ChallengesSkeleton } from "../../../components/ui/PageSkeletons";
-import { useTripData } from "../../../contexts/TripDataContext";
 import {
 	type Challenge,
 	type ChallengeResult,
@@ -43,7 +41,6 @@ export const Route = createFileRoute("/trips/$tripId/challenges")({
 function ChallengesPage() {
 	const { tripId } = Route.useParams();
 	const { canManage } = useTripRole(tripId);
-	const { isReady } = useTripData();
 	const [addChallengeDialogOpen, setAddChallengeDialogOpen] = useDialogState(
 		`add-challenge-${tripId}`,
 	);
@@ -290,15 +287,6 @@ function ChallengesPage() {
 			});
 		}
 	}, [rounds, challenges, tripId]);
-
-	// Show loading skeleton while data is syncing
-	if (!isReady("high")) {
-		return (
-			<Container size="2" py="6">
-				<ChallengesSkeleton />
-			</Container>
-		);
-	}
 
 	if (!trip) {
 		return (

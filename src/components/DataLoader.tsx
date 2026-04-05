@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { initOffline } from '../db/offline'
 import { initSyncStatusListeners } from '../db/sync-status'
+import { TripWarmupManager } from './trips/TripWarmupManager'
 
 /**
  * DataLoader component.
@@ -25,6 +26,11 @@ export function DataLoader({ children }: { children: React.ReactNode }) {
       })
   }, [])
 
-  // Render children immediately - offline init happens in background
-  return <>{children}</>
+  // Render children immediately - init and warmup happen in background
+  return (
+    <>
+      <TripWarmupManager />
+      {children}
+    </>
+  )
 }

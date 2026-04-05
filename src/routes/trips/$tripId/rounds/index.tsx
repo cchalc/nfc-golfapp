@@ -12,11 +12,8 @@ import { eq, useLiveQuery } from "@tanstack/react-db";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Plus, Trash2 } from "lucide-react";
 import { EmptyState } from "../../../../components/ui/EmptyState";
-import { RoundsSkeleton } from "../../../../components/ui/PageSkeletons";
 import { useTripData } from "../../../../contexts/TripDataContext";
 import {
-	courseCollection,
-	roundCollection,
 	tripCollection,
 } from "../../../../db/collections";
 import { useTripRole } from "../../../../hooks/useTripRole";
@@ -37,7 +34,7 @@ function formatDate(date: Date): string {
 function RoundsPage() {
 	const { tripId } = Route.useParams();
 	const { canManage } = useTripRole(tripId);
-	const { isReady } = useTripData();
+	const collections = useTripData();
 
 	const { data: trips } = useLiveQuery(
 		(q) =>
@@ -49,29 +46,20 @@ function RoundsPage() {
 	const { data: rounds } = useLiveQuery(
 		(q) =>
 			q
-				.from({ round: roundCollection })
-				.where(({ round }) => eq(round.tripId, tripId))
+				.from({ round: collections.rounds })
 				.orderBy(({ round }) => round.roundNumber, "asc"),
 		[tripId],
 	);
 
 	const { data: courses } = useLiveQuery(
-		(q) => q.from({ course: courseCollection }),
-		[],
+		(q) => q.from({ course: collections.courses }),
+		[tripId],
 	);
 
 	const courseMap = new Map((courses || []).map((c) => [c.id, c]));
 
 	function handleDeleteRound(roundId: string) {
-		roundCollection.delete(roundId);
-	}
-
-	if (!isReady("critical")) {
-		return (
-			<Container size="2" py="6">
-				<RoundsSkeleton />
-			</Container>
-		);
+		collections.rounds.delete(roundId);
 	}
 
 	if (!trip) {

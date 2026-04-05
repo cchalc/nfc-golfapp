@@ -25,15 +25,10 @@ import {
 	Users,
 } from "lucide-react";
 import { QuickActions } from "../../../components/trips/QuickActions";
-import { DashboardSkeleton } from "../../../components/ui/PageSkeletons";
 import { StatCard } from "../../../components/ui/StatCard";
 import { useTripData } from "../../../contexts/TripDataContext";
 import {
-	challengeCollection,
-	courseCollection,
-	roundCollection,
 	tripCollection,
-	tripGolferCollection,
 } from "../../../db/collections";
 import { useTripRole } from "../../../hooks/useTripRole";
 
@@ -54,7 +49,7 @@ function TripDashboard() {
 	const { tripId } = Route.useParams();
 	const navigate = useNavigate();
 	const { canManage } = useTripRole(tripId);
-	const { isReady } = useTripData();
+	const collections = useTripData();
 
 	const { data: trips } = useLiveQuery(
 		(q) =>
@@ -66,8 +61,7 @@ function TripDashboard() {
 	const { data: golferStats } = useLiveQuery(
 		(q) =>
 			q
-				.from({ tg: tripGolferCollection })
-				.where(({ tg }) => eq(tg.tripId, tripId))
+				.from({ tg: collections.tripGolfers })
 				.select(({ tg }) => ({
 					total: count(tg.id),
 				})),
@@ -77,15 +71,14 @@ function TripDashboard() {
 	const { data: rounds } = useLiveQuery(
 		(q) =>
 			q
-				.from({ round: roundCollection })
-				.where(({ round }) => eq(round.tripId, tripId))
+				.from({ round: collections.rounds })
 				.orderBy(({ round }) => round.roundNumber, "asc"),
 		[tripId],
 	);
 
 	const { data: courses } = useLiveQuery(
-		(q) => q.from({ course: courseCollection }),
-		[],
+		(q) => q.from({ course: collections.courses }),
+		[tripId],
 	);
 
 	const courseMap = new Map((courses || []).map((c) => [c.id, c]));
@@ -93,21 +86,10 @@ function TripDashboard() {
 	// Fetch challenges for badge count
 	const { data: challenges } = useLiveQuery(
 		(q) =>
-			q
-				.from({ challenge: challengeCollection })
-				.where(({ challenge }) => eq(challenge.tripId, tripId)),
+			q.from({ challenge: collections.challenges }),
 		[tripId],
 	);
 	const challengeCount = challenges?.length ?? 0;
-
-	// Show skeleton while critical data loads
-	if (!isReady("critical")) {
-		return (
-			<Container size="2" py="6">
-				<DashboardSkeleton />
-			</Container>
-		);
-	}
 
 	if (!trip) {
 		return (
@@ -123,7 +105,7 @@ function TripDashboard() {
 		rounds?.filter((r) => r.includedInScoring).length ?? 0;
 
 	function toggleRoundScoring(roundId: string, currentValue: boolean) {
-		roundCollection.update(roundId, (draft) => {
+		collections.rounds.update(roundId, (draft) => {
 			draft.includedInScoring = !currentValue;
 		});
 	}

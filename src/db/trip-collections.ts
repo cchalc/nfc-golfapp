@@ -70,32 +70,6 @@ import {
 } from '../server/mutations'
 
 // ============================================================================
-// Priority Tiers
-// ============================================================================
-
-/**
- * Priority tiers for trip data loading
- * - critical: Blocks dashboard UI (tripGolfers, rounds, roundSummaries)
- * - high: Needed for most subpages (golfers, teams, challenges)
- * - normal: Large datasets loaded progressively (scores)
- */
-export type PriorityTier = 'critical' | 'high' | 'normal'
-
-export const COLLECTION_PRIORITIES: Record<keyof Omit<TripCollections, 'cleanup'>, PriorityTier> = {
-  tripGolfers: 'critical',
-  rounds: 'critical',
-  roundSummaries: 'critical',
-  golfers: 'high',
-  teams: 'high',
-  teamMembers: 'high',
-  challenges: 'high',
-  challengeResults: 'high',
-  scores: 'normal',
-  courses: 'high',
-  holes: 'high',
-}
-
-// ============================================================================
 // Helpers
 // ============================================================================
 
@@ -103,7 +77,7 @@ function getShapeUrl(path: string): string {
   const base =
     typeof window !== 'undefined'
       ? window.location.origin
-      : 'http://localhost:5173'
+      : 'http://localhost:3000'
   return new URL(path, base).toString()
 }
 
@@ -143,6 +117,13 @@ export interface TripCollections {
   cleanup: () => void
 }
 
+interface TripCollectionRegistryEntry {
+  collections: TripCollections
+  refCount: number
+}
+
+const tripCollectionsRegistry = new Map<string, TripCollectionRegistryEntry>()
+
 // ============================================================================
 // Factory Function
 // ============================================================================
@@ -160,7 +141,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `trip_golfers_${tripId}`,
       schema: tripGolferSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate', // Critical data
       shapeOptions: {
         url: getShapeUrl('/api/electric/trip-golfers'),
         params: {
@@ -196,7 +176,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `golfers_${tripId}`,
       schema: golferSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/golfers'),
         params: {
@@ -221,7 +200,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `rounds_${tripId}`,
       schema: roundSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/rounds'),
         params: {
@@ -257,14 +235,12 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `round_summaries_${tripId}`,
       schema: roundSummarySchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate', // Critical for leaderboards
       shapeOptions: {
         url: getShapeUrl('/api/electric/round-summaries'),
         params: {
           table: 'round_summaries',
           where: `round_id IN (SELECT id FROM rounds WHERE trip_id = '${tripId}')`,
         },
-        parser: timestampParser,
         columnMapper,
         backoffOptions,
         onError: handleSyncError,
@@ -293,7 +269,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `scores_${tripId}`,
       schema: scoreSchema,
       getKey: (item) => item.id,
-      syncMode: 'progressive', // Large dataset, use progressive
       shapeOptions: {
         url: getShapeUrl('/api/electric/scores'),
         params: {
@@ -328,7 +303,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `courses_${tripId}`,
       schema: courseSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/courses'),
         params: {
@@ -352,7 +326,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `holes_${tripId}`,
       schema: holeSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/holes'),
         params: {
@@ -376,14 +349,12 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `teams_${tripId}`,
       schema: teamSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/teams'),
         params: {
           table: 'teams',
           where: `trip_id = '${tripId}'`,
         },
-        parser: timestampParser,
         columnMapper,
         backoffOptions,
         onError: handleSyncError,
@@ -412,7 +383,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `team_members_${tripId}`,
       schema: teamMemberSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/team-members'),
         params: {
@@ -443,14 +413,12 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `challenges_${tripId}`,
       schema: challengeSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/challenges'),
         params: {
           table: 'challenges',
           where: `trip_id = '${tripId}'`,
         },
-        parser: timestampParser,
         columnMapper,
         backoffOptions,
         onError: handleSyncError,
@@ -479,7 +447,6 @@ export function createTripCollections(tripId: string): TripCollections {
       id: `challenge_results_${tripId}`,
       schema: challengeResultSchema,
       getKey: (item) => item.id,
-      syncMode: 'immediate',
       shapeOptions: {
         url: getShapeUrl('/api/electric/challenge-results'),
         params: {
@@ -527,5 +494,53 @@ export function createTripCollections(tripId: string): TripCollections {
     challenges,
     challengeResults,
     cleanup,
+  }
+}
+
+/**
+ * Return cached trip collections for a trip or create them on first access.
+ * Uses reference counting so multiple consumers can safely share a single
+ * warmed collection set and release it independently.
+ */
+export function getOrCreateTripCollections(tripId: string): TripCollections {
+  const existing = tripCollectionsRegistry.get(tripId)
+  if (existing) {
+    existing.refCount += 1
+    return existing.collections
+  }
+
+  const collections = createTripCollections(tripId)
+  tripCollectionsRegistry.set(tripId, { collections, refCount: 1 })
+  return collections
+}
+
+/**
+ * Release a reference for a trip collection set.
+ * When references drop to zero, cleanup and remove from registry.
+ */
+export function releaseTripCollections(tripId: string) {
+  const existing = tripCollectionsRegistry.get(tripId)
+  if (!existing) return
+
+  existing.refCount -= 1
+  if (existing.refCount > 0) return
+
+  try {
+    existing.collections.cleanup()
+  } finally {
+    tripCollectionsRegistry.delete(tripId)
+  }
+}
+
+/**
+ * Remove all registry entries. Primarily useful for local debugging.
+ */
+export function clearTripCollections() {
+  for (const [tripId, entry] of tripCollectionsRegistry) {
+    try {
+      entry.collections.cleanup()
+    } finally {
+      tripCollectionsRegistry.delete(tripId)
+    }
   }
 }

@@ -10,6 +10,7 @@ import {
   Dialog,
   Button,
   Switch,
+  Spinner,
 } from '@radix-ui/themes'
 import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
@@ -19,9 +20,7 @@ import { useTripRole } from '../../../hooks/useTripRole'
 import { useTripData } from '../../../contexts/TripDataContext'
 import {
   tripCollection,
-  courseCollection,
 } from '../../../db/collections'
-import { LeaderboardSkeleton } from '../../../components/ui/PageSkeletons'
 import {
   LeaderboardTable,
   type LeaderboardEntry,
@@ -40,7 +39,7 @@ function LeaderboardsPage() {
   const { role, isLoading: roleLoading } = useTripRole(tripId)
 
   // Get trip-scoped collections (already filtered by tripId)
-  const { collections, isReady } = useTripData()
+  const collections = useTripData()
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
@@ -118,8 +117,8 @@ function LeaderboardsPage() {
 
   // Get courses for round names
   const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }),
-    []
+    (q) => q.from({ course: collections.courses }),
+    [tripId]
   )
 
   const courseMap = useMemo(
@@ -351,11 +350,13 @@ function LeaderboardsPage() {
     [teams, teamMembers, stablefordData]
   )
 
-  // Show skeleton while data loads
-  if (!isReady('high') || roleLoading) {
+  // Show loading while role is being determined
+  if (roleLoading) {
     return (
       <Container size="2" py="6">
-        <LeaderboardSkeleton />
+        <Flex justify="center" align="center" style={{ minHeight: '200px' }}>
+          <Spinner size="3" />
+        </Flex>
       </Container>
     )
   }

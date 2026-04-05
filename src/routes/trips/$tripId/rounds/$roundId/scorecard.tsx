@@ -3,8 +3,6 @@ import { Container, Flex, Heading, Text, Button, Badge, Select, Card } from '@ra
 import { ArrowLeft, Trophy, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useMemo, useCallback } from 'react'
-import { ScorecardSkeleton } from '../../../../../components/ui/PageSkeletons'
-import { useTripData } from '../../../../../contexts/TripDataContext'
 import {
   roundCollection,
   courseCollection,
@@ -39,16 +37,6 @@ function ScorecardPage() {
   const { golferId } = Route.useSearch()
   const navigate = useNavigate()
   const { access, canManage } = useTripRole(tripId)
-  const { isReady } = useTripData()
-
-  // Show skeleton while data is loading
-  if (!isReady('normal')) {
-    return (
-      <Container size="2" py="6">
-        <ScorecardSkeleton />
-      </Container>
-    )
-  }
 
   // Per-golfer edit permission: organizers can edit all, participants can only edit their own
   const canEditGolfer = (targetGolferId: string): boolean => {
