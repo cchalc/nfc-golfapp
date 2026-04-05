@@ -112,7 +112,8 @@
       "Bash(jj branch:*)",
       "Bash(/Users/christopher.chalcraft/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.7/scripts/start-server.sh:*)",
       "Bash(pnpm biome check:*)",
-      "Bash(jj st:*)"
+      "Bash(jj st:*)",
+      "Bash(jj split:*)"
     ]
   },
   "enabledPlugins": {

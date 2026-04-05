@@ -24,6 +24,7 @@ import {
 	Trophy,
 	Users,
 } from "lucide-react";
+import { QuickActions } from "../../../components/trips/QuickActions";
 import { DashboardSkeleton } from "../../../components/ui/PageSkeletons";
 import { StatCard } from "../../../components/ui/StatCard";
 import { useTripData } from "../../../contexts/TripDataContext";
@@ -194,6 +195,9 @@ function TripDashboard() {
 						)}
 					</Flex>
 				</Flex>
+
+				{/* Quick Actions */}
+				<QuickActions tripId={tripId} canManage={canManage} />
 
 				{/* Stats */}
 				<Grid columns={{ initial: "1", sm: "3" }} gap="3">

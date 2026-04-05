@@ -1,11 +1,18 @@
 import { useLiveQuery } from '@tanstack/react-db'
-import { Flex, Tooltip, Badge } from '@radix-ui/themes'
-import { WifiOff, Cloud, AlertCircle } from 'lucide-react'
+import { Badge, Flex, Tooltip } from '@radix-ui/themes'
+import { AlertCircle, Cloud, CloudCog, WifiOff } from 'lucide-react'
 import { syncStatusCollection, type SyncStatus } from '../db/sync-status'
 
 /**
  * Visual indicator for sync status.
- * Shows online/offline state, pending changes count, and sync errors.
+ * Shows online/offline state, syncing state, pending changes count, and sync errors.
+ *
+ * States:
+ * - Synced: Green cloud with checkmark - "All changes saved"
+ * - Syncing: Blue spinning cloud - "Syncing X changes..."
+ * - Offline: Yellow wifi-off - "Offline - changes saved locally"
+ * - Pending: Yellow cloud with badge - "X changes waiting to sync"
+ * - Error: Red alert - "Sync error - tap to retry"
  */
 export function SyncStatusIndicator() {
   const results = useLiveQuery((query) =>
@@ -16,33 +23,43 @@ export function SyncStatusIndicator() {
 
   if (!syncStatus) return null
 
-  const { isOnline, pendingCount, lastSyncError } = syncStatus
+  const { isOnline, isSyncing, pendingCount, lastSyncError } = syncStatus
 
-  // Determine status color and icon
-  let statusColor: 'green' | 'yellow' | 'red' | 'gray' = 'gray'
+  // Determine status color, icon, and tooltip
+  let statusColor: 'green' | 'yellow' | 'red' | 'blue' | 'gray' = 'gray'
   let StatusIcon = Cloud
+  let tooltipContent = 'All changes saved'
+  let shouldSpin = false
 
   if (!isOnline) {
+    // Offline state takes precedence
     statusColor = 'yellow'
     StatusIcon = WifiOff
+    tooltipContent = 'Offline - changes saved locally'
   } else if (lastSyncError) {
+    // Error state
     statusColor = 'red'
     StatusIcon = AlertCircle
+    tooltipContent = 'Sync error - tap to retry'
+  } else if (isSyncing) {
+    // Actively syncing
+    statusColor = 'blue'
+    StatusIcon = CloudCog
+    shouldSpin = true
+    tooltipContent =
+      pendingCount > 0
+        ? `Syncing ${pendingCount} change${pendingCount === 1 ? '' : 's'}...`
+        : 'Syncing...'
   } else if (pendingCount > 0) {
+    // Pending changes waiting to sync
     statusColor = 'yellow'
     StatusIcon = Cloud
+    tooltipContent = `${pendingCount} change${pendingCount === 1 ? '' : 's'} waiting to sync`
   } else {
+    // All synced
     statusColor = 'green'
     StatusIcon = Cloud
-  }
-
-  // Build tooltip content
-  let tooltipContent = isOnline ? 'Online' : 'Offline'
-  if (pendingCount > 0) {
-    tooltipContent += ` - ${pendingCount} pending change${pendingCount === 1 ? '' : 's'}`
-  }
-  if (lastSyncError) {
-    tooltipContent += ` - Error: ${lastSyncError}`
+    tooltipContent = 'All changes saved'
   }
 
   return (
@@ -52,9 +69,10 @@ export function SyncStatusIndicator() {
           size={16}
           style={{
             color: `var(--${statusColor}-9)`,
+            animation: shouldSpin ? 'spin 1s linear infinite' : undefined,
           }}
         />
-        {pendingCount > 0 && (
+        {pendingCount > 0 && !isSyncing && (
           <Badge size="1" color={statusColor} variant="soft">
             {pendingCount}
           </Badge>

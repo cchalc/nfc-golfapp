@@ -8,6 +8,7 @@ import { z } from 'zod'
 export const syncStatusSchema = z.object({
   id: z.literal('singleton'),
   isOnline: z.boolean(),
+  isSyncing: z.boolean(),
   pendingCount: z.number(),
   lastSyncError: z.string().nullable(),
   lastSyncAt: z.date().nullable(),
@@ -27,6 +28,7 @@ export const syncStatusCollection = createCollection(
       {
         id: 'singleton' as const,
         isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        isSyncing: false,
         pendingCount: 0,
         lastSyncError: null,
         lastSyncAt: null,
@@ -41,6 +43,7 @@ export const syncStatusCollection = createCollection(
 export function updateSyncStatus(updates: Partial<Omit<SyncStatus, 'id'>>) {
   syncStatusCollection.update('singleton', (draft) => {
     if (updates.isOnline !== undefined) draft.isOnline = updates.isOnline
+    if (updates.isSyncing !== undefined) draft.isSyncing = updates.isSyncing
     if (updates.pendingCount !== undefined) draft.pendingCount = updates.pendingCount
     if (updates.lastSyncError !== undefined) draft.lastSyncError = updates.lastSyncError
     if (updates.lastSyncAt !== undefined) draft.lastSyncAt = updates.lastSyncAt
