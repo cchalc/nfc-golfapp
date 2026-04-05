@@ -48,14 +48,6 @@ function ChallengesPage() {
 		`add-challenge-${tripId}`,
 	);
 
-	if (!isReady("high")) {
-		return (
-			<Container size="2" py="6">
-				<ChallengesSkeleton />
-			</Container>
-		);
-	}
-
 	// Fetch trip
 	const { data: trips } = useLiveQuery(
 		(q) =>
@@ -298,6 +290,15 @@ function ChallengesPage() {
 			});
 		}
 	}, [rounds, challenges, tripId]);
+
+	// Show loading skeleton while data is syncing
+	if (!isReady("high")) {
+		return (
+			<Container size="2" py="6">
+				<ChallengesSkeleton />
+			</Container>
+		);
+	}
 
 	if (!trip) {
 		return (
