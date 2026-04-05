@@ -1,89 +1,230 @@
 /**
  * Trip Data Context
  *
- * Provides trip-scoped Electric SQL collections to all trip pages.
+ * Provides trip-scoped Electric SQL collections with sync status tracking.
  *
- * Benefits:
- * - Automatic data preloading on mount
- * - 99% reduction in synced data (trip-scoped queries)
- * - Sub-100ms sync latency (immediate mode)
- * - Clean collection lifecycle management
+ * Features:
+ * - Priority-tiered loading (critical → high → normal)
+ * - Sync status per tier for granular loading states
+ * - Collections persist across trip subpage navigation
+ * - Clean lifecycle management
  *
  * Usage:
  * ```tsx
- * const collections = useTripData()
- * const { data: summaries } = useLiveQuery(
- *   (q) => q.from({ summary: collections.roundSummaries }),
- *   [tripId]
- * )
+ * const { collections, isReady, status } = useTripData()
+ * if (!isReady('critical')) return <DashboardSkeleton />
  * ```
  */
 
-import { createContext, useContext, useMemo, useEffect, type ReactNode } from 'react'
-import { createTripCollections, type TripCollections } from '../db/trip-collections'
+import { useLiveQuery } from "@tanstack/react-db";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
+import {
+	createTripCollections,
+	type PriorityTier,
+	type TripCollections,
+} from "../db/trip-collections";
 
-interface TripDataContextValue extends TripCollections {}
+type TierStatus = "loading" | "ready" | "error";
 
-const TripDataContext = createContext<TripDataContextValue | null>(null)
+interface SyncStatus {
+	critical: TierStatus;
+	high: TierStatus;
+	normal: TierStatus;
+}
+
+interface TripDataContextValue {
+	tripId: string;
+	collections: TripCollections;
+	status: SyncStatus;
+	isReady: (tier: PriorityTier) => boolean;
+	isLoading: boolean;
+	error: Error | null;
+}
+
+const TripDataContext = createContext<TripDataContextValue | null>(null);
 
 interface TripDataProviderProps {
-  tripId: string
-  children: ReactNode
+	tripId: string;
+	children: ReactNode;
 }
 
 /**
- * Provider for trip-scoped collections
- *
- * Creates trip-specific collection instances with filtered Electric shapes.
- * Collections will automatically sync when queried via useLiveQuery.
+ * Provider for trip-scoped collections with sync status
  */
 export function TripDataProvider({ tripId, children }: TripDataProviderProps) {
-  // Create trip-scoped collections (memoized by tripId)
-  const collections = useMemo(() => createTripCollections(tripId), [tripId])
+	const [error, setError] = useState<Error | null>(null);
 
-  // Cleanup collections when unmounting or tripId changes
-  useEffect(() => {
-    return () => {
-      collections.cleanup()
-    }
-  }, [collections])
+	// Create trip-scoped collections (memoized by tripId)
+	const collections = useMemo(() => {
+		try {
+			return createTripCollections(tripId);
+		} catch (e) {
+			setError(
+				e instanceof Error ? e : new Error("Failed to create collections"),
+			);
+			return null;
+		}
+	}, [tripId]);
 
-  return (
-    <TripDataContext.Provider value={collections}>
-      {children}
-    </TripDataContext.Provider>
-  )
+	// Track sync status by querying each collection
+	// Critical tier: tripGolfers, rounds, roundSummaries
+	const { data: tripGolfersData } = useLiveQuery(
+		(q) =>
+			collections
+				? q
+						.from({ tg: collections.tripGolfers })
+						.select(({ tg }) => ({ id: tg.id }))
+						.limit(1)
+				: null,
+		[tripId, collections],
+	);
+	const { data: roundsData } = useLiveQuery(
+		(q) =>
+			collections
+				? q
+						.from({ r: collections.rounds })
+						.select(({ r }) => ({ id: r.id }))
+						.limit(1)
+				: null,
+		[tripId, collections],
+	);
+	const { data: summariesData } = useLiveQuery(
+		(q) =>
+			collections
+				? q
+						.from({ s: collections.roundSummaries })
+						.select(({ s }) => ({ id: s.id }))
+						.limit(1)
+				: null,
+		[tripId, collections],
+	);
+
+	// High tier: golfers, teams, teamMembers, challenges, challengeResults
+	const { data: golfersData } = useLiveQuery(
+		(q) =>
+			collections
+				? q
+						.from({ g: collections.golfers })
+						.select(({ g }) => ({ id: g.id }))
+						.limit(1)
+				: null,
+		[tripId, collections],
+	);
+	const { data: teamsData } = useLiveQuery(
+		(q) =>
+			collections
+				? q
+						.from({ t: collections.teams })
+						.select(({ t }) => ({ id: t.id }))
+						.limit(1)
+				: null,
+		[tripId, collections],
+	);
+
+	// Normal tier: scores (large dataset)
+	const { data: scoresData } = useLiveQuery(
+		(q) =>
+			collections
+				? q
+						.from({ s: collections.scores })
+						.select(({ s }) => ({ id: s.id }))
+						.limit(1)
+				: null,
+		[tripId, collections],
+	);
+
+	// Determine tier status based on whether queries have returned
+	// Note: Empty arrays mean "synced but no data" which is still ready
+	const status: SyncStatus = useMemo(
+		() => ({
+			critical:
+				tripGolfersData !== undefined &&
+				roundsData !== undefined &&
+				summariesData !== undefined
+					? "ready"
+					: "loading",
+			high:
+				golfersData !== undefined && teamsData !== undefined
+					? "ready"
+					: "loading",
+			normal: scoresData !== undefined ? "ready" : "loading",
+		}),
+		[
+			tripGolfersData,
+			roundsData,
+			summariesData,
+			golfersData,
+			teamsData,
+			scoresData,
+		],
+	);
+
+	const isReady = useCallback(
+		(tier: PriorityTier): boolean => {
+			if (tier === "critical") return status.critical === "ready";
+			if (tier === "high")
+				return status.critical === "ready" && status.high === "ready";
+			return (
+				status.critical === "ready" &&
+				status.high === "ready" &&
+				status.normal === "ready"
+			);
+		},
+		[status],
+	);
+
+	const isLoading = status.critical === "loading";
+
+	// Cleanup collections when unmounting or tripId changes
+	useEffect(() => {
+		return () => {
+			collections?.cleanup();
+		};
+	}, [collections]);
+
+	if (!collections) {
+		return null; // Or error boundary
+	}
+
+	return (
+		<TripDataContext.Provider
+			value={{
+				tripId,
+				collections,
+				status,
+				isReady,
+				isLoading,
+				error,
+			}}
+		>
+			{children}
+		</TripDataContext.Provider>
+	);
 }
 
 /**
- * Hook to access trip-scoped collections
- *
- * @returns Trip-scoped collections object
- * @throws Error if used outside TripDataProvider
+ * Hook to access trip data context
  */
 export function useTripData(): TripDataContextValue {
-  const context = useContext(TripDataContext)
-  if (!context) {
-    throw new Error('useTripData must be used within TripDataProvider')
-  }
-  return context
+	const context = useContext(TripDataContext);
+	if (!context) {
+		throw new Error("useTripData must be used within TripDataProvider");
+	}
+	return context;
 }
 
 /**
- * Hook to access a specific trip collection
- *
- * @param key - Collection key to access
- * @returns The specified collection
- *
- * @example
- * ```tsx
- * const summaries = useTripCollection('roundSummaries')
- * const { data } = useLiveQuery((q) => q.from({ s: summaries }), [])
- * ```
+ * Hook to check if a specific tier is ready
  */
-export function useTripCollection<K extends keyof TripCollections>(
-  key: K
-): TripCollections[K] {
-  const collections = useTripData()
-  return collections[key]
+export function useTripDataReady(tier: PriorityTier): boolean {
+	const { isReady } = useTripData();
+	return isReady(tier);
 }
