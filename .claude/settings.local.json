@@ -111,7 +111,8 @@
       "Bash(jj workspace forget:*)",
       "Bash(jj branch:*)",
       "Bash(/Users/christopher.chalcraft/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.7/scripts/start-server.sh:*)",
-      "Bash(pnpm biome check:*)"
+      "Bash(pnpm biome check:*)",
+      "Bash(jj st:*)"
     ]
   },
   "enabledPlugins": {

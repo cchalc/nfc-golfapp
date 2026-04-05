@@ -23,6 +23,8 @@ import {
 } from '../../../db/collections'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { useTripRole } from '../../../hooks/useTripRole'
+import { useTripData } from '../../../contexts/TripDataContext'
+import { TeamsSkeleton } from '../../../components/ui/PageSkeletons'
 
 export const Route = createFileRoute('/trips/$tripId/teams')({
   ssr: false,
@@ -50,7 +52,16 @@ const TEAM_COLORS = [
 function TeamsPage() {
   const { tripId } = Route.useParams()
   const { canManage } = useTripRole(tripId)
+  const { isReady } = useTripData()
   const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState(`add-team-${tripId}`)
+
+  if (!isReady('high')) {
+    return (
+      <Container size="2" py="6">
+        <TeamsSkeleton />
+      </Container>
+    )
+  }
 
   const { data: trips } = useLiveQuery(
     (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
