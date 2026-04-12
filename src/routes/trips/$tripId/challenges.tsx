@@ -7,7 +7,6 @@ import {
 	Heading,
 	Text,
 } from "@radix-ui/themes";
-import { eq, useLiveQuery } from "@tanstack/react-db";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus, Trophy } from "lucide-react";
 import { useEffect, useRef } from "react";
@@ -15,20 +14,21 @@ import { ChallengeCard } from "../../../components/challenges/ChallengeCard";
 import { ChallengeForm } from "../../../components/challenges/ChallengeForm";
 import { ChallengeResultEntry } from "../../../components/challenges/ChallengeResultEntry";
 import { EmptyState } from "../../../components/ui/EmptyState";
+import type { Challenge, ChallengeResult, Hole } from "../../../db/collections";
 import {
-	type Challenge,
-	type ChallengeResult,
-	challengeCollection,
-	challengeResultCollection,
-	courseCollection,
-	golferCollection,
-	type Hole,
-	holeCollection,
-	roundCollection,
-	roundSummaryCollection,
-	tripCollection,
-	tripGolferCollection,
-} from "../../../db/collections";
+	useChallengeResultsByTripId,
+	useChallengesByTripId,
+	useCourses,
+	useCreateChallenge,
+	useDeleteChallenge,
+	useDeleteChallengeResult,
+	useGolfers,
+	useHoles,
+	useRoundSummariesByTripId,
+	useRoundsByTripId,
+	useTrip,
+	useTripGolfersByTripId,
+} from "../../../hooks/queries";
 import { useDialogState } from "../../../hooks/useDialogState";
 import { useTripRole } from "../../../hooks/useTripRole";
 import { isAutoCalculatedChallenge } from "../../../lib/challenges";
@@ -46,69 +46,36 @@ function ChallengesPage() {
 	);
 
 	// Fetch trip
-	const { data: trips } = useLiveQuery(
-		(q) =>
-			q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-		[tripId],
-	);
-	const trip = trips?.[0];
+	const { data: trip } = useTrip(tripId);
 
 	// Fetch all challenges for this trip
-	const { data: challenges } = useLiveQuery(
-		(q) =>
-			q
-				.from({ challenge: challengeCollection })
-				.where(({ challenge }) => eq(challenge.tripId, tripId)),
-		[tripId],
-	);
+	const { data: challenges } = useChallengesByTripId(tripId);
 
-	// Fetch all challenge results
-	const { data: allResults } = useLiveQuery(
-		(q) => q.from({ result: challengeResultCollection }),
-		[],
-	);
+	// Fetch all challenge results for this trip
+	const { data: allResults } = useChallengeResultsByTripId(tripId);
 
 	// Fetch golfers for result entry
-	const { data: golfers } = useLiveQuery(
-		(q) => q.from({ golfer: golferCollection }),
-		[],
-	);
+	const { data: golfers } = useGolfers();
 	const golferMap = new Map((golfers || []).map((g) => [g.id, g]));
 
 	// Fetch trip golfers (accepted only)
-	const { data: tripGolfers } = useLiveQuery(
-		(q) =>
-			q
-				.from({ tg: tripGolferCollection })
-				.where(({ tg }) => eq(tg.tripId, tripId))
-				.where(({ tg }) => eq(tg.status, "accepted")),
-		[tripId],
+	const { data: tripGolfersRaw } = useTripGolfersByTripId(tripId);
+	const tripGolfers = (tripGolfersRaw || []).filter(
+		(tg) => tg.status === "accepted",
 	);
-	const tripGolferIds = new Set((tripGolfers || []).map((tg) => tg.golferId));
+	const tripGolferIds = new Set(tripGolfers.map((tg) => tg.golferId));
 	const tripGolferList = (golfers || []).filter((g) => tripGolferIds.has(g.id));
 
 	// Fetch rounds for context
-	const { data: rounds } = useLiveQuery(
-		(q) =>
-			q
-				.from({ round: roundCollection })
-				.where(({ round }) => eq(round.tripId, tripId)),
-		[tripId],
-	);
+	const { data: rounds } = useRoundsByTripId(tripId);
 	const roundMap = new Map((rounds || []).map((r) => [r.id, r]));
 
 	// Fetch holes for context
-	const { data: holes } = useLiveQuery(
-		(q) => q.from({ hole: holeCollection }),
-		[],
-	);
+	const { data: holes } = useHoles();
 	const holeMap = new Map((holes || []).map((h) => [h.id, h]));
 
 	// Fetch courses for display
-	const { data: courses } = useLiveQuery(
-		(q) => q.from({ course: courseCollection }),
-		[],
-	);
+	const { data: courses } = useCourses();
 	const courseMap = new Map((courses || []).map((c) => [c.id, c]));
 
 	// Group holes by courseId for the inline selector
@@ -127,10 +94,12 @@ function ChallengesPage() {
 	}
 
 	// Fetch round summaries for auto-calculated challenges
-	const { data: roundSummaries } = useLiveQuery(
-		(q) => q.from({ summary: roundSummaryCollection }),
-		[],
-	);
+	const { data: roundSummaries } = useRoundSummariesByTripId(tripId);
+
+	// Mutations
+	const createChallengeMutation = useCreateChallenge();
+	const deleteChallengeMutation = useDeleteChallenge();
+	const deleteChallengeResultMutation = useDeleteChallengeResult();
 
 	// Group results by challengeId
 	const resultsByChallengeId = new Map<string, ChallengeResult[]>();
@@ -236,10 +205,10 @@ function ChallengesPage() {
 		// Delete results first
 		const results = resultsByChallengeId.get(challengeId) || [];
 		for (const r of results) {
-			challengeResultCollection.delete(r.id);
+			deleteChallengeResultMutation.mutate({ id: r.id, tripId });
 		}
 		// Delete challenge
-		challengeCollection.delete(challengeId);
+		deleteChallengeMutation.mutate({ id: challengeId, tripId });
 	}
 
 	// Auto-create default challenges (KP and LD) for each round if none exist
@@ -261,7 +230,7 @@ function ChallengesPage() {
 		// Create one KP and one LD for each round
 		for (const round of rounds) {
 			// Closest to Pin
-			challengeCollection.insert({
+			createChallengeMutation.mutate({
 				id: crypto.randomUUID(),
 				tripId,
 				name: "",
@@ -274,7 +243,7 @@ function ChallengesPage() {
 			});
 
 			// Longest Drive
-			challengeCollection.insert({
+			createChallengeMutation.mutate({
 				id: crypto.randomUUID(),
 				tripId,
 				name: "",
@@ -286,7 +255,7 @@ function ChallengesPage() {
 				prizeDescription: "",
 			});
 		}
-	}, [rounds, challenges, tripId]);
+	}, [rounds, challenges, tripId, createChallengeMutation]);
 
 	if (!trip) {
 		return (
@@ -442,12 +411,46 @@ function ChallengesPage() {
 interface ChallengeCardWithDialogsProps {
 	tripId: string;
 	challenge: Challenge;
-	roundMap: Map<string, ReturnType<typeof roundCollection.get> & {}>;
-	holeMap: Map<string, ReturnType<typeof holeCollection.get> & {}>;
-	courseMap: Map<string, ReturnType<typeof courseCollection.get> & {}>;
+	roundMap: Map<
+		string,
+		{
+			id: string;
+			tripId: string;
+			courseId: string;
+			date: Date;
+			format: string;
+			description: string;
+		}
+	>;
+	holeMap: Map<string, Hole>;
+	courseMap: Map<
+		string,
+		{
+			id: string;
+			name: string;
+			city: string | null;
+			state: string | null;
+			country: string | null;
+		}
+	>;
 	holesByCourseId: Map<string, Hole[]>;
-	golferMap: Map<string, ReturnType<typeof golferCollection.get> & {}>;
-	tripGolferList: Array<ReturnType<typeof golferCollection.get> & {}>;
+	golferMap: Map<
+		string,
+		{
+			id: string;
+			name: string;
+			email: string;
+			handicap: number | null;
+			createdAt: Date;
+		}
+	>;
+	tripGolferList: Array<{
+		id: string;
+		name: string;
+		email: string;
+		handicap: number | null;
+		createdAt: Date;
+	}>;
 	results: ChallengeResult[];
 	onDelete: () => void;
 	canManage: boolean;

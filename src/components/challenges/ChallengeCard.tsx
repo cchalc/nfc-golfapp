@@ -1,7 +1,7 @@
 import { Card, Flex, Text, Badge, Button, Select, Box } from '@radix-ui/themes'
 import { Trophy, Trash2, Edit2 } from 'lucide-react'
 import type { Challenge, Golfer, Round, Hole, Course } from '../../db/collections'
-import { challengeCollection } from '../../db/collections'
+import { useUpdateChallenge } from '../../hooks/queries'
 import { getChallengeColor, getChallengeTypeLabel, isManualChallenge } from '../../lib/challenges'
 
 interface ChallengeCardProps {
@@ -29,6 +29,7 @@ export function ChallengeCard({
   onEdit,
   onDelete,
 }: ChallengeCardProps) {
+  const updateChallenge = useUpdateChallenge()
   const color = getChallengeColor(challenge.challengeType)
   const typeLabel = getChallengeTypeLabel(challenge.challengeType)
   const needsManualEntry = isManualChallenge(challenge.challengeType)
@@ -54,8 +55,9 @@ export function ChallengeCard({
 
   // Handle hole selection for challenges without assigned hole
   const handleHoleSelect = (holeId: string) => {
-    challengeCollection.update(challenge.id, (draft) => {
-      draft.holeId = holeId
+    updateChallenge.mutate({
+      id: challenge.id,
+      changes: { holeId },
     })
   }
 

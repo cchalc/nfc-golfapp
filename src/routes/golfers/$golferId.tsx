@@ -14,18 +14,19 @@ import {
   Grid,
 } from '@radix-ui/themes'
 import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight, Trash2 } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useMemo } from 'react'
 import { useDialogState } from '../../hooks/useDialogState'
-import {
-  golferCollection,
-  tripGolferCollection,
-  tripCollection,
-  roundSummaryCollection,
-  roundCollection,
-  courseCollection,
-} from '../../db/collections'
 import { GolferForm } from '../../components/golfers/GolferForm'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import {
+  useGolfer,
+  useDeleteGolfer,
+  useTripGolfers,
+  useTrips,
+  useRoundSummaries,
+  useRounds,
+  useCourses,
+} from '../../hooks/queries'
 
 export const Route = createFileRoute('/golfers/$golferId')({
   ssr: false,
@@ -47,61 +48,88 @@ function GolferDetailPage() {
   const navigate = useNavigate()
   const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-golfer-${golferId}`)
 
+  const { data: golfer, isLoading: golferLoading } = useGolfer(golferId)
+  const { data: allTripGolfers } = useTripGolfers()
+  const { data: allTrips } = useTrips()
+  const { data: allRoundSummaries } = useRoundSummaries()
+  const { data: allRounds } = useRounds()
+  const { data: allCourses } = useCourses()
+  const deleteGolfer = useDeleteGolfer()
+
   function handleDeleteGolfer() {
-    golferCollection.delete(golferId)
-    navigate({ to: '/golfers' })
+    deleteGolfer.mutate(golferId, {
+      onSuccess: () => {
+        navigate({ to: '/golfers' })
+      },
+    })
   }
 
-  const { data: golfers } = useLiveQuery(
-    (q) =>
-      q.from({ golfer: golferCollection }).where(({ golfer }) => eq(golfer.id, golferId)),
-    [golferId]
-  )
-
-  const golfer = golfers?.[0]
-
   // Get trips this golfer has participated in
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.golferId, golferId))
-        .join({ trip: tripCollection }, ({ tg, trip }) => eq(tg.tripId, trip!.id))
-        .select(({ trip, tg }) => ({
-          tripId: trip!.id,
-          tripName: trip!.name,
-          location: trip!.location,
-          startDate: trip!.startDate,
-          endDate: trip!.endDate,
+  const trips = useMemo(() => {
+    if (!allTripGolfers || !allTrips) return []
+
+    const tripGolfersForGolfer = allTripGolfers.filter((tg) => tg.golferId === golferId)
+    const tripsMap = new Map(allTrips.map((t) => [t.id, t]))
+
+    return tripGolfersForGolfer
+      .map((tg) => {
+        const trip = tripsMap.get(tg.tripId)
+        if (!trip) return null
+        return {
+          tripId: trip.id,
+          tripName: trip.name,
+          location: trip.location,
+          startDate: trip.startDate,
+          endDate: trip.endDate,
           status: tg.status,
-        })),
-    [golferId]
-  )
+        }
+      })
+      .filter((t): t is NonNullable<typeof t> => t !== null)
+  }, [allTripGolfers, allTrips, golferId])
 
   // Get round summaries for this golfer with trip and course info
-  const { data: roundSummaries } = useLiveQuery(
-    (q) =>
-      q
-        .from({ rs: roundSummaryCollection })
-        .where(({ rs }) => eq(rs.golferId, golferId))
-        .join({ round: roundCollection }, ({ rs, round }) => eq(rs.roundId, round!.id))
-        .join({ trip: tripCollection }, ({ round, trip }) => eq(round!.tripId, trip!.id))
-        .join({ course: courseCollection }, ({ round, course }) => eq(round!.courseId, course!.id))
-        .select(({ rs, round, trip, course }) => ({
+  const rounds = useMemo(() => {
+    if (!allRoundSummaries || !allRounds || !allTrips || !allCourses) return []
+
+    const roundsMap = new Map(allRounds.map((r) => [r.id, r]))
+    const tripsMap = new Map(allTrips.map((t) => [t.id, t]))
+    const coursesMap = new Map(allCourses.map((c) => [c.id, c]))
+
+    const summariesForGolfer = allRoundSummaries.filter((rs) => rs.golferId === golferId)
+
+    return summariesForGolfer
+      .map((rs) => {
+        const round = roundsMap.get(rs.roundId)
+        if (!round) return null
+        const trip = tripsMap.get(round.tripId)
+        const course = coursesMap.get(round.courseId)
+        if (!trip || !course) return null
+        return {
           roundId: rs.roundId,
-          tripId: round!.tripId,
-          tripName: trip!.name,
-          courseName: course!.name,
+          tripId: round.tripId,
+          tripName: trip.name,
+          courseName: course.name,
           totalGross: rs.totalGross,
           totalNet: rs.totalNet,
           totalStableford: rs.totalStableford,
           birdiesOrBetter: rs.birdiesOrBetter,
-          roundDate: round!.roundDate,
-          roundNumber: round!.roundNumber,
-        }))
-        .orderBy(({ round }) => round!.roundDate, 'desc'),
-    [golferId]
-  )
+          roundDate: round.roundDate,
+          roundNumber: round.roundNumber,
+        }
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .sort((a, b) => new Date(b.roundDate).getTime() - new Date(a.roundDate).getTime())
+  }, [allRoundSummaries, allRounds, allTrips, allCourses, golferId])
+
+  if (golferLoading) {
+    return (
+      <Container size="2" py="6">
+        <Flex direction="column" gap="4" align="center">
+          <Text color="gray">Loading...</Text>
+        </Flex>
+      </Container>
+    )
+  }
 
   if (!golfer) {
     return (
@@ -118,9 +146,6 @@ function GolferDetailPage() {
       </Container>
     )
   }
-
-  const trips = tripGolfers || []
-  const rounds = roundSummaries || []
 
   // Calculate stats
   const totalRounds = rounds.length

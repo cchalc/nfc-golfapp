@@ -12,14 +12,14 @@ import {
 } from '@radix-ui/themes'
 import { ChevronLeft, Search } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import {
-  tripCollection,
-  courseCollection,
-  roundCollection,
-} from '../../../../db/collections'
 import { CourseSearch } from '../../../../components/courses/CourseSearch'
 import { useTripRole } from '../../../../hooks/useTripRole'
+import {
+  useTrip,
+  useCourses,
+  useRoundsByTripId,
+  useCreateRound,
+} from '../../../../hooks/queries'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/new')({
   ssr: false,
@@ -39,26 +39,12 @@ function NewRoundPage() {
     }
   }, [canManage, navigate, tripId])
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
+  const { data: trip } = useTrip(tripId)
+  const { data: courses } = useCourses()
+  const { data: existingRounds } = useRoundsByTripId(tripId)
+  const createRound = useCreateRound()
 
-  const { data: courses } = useLiveQuery(
-    (q) =>
-      q.from({ course: courseCollection }).orderBy(({ course }) => course.name, 'asc'),
-    []
-  )
-
-  const { data: existingRounds } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.tripId, tripId)),
-    [tripId]
-  )
-
+  const sortedCourses = courses?.slice().sort((a, b) => a.name.localeCompare(b.name))
   const nextRoundNumber = (existingRounds?.length ?? 0) + 1
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -71,20 +57,25 @@ function NewRoundPage() {
 
     const roundId = crypto.randomUUID()
 
-    roundCollection.insert({
-      id: roundId,
-      tripId,
-      courseId,
-      roundDate,
-      roundNumber: nextRoundNumber,
-      notes,
-      includedInScoring: true,
-    })
-
-    navigate({
-      to: '/trips/$tripId/rounds/$roundId',
-      params: { tripId, roundId },
-    })
+    createRound.mutate(
+      {
+        id: roundId,
+        tripId,
+        courseId,
+        roundDate,
+        roundNumber: nextRoundNumber,
+        notes,
+        includedInScoring: true,
+      },
+      {
+        onSuccess: () => {
+          navigate({
+            to: '/trips/$tripId/rounds/$roundId',
+            params: { tripId, roundId },
+          })
+        },
+      }
+    )
   }
 
   if (!trip || !canManage) {
@@ -128,7 +119,7 @@ function NewRoundPage() {
                   <Select.Root name="courseId" required>
                     <Select.Trigger placeholder="Select a course" />
                     <Select.Content>
-                      {courses?.map((course) => (
+                      {sortedCourses?.map((course) => (
                         <Select.Item key={course.id} value={course.id}>
                           {course.name}
                         </Select.Item>
@@ -155,7 +146,7 @@ function NewRoundPage() {
                   </Dialog.Content>
                 </Dialog.Root>
               </Flex>
-              {(!courses || courses.length === 0) && (
+              {(!sortedCourses || sortedCourses.length === 0) && (
                 <Text size="1" color="amber">
                   No courses available. Click "Find Course" to search and add one.
                 </Text>
@@ -190,7 +181,7 @@ function NewRoundPage() {
               This will be Round {nextRoundNumber} of the trip
             </Text>
 
-            <Button type="submit" disabled={!courses || courses.length === 0}>
+            <Button type="submit" disabled={!sortedCourses || sortedCourses.length === 0}>
               Create Round
             </Button>
           </Flex>

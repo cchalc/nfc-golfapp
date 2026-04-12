@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Container, Flex, Heading, Text, Button, Card, Grid } from '@radix-ui/themes'
 import { Flag, Users, Trophy, LogIn } from 'lucide-react'
-import { useLiveQuery, count } from '@tanstack/react-db'
-import { tripCollection, golferCollection, roundCollection } from '../db/collections'
 import { useAuth } from '../contexts/AuthContext'
+import { useTrips, useGolfers, useRounds } from '../hooks/queries'
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -14,33 +13,13 @@ function HomePage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
 
-  const { data: tripStats } = useLiveQuery(
-    (q) =>
-      q.from({ trip: tripCollection }).select(({ trip }) => ({
-        total: count(trip.id),
-      })),
-    []
-  )
+  const { data: trips } = useTrips()
+  const { data: golfers } = useGolfers()
+  const { data: rounds } = useRounds()
 
-  const { data: golferStats } = useLiveQuery(
-    (q) =>
-      q.from({ golfer: golferCollection }).select(({ golfer }) => ({
-        total: count(golfer.id),
-      })),
-    []
-  )
-
-  const { data: roundStats } = useLiveQuery(
-    (q) =>
-      q.from({ round: roundCollection }).select(({ round }) => ({
-        total: count(round.id),
-      })),
-    []
-  )
-
-  const tripCount = tripStats?.[0]?.total ?? 0
-  const golferCount = golferStats?.[0]?.total ?? 0
-  const roundCount = roundStats?.[0]?.total ?? 0
+  const tripCount = trips?.length ?? 0
+  const golferCount = golfers?.length ?? 0
+  const roundCount = rounds?.length ?? 0
 
   return (
     <Container size="2" py="9">

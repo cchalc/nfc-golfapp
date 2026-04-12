@@ -10,14 +10,14 @@ import {
   Grid,
 } from '@radix-ui/themes'
 import { ChevronRight, ArrowLeft, Trophy } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
+import { useMemo } from 'react'
 import {
-  roundCollection,
-  courseCollection,
-  tripGolferCollection,
-  golferCollection,
-  roundSummaryCollection,
-} from '../../../../../db/collections'
+  useRound,
+  useCourse,
+  useTripGolfersByTripId,
+  useGolfers,
+  useRoundSummariesByRoundId,
+} from '../../../../../hooks/queries'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/$roundId/')({
   ssr: false,
@@ -36,55 +36,40 @@ function formatDate(date: Date): string {
 function RoundOverview() {
   const { tripId, roundId } = Route.useParams()
 
-  const { data: rounds } = useLiveQuery(
-    (q) =>
-      q.from({ round: roundCollection }).where(({ round }) => eq(round.id, roundId)),
-    [roundId]
-  )
-  const round = rounds?.[0]
+  const { data: round } = useRound(roundId)
+  const { data: course } = useCourse(round?.courseId || '')
+  const { data: tripGolfers } = useTripGolfersByTripId(tripId)
+  const { data: golfers } = useGolfers()
+  const { data: summaries } = useRoundSummariesByRoundId(roundId)
 
-  const { data: courses } = useLiveQuery(
-    (q) =>
-      round
-        ? q
-            .from({ course: courseCollection })
-            .where(({ course }) => eq(course.id, round.courseId))
-        : undefined,
-    [round?.courseId]
-  )
-  const course = courses?.[0]
-
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.tripId, tripId))
-        .where(({ tg }) => eq(tg.status, 'accepted')),
-    [tripId]
+  const acceptedTripGolfers = useMemo(
+    () => (tripGolfers || []).filter((tg) => tg.status === 'accepted'),
+    [tripGolfers]
   )
 
-  const golferIds = (tripGolfers || []).map((tg) => tg.golferId)
-
-  const { data: golfers } = useLiveQuery(
-    (q) =>
-      q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
-    []
+  const golferIds = useMemo(
+    () => acceptedTripGolfers.map((tg) => tg.golferId),
+    [acceptedTripGolfers]
   )
 
-  const { data: summaries } = useLiveQuery(
-    (q) =>
-      q
-        .from({ summary: roundSummaryCollection })
-        .where(({ summary }) => eq(summary.roundId, roundId)),
-    [roundId]
+  const summaryMap = useMemo(
+    () => new Map((summaries || []).map((s) => [s.golferId, s])),
+    [summaries]
   )
 
-  const summaryMap = new Map((summaries || []).map((s) => [s.golferId, s]))
-  const golferMap = new Map((golfers || []).map((g) => [g.id, g]))
+  const golferMap = useMemo(
+    () => new Map((golfers || []).map((g) => [g.id, g])),
+    [golfers]
+  )
 
-  const playingGolfers = golferIds
-    .map((id) => golferMap.get(id))
-    .filter((g): g is NonNullable<typeof g> => !!g)
+  const playingGolfers = useMemo(
+    () =>
+      golferIds
+        .map((id) => golferMap.get(id))
+        .filter((g): g is NonNullable<typeof g> => !!g)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [golferIds, golferMap]
+  )
 
   if (!round) {
     return (

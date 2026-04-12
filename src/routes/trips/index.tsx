@@ -2,12 +2,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Container, Flex, Heading, Button } from '@radix-ui/themes'
 import { Link } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
-import { useLiveQuery, eq, count } from '@tanstack/react-db'
-import { tripCollection, tripGolferCollection } from '../../db/collections'
 import { TripCard } from '../../components/trips/TripCard'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardSkeleton } from '../../components/ui/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import { useTrips, useTripGolferCounts } from '../../hooks/queries'
 
 export const Route = createFileRoute('/trips/')({
   ssr: false,
@@ -17,27 +16,11 @@ export const Route = createFileRoute('/trips/')({
 function TripsPage() {
   useRequireAuth()
 
-  const { data: trips, isLoading } = useLiveQuery(
-    (q) =>
-      q.from({ trip: tripCollection }).orderBy(({ trip }) => trip.startDate, 'desc'),
-    []
-  )
-
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.status, 'accepted'))
-        .groupBy(({ tg }) => tg.tripId)
-        .select(({ tg }) => ({
-          tripId: tg.tripId,
-          count: count(tg.id),
-        })),
-    []
-  )
+  const { data: trips, isLoading } = useTrips()
+  const { data: tripGolferCounts } = useTripGolferCounts()
 
   const golferCountByTrip = new Map(
-    (tripGolfers || []).map((tg) => [tg.tripId, tg.count])
+    (tripGolferCounts || []).map((tg) => [tg.tripId, tg.count])
   )
 
   if (isLoading) {

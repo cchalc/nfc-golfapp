@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Container, Flex, Heading, Button, Dialog } from '@radix-ui/themes'
 import { Plus } from 'lucide-react'
-import { useLiveQuery } from '@tanstack/react-db'
-import { courseCollection, holeCollection } from '../../db/collections'
+import { useCourses, useHoles } from '../../hooks/queries'
 import { CourseCard } from '../../components/courses/CourseCard'
 import { CourseSearch } from '../../components/courses/CourseSearch'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -19,16 +18,10 @@ function CoursesPage() {
   useRequireAuth()
   const [addDialogOpen, setAddDialogOpen] = useDialogState('add-course')
 
-  const { data: courses, isLoading } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }).orderBy(({ course }) => course.name, 'asc'),
-    []
-  )
+  const { data: courses, isLoading: coursesLoading } = useCourses()
 
   // Get hole counts for each course
-  const { data: holes } = useLiveQuery(
-    (q) => q.from({ hole: holeCollection }),
-    []
-  )
+  const { data: holes } = useHoles()
 
   const holeCountByCourse = new Map<string, number>()
   for (const hole of holes || []) {
@@ -36,7 +29,12 @@ function CoursesPage() {
     holeCountByCourse.set(hole.courseId, count + 1)
   }
 
-  if (isLoading) {
+  // Sort courses by name
+  const sortedCourses = courses
+    ? [...courses].sort((a, b) => a.name.localeCompare(b.name))
+    : []
+
+  if (coursesLoading) {
     return (
       <Container size="2" py="6">
         <Flex direction="column" gap="4">
@@ -75,9 +73,9 @@ function CoursesPage() {
           </Dialog.Root>
         </Flex>
 
-        {courses && courses.length > 0 ? (
+        {sortedCourses.length > 0 ? (
           <Flex direction="column" gap="2">
-            {courses.map((course) => (
+            {sortedCourses.map((course) => (
               <CourseCard
                 key={course.id}
                 course={course}

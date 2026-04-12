@@ -13,14 +13,21 @@ import {
   Spinner,
 } from '@radix-ui/themes'
 import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useState, useMemo, useCallback } from 'react'
 import { useRequireAuth } from '../../../hooks/useRequireAuth'
 import { useTripRole } from '../../../hooks/useTripRole'
-import { useTripData } from '../../../contexts/TripDataContext'
 import {
-  tripCollection,
-} from '../../../db/collections'
+  useTrip,
+  useGolfers,
+  useTripGolfersByTripId,
+  useRoundsByTripId,
+  useCourses,
+  useRoundSummariesByTripId,
+  useTeamsByTripId,
+  useTeamMembersByTripId,
+  useUpdateTripGolfer,
+  useUpdateRoundSummary,
+} from '../../../hooks/queries'
 import {
   LeaderboardTable,
   type LeaderboardEntry,
@@ -38,20 +45,11 @@ function LeaderboardsPage() {
   useRequireAuth()
   const { role, isLoading: roleLoading } = useTripRole(tripId)
 
-  // Get trip-scoped collections (already filtered by tripId)
-  const collections = useTripData()
+  // Fetch trip data
+  const { data: trip } = useTrip(tripId)
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
-
-  // Use trip-scoped golfers (only golfers in this trip)
-  const { data: golfers } = useLiveQuery(
-    (q) => q.from({ golfer: collections.golfers }),
-    [tripId]
-  )
+  // Fetch all golfers
+  const { data: golfers } = useGolfers()
 
   // Memoize lookup tables
   const golferMap = useMemo(
@@ -59,13 +57,13 @@ function LeaderboardsPage() {
     [golfers]
   )
 
-  // Use trip-scoped tripGolfers (already filtered by tripId)
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: collections.tripGolfers })
-        .where(({ tg }) => eq(tg.status, 'accepted')),
-    [tripId]
+  // Fetch trip golfers
+  const { data: allTripGolfers } = useTripGolfersByTripId(tripId)
+
+  // Filter to accepted trip golfers
+  const tripGolfers = useMemo(
+    () => (allTripGolfers || []).filter((tg) => tg.status === 'accepted'),
+    [allTripGolfers]
   )
 
   const tripGolferIds = useMemo(
@@ -83,54 +81,53 @@ function LeaderboardsPage() {
     [tripGolfers]
   )
 
+  // Mutations
+  const updateTripGolfer = useUpdateTripGolfer()
+  const updateRoundSummary = useUpdateRoundSummary()
+
   const toggleGolferScoring = useCallback((golferId: string) => {
     const tg = tripGolferMap.get(golferId)
     if (tg) {
-      collections.tripGolfers.update(tg.id, (draft) => {
-        draft.includedInScoring = !draft.includedInScoring
+      updateTripGolfer.mutate({
+        id: tg.id,
+        changes: { includedInScoring: !tg.includedInScoring },
       })
     }
-  }, [tripGolferMap, collections.tripGolfers])
+  }, [tripGolferMap, updateTripGolfer])
 
   // State for round selection dialog
   const [selectedGolferId, setSelectedGolferId] = useState<string | null>(null)
 
-  // Get rounds (already trip-scoped)
-  const { data: allRounds } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: collections.rounds })
-        .orderBy(({ round }) => round.roundNumber, 'asc'),
-    [tripId]
+  // Get rounds
+  const { data: allRounds } = useRoundsByTripId(tripId)
+
+  // Sort rounds by round number
+  const sortedRounds = useMemo(
+    () => [...(allRounds || [])].sort((a, b) => a.roundNumber - b.roundNumber),
+    [allRounds]
   )
 
   const roundMap = useMemo(
-    () => new Map((allRounds || []).map((r) => [r.id, r])),
-    [allRounds]
+    () => new Map((sortedRounds || []).map((r) => [r.id, r])),
+    [sortedRounds]
   )
 
   // Get included rounds (trip-level)
   const includedRoundIds = useMemo(
-    () => new Set((allRounds || []).filter((r) => r.includedInScoring).map((r) => r.id)),
-    [allRounds]
+    () => new Set((sortedRounds || []).filter((r) => r.includedInScoring).map((r) => r.id)),
+    [sortedRounds]
   )
 
   // Get courses for round names
-  const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: collections.courses }),
-    [tripId]
-  )
+  const { data: courses } = useCourses()
 
   const courseMap = useMemo(
     () => new Map((courses || []).map((c) => [c.id, c])),
     [courses]
   )
 
-  // Get round summaries (already trip-scoped! 99% data reduction: 15K+ → 50-200 rows)
-  const { data: allSummaries } = useLiveQuery(
-    (q) => q.from({ summary: collections.roundSummaries }),
-    [tripId]
-  )
+  // Get round summaries
+  const { data: allSummaries } = useRoundSummariesByTripId(tripId)
 
   // Filter summaries to only included rounds AND where summary.includedInScoring is true
   const tripSummaries = useMemo(
@@ -150,11 +147,13 @@ function LeaderboardsPage() {
     [selectedGolferId, allSummaries, includedRoundIds]
   )
 
-  const toggleRoundForGolfer = useCallback((summaryId: string, currentValue: boolean) => {
-    collections.roundSummaries.update(summaryId, (draft) => {
-      draft.includedInScoring = !currentValue
+  const toggleRoundForGolfer = useCallback((summaryId: string, roundId: string, currentValue: boolean) => {
+    updateRoundSummary.mutate({
+      id: summaryId,
+      roundId,
+      changes: { includedInScoring: !currentValue },
     })
-  }, [collections.roundSummaries])
+  }, [updateRoundSummary])
 
   // Aggregate Stableford data
   const stablefordData = useMemo(() => {
@@ -223,16 +222,10 @@ function LeaderboardsPage() {
       .sort((a, b) => b.totalKps - a.totalKps)
   }, [tripSummaries])
 
-  // Teams (already trip-scoped)
-  const { data: teams } = useLiveQuery(
-    (q) => q.from({ team: collections.teams }),
-    [tripId]
-  )
+  // Teams
+  const { data: teams } = useTeamsByTripId(tripId)
 
-  const { data: teamMembers } = useLiveQuery(
-    (q) => q.from({ tm: collections.teamMembers }),
-    [tripId]
-  )
+  const { data: teamMembers } = useTeamMembersByTripId(tripId)
 
   const buildLeaderboard = useCallback(<T extends { golferId: string; rounds: number }>(
     data: T[],
@@ -560,7 +553,7 @@ function LeaderboardsPage() {
                     <Switch
                       size="1"
                       checked={isIncluded}
-                      onCheckedChange={() => toggleRoundForGolfer(summary.id, isIncluded)}
+                      onCheckedChange={() => toggleRoundForGolfer(summary.id, summary.roundId, isIncluded)}
                     />
                   </Flex>
                 </Card>

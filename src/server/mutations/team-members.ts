@@ -1,48 +1,36 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getDb, wrapMutation, type MutationResult } from './db'
+import { getDb, wrapMutation } from './db'
 import type { TeamMember } from '../../db/collections'
 
 export const insertTeamMember = createServerFn({ method: 'POST' })
   .inputValidator((data: TeamMember) => data)
-  .handler(async ({ data: teamMember }): Promise<MutationResult<{ id: string }>> => {
+  .handler(async ({ data: teamMember }): Promise<{ id: string }> => {
     return wrapMutation('insertTeamMember', async () => {
       const sql = getDb()
 
-      const [insertResult, txidResult] = await sql.transaction((txn) => [
-        txn`
-          INSERT INTO team_members (id, team_id, golfer_id, trip_id)
-          VALUES (
-            ${teamMember.id},
-            ${teamMember.teamId},
-            ${teamMember.golferId},
-            ${teamMember.tripId}
-          )
-          RETURNING id
-        `,
-        txn`SELECT txid_current()::text AS txid`,
-      ])
+      const result = await sql`
+        INSERT INTO team_members (id, team_id, golfer_id, trip_id)
+        VALUES (
+          ${teamMember.id},
+          ${teamMember.teamId},
+          ${teamMember.golferId},
+          ${teamMember.tripId}
+        )
+        RETURNING id
+      `
 
-      return {
-        id: insertResult[0].id as string,
-        txid: parseInt(txidResult[0].txid as string),
-      }
+      return { id: result[0].id as string }
     })
   })
 
 export const deleteTeamMember = createServerFn({ method: 'POST' })
   .inputValidator((data: { id: string }) => data)
-  .handler(async ({ data: { id } }): Promise<MutationResult<{ id: string }>> => {
+  .handler(async ({ data: { id } }): Promise<{ id: string }> => {
     return wrapMutation('deleteTeamMember', async () => {
       const sql = getDb()
 
-      const [_deleteResult, txidResult] = await sql.transaction((txn) => [
-        txn`DELETE FROM team_members WHERE id = ${id}`,
-        txn`SELECT txid_current()::text AS txid`,
-      ])
+      await sql`DELETE FROM team_members WHERE id = ${id}`
 
-      return {
-        id,
-        txid: parseInt(txidResult[0].txid as string),
-      }
+      return { id }
     })
   })

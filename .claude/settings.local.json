@@ -113,7 +113,12 @@
       "Bash(/Users/christopher.chalcraft/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.7/scripts/start-server.sh:*)",
       "Bash(pnpm biome check:*)",
       "Bash(jj st:*)",
-      "Bash(jj split:*)"
+      "Bash(jj split:*)",
+      "Bash(for i in 1 2 3)",
+      "Bash(do curl -s http://localhost:5173/trips -o /dev/null -w \"Run $i: %{time_total}s\\\\n\")",
+      "Bash(done)",
+      "Bash(do curl -s http://localhost:5173/golfers -o /dev/null -w \"Run $i: %{time_total}s\\\\n\")",
+      "Bash(do curl -s http://localhost:5173/courses -o /dev/null -w \"Run $i: %{time_total}s\\\\n\")"
     ]
   },
   "enabledPlugins": {

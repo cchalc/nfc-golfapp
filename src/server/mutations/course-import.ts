@@ -15,7 +15,6 @@ interface CourseImportData {
 
 /**
  * Import a complete course with all tee boxes and holes in a single transaction.
- * This ensures atomicity and proper Electric sync via a single txid.
  */
 export const importCourseWithDetails = createServerFn({ method: 'POST' })
   .inputValidator((data: CourseImportData) => data)
@@ -24,8 +23,7 @@ export const importCourseWithDetails = createServerFn({ method: 'POST' })
       const sql = neon(process.env.DATABASE_URL!)
 
       // Build all statements for the transaction
-      // Neon's transaction() takes a callback that receives txn and returns an array of queries
-      const results = await sql.transaction((txn) => {
+      await sql.transaction((txn) => {
         const queries = []
 
         // Insert course
@@ -81,20 +79,13 @@ export const importCourseWithDetails = createServerFn({ method: 'POST' })
           `)
         }
 
-        // Get txid at the end
-        queries.push(txn`SELECT txid_current()::text AS txid`)
-
         return queries
       })
-
-      const txidResult = results[results.length - 1]
-      const txid = parseInt(txidResult[0].txid as string)
 
       return {
         courseId: course.id,
         teeBoxCount: teeBoxes.length,
         holeCount: holes.length,
-        txid,
       }
     })
   })
@@ -120,7 +111,7 @@ export const resyncCourseDetails = createServerFn({ method: 'POST' })
     return wrapMutation('resyncCourseDetails', async () => {
       const sql = neon(process.env.DATABASE_URL!)
 
-      const results = await sql.transaction((txn) => {
+      await sql.transaction((txn) => {
         const queries = []
 
         // Update course info
@@ -170,20 +161,13 @@ export const resyncCourseDetails = createServerFn({ method: 'POST' })
           `)
         }
 
-        // Get txid at the end
-        queries.push(txn`SELECT txid_current()::text AS txid`)
-
         return queries
       })
-
-      const txidResult = results[results.length - 1]
-      const txid = parseInt(txidResult[0].txid as string)
 
       return {
         courseId,
         teeBoxCount: teeBoxes.length,
         holeCount: holes.length,
-        txid,
       }
     })
   })

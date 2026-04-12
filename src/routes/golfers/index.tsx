@@ -1,9 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Container, Flex, Heading, Button, Dialog } from '@radix-ui/themes'
 import { Plus } from 'lucide-react'
-import { useLiveQuery } from '@tanstack/react-db'
 import { useDialogState } from '../../hooks/useDialogState'
-import { golferCollection } from '../../db/collections'
+import { useGolfers } from '../../hooks/queries'
 import { GolferCard } from '../../components/golfers/GolferCard'
 import { GolferForm } from '../../components/golfers/GolferForm'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -19,11 +18,7 @@ function GolfersPage() {
   useRequireAuth()
   const [addDialogOpen, setAddDialogOpen] = useDialogState('add-golfer')
 
-  const { data: golfers, isLoading } = useLiveQuery(
-    (q) =>
-      q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
-    []
-  )
+  const { data: golfers, isLoading } = useGolfers()
 
   if (isLoading) {
     return (
