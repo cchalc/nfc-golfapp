@@ -118,7 +118,22 @@
       "Bash(do curl -s http://localhost:5173/trips -o /dev/null -w \"Run $i: %{time_total}s\\\\n\")",
       "Bash(done)",
       "Bash(do curl -s http://localhost:5173/golfers -o /dev/null -w \"Run $i: %{time_total}s\\\\n\")",
-      "Bash(do curl -s http://localhost:5173/courses -o /dev/null -w \"Run $i: %{time_total}s\\\\n\")"
+      "Bash(do curl -s http://localhost:5173/courses -o /dev/null -w \"Run $i: %{time_total}s\\\\n\")",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__list_pages",
+      "Bash(command -v:*)",
+      "mcp__chrome-devtools__new_page",
+      "Bash(killall:*)",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__wait_for",
+      "mcp__chrome-devtools__take_screenshot",
+      "mcp__chrome-devtools__list_console_messages",
+      "mcp__chrome-devtools__get_console_message",
+      "mcp__chrome-devtools__evaluate_script",
+      "mcp__chrome-devtools__close_page",
+      "mcp__chrome-devtools__type_text",
+      "mcp__chrome-devtools__click",
+      "mcp__chrome-devtools__list_network_requests"
     ]
   },
   "enabledPlugins": {

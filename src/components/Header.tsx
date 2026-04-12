@@ -1,10 +1,29 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { Flex, Text, DropdownMenu, IconButton } from '@radix-ui/themes'
 import { Menu } from 'lucide-react'
 import { ThemePicker } from './ThemePicker'
 import { UserMenu } from './auth/UserMenu'
 
 export function Header() {
+  const location = useLocation()
+  const isLoginPage = location.pathname.startsWith('/login')
+
+  // Minimal header for login pages - just user status
+  if (isLoginPage) {
+    return (
+      <header
+        style={{
+          borderBottom: '1px solid var(--gray-6)',
+          background: 'var(--color-background)',
+        }}
+      >
+        <Flex align="center" justify="end" py="3" px="4">
+          <UserMenu />
+        </Flex>
+      </header>
+    )
+  }
+
   return (
     <header
       style={{
@@ -20,7 +39,7 @@ export function Header() {
               weight="bold"
               style={{
                 fontFamily: 'var(--heading-font)',
-                color: 'var(--amber-9)',
+                color: 'var(--grass-9)',
               }}
             >
               Golf Trip

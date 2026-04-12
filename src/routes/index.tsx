@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Container, Flex, Heading, Text, Button, Card, Grid } from '@radix-ui/themes'
-import { Flag, Users, Trophy, LogIn } from 'lucide-react'
+import { Flag, Users, MapPin, Trophy, LogIn } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { useTrips, useGolfers, useRounds } from '../hooks/queries'
+import { useTrips } from '../hooks/queries'
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -14,62 +14,24 @@ function HomePage() {
   const { isAuthenticated } = useAuth()
 
   const { data: trips } = useTrips()
-  const { data: golfers } = useGolfers()
-  const { data: rounds } = useRounds()
-
   const tripCount = trips?.length ?? 0
-  const golferCount = golfers?.length ?? 0
-  const roundCount = rounds?.length ?? 0
 
   return (
     <Container size="2" py="9">
       <Flex direction="column" gap="6">
         <Flex direction="column" gap="4" align="center" className="animate-reveal-1">
-          <Heading size="8">Golf Trip Planner</Heading>
+          <Heading size="8" style={{ color: 'var(--grass-9)' }}>Golf Trip</Heading>
           <Text size="3" color="gray">
             Plan trips, track scores, and compete with friends
           </Text>
         </Flex>
 
-        <Grid columns={{ initial: '1', sm: '3' }} gap="4" className="animate-reveal-2">
-          <Card className="card-gold-hover">
-            <Flex direction="column" align="center" gap="2" py="3">
-              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
-                {tripCount}
-              </Heading>
-              <Text size="2" color="gray">
-                Trips
-              </Text>
-            </Flex>
-          </Card>
-          <Card className="card-gold-hover">
-            <Flex direction="column" align="center" gap="2" py="3">
-              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
-                {golferCount}
-              </Heading>
-              <Text size="2" color="gray">
-                Golfers
-              </Text>
-            </Flex>
-          </Card>
-          <Card className="card-gold-hover">
-            <Flex direction="column" align="center" gap="2" py="3">
-              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
-                {roundCount}
-              </Heading>
-              <Text size="2" color="gray">
-                Rounds
-              </Text>
-            </Flex>
-          </Card>
-        </Grid>
-
-        <Grid columns={{ initial: '1', sm: '2' }} gap="3" className="animate-reveal-3">
+        <Grid columns={{ initial: '1', sm: '3' }} gap="3" className="animate-reveal-2">
           <Link to="/trips" style={{ textDecoration: 'none' }}>
             <Card asChild>
               <Flex direction="column" align="center" gap="2" py="4">
                 <Flag size={32} style={{ color: 'var(--grass-9)' }} />
-                <Text weight="medium">View Trips</Text>
+                <Text weight="medium">Trips</Text>
               </Flex>
             </Card>
           </Link>
@@ -78,6 +40,14 @@ function HomePage() {
               <Flex direction="column" align="center" gap="2" py="4">
                 <Users size={32} style={{ color: 'var(--grass-9)' }} />
                 <Text weight="medium">Golfers</Text>
+              </Flex>
+            </Card>
+          </Link>
+          <Link to="/courses" style={{ textDecoration: 'none' }}>
+            <Card asChild>
+              <Flex direction="column" align="center" gap="2" py="4">
+                <MapPin size={32} style={{ color: 'var(--grass-9)' }} />
+                <Text weight="medium">Courses</Text>
               </Flex>
             </Card>
           </Link>

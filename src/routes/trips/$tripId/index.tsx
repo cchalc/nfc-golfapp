@@ -16,13 +16,10 @@ import {
   Calculator,
   Calendar,
   ChevronRight,
-  Flag,
   MapPin,
-  Target,
   Trash2,
-  Trophy,
-  Users,
 } from 'lucide-react'
+import { RoundDeleteButton } from '../../../components/rounds/RoundDeleteButton'
 import { QuickActions } from '../../../components/trips/QuickActions'
 import { StatCard } from '../../../components/ui/StatCard'
 import { useTripRole } from '../../../hooks/useTripRole'
@@ -32,7 +29,6 @@ import {
   useTripGolfersByTripId,
   useRoundsByTripId,
   useCourses,
-  useChallengesByTripId,
   useUpdateRound,
 } from '../../../hooks/queries'
 
@@ -58,13 +54,11 @@ function TripDashboard() {
   const { data: tripGolfers } = useTripGolfersByTripId(tripId)
   const { data: rounds } = useRoundsByTripId(tripId)
   const { data: courses } = useCourses()
-  const { data: challenges } = useChallengesByTripId(tripId)
 
   const deleteTrip = useDeleteTrip()
   const updateRound = useUpdateRound()
 
   const courseMap = new Map((courses || []).map((c) => [c.id, c]))
-  const challengeCount = challenges?.length ?? 0
 
   if (!trip) {
     return (
@@ -175,89 +169,9 @@ function TripDashboard() {
           />
         </Grid>
 
-        {/* Quick Links */}
-        <Flex direction="column" gap="3">
-          <Heading size="4">Manage</Heading>
-          <Grid columns={{ initial: '1', sm: '2' }} gap="3">
-            <Link to="/trips/$tripId/golfers" params={{ tripId }}>
-              <Card asChild>
-                <Flex justify="between" align="center">
-                  <Flex align="center" gap="2">
-                    <Users size={20} />
-                    <Text weight="medium">Golfers</Text>
-                  </Flex>
-                  <ChevronRight size={16} />
-                </Flex>
-              </Card>
-            </Link>
-
-            <Link to="/trips/$tripId/leaderboards" params={{ tripId }}>
-              <Card asChild>
-                <Flex justify="between" align="center">
-                  <Flex align="center" gap="2">
-                    <Trophy size={20} />
-                    <Text weight="medium">Leaderboards</Text>
-                  </Flex>
-                  <ChevronRight size={16} />
-                </Flex>
-              </Card>
-            </Link>
-
-            <Link to="/trips/$tripId/teams" params={{ tripId }}>
-              <Card asChild>
-                <Flex justify="between" align="center">
-                  <Flex align="center" gap="2">
-                    <Flag size={20} />
-                    <Text weight="medium">Teams</Text>
-                  </Flex>
-                  <ChevronRight size={16} />
-                </Flex>
-              </Card>
-            </Link>
-
-            <Link to="/trips/$tripId/challenges" params={{ tripId }}>
-              <Card asChild>
-                <Flex justify="between" align="center">
-                  <Flex align="center" gap="2">
-                    <Target size={20} />
-                    <Text weight="medium">Challenges</Text>
-                    {challengeCount > 0 && (
-                      <Badge size="1" color="amber">
-                        {challengeCount}
-                      </Badge>
-                    )}
-                  </Flex>
-                  <ChevronRight size={16} />
-                </Flex>
-              </Card>
-            </Link>
-
-            <Link to="/trips/$tripId/rounds" params={{ tripId }}>
-              <Card asChild>
-                <Flex justify="between" align="center">
-                  <Flex align="center" gap="2">
-                    <Calendar size={20} />
-                    <Text weight="medium">All Rounds</Text>
-                  </Flex>
-                  <ChevronRight size={16} />
-                </Flex>
-              </Card>
-            </Link>
-          </Grid>
-        </Flex>
-
         {/* Rounds */}
         <Flex direction="column" gap="3">
-          <Flex justify="between" align="center">
-            <Heading size="4">Rounds</Heading>
-            {canManage && (
-              <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
-                <Button variant="soft" size="1">
-                  Add Round
-                </Button>
-              </Link>
-            )}
-          </Flex>
+          <Heading size="4">Rounds</Heading>
 
           {rounds && rounds.length > 0 ? (
             <Flex direction="column" gap="2">
@@ -285,38 +199,45 @@ function TripDashboard() {
                       </Link>
                       <Flex align="center" gap="3">
                         {canManage && (
-                          <Tooltip
-                            content={
-                              round.includedInScoring
-                                ? 'Included in scoring'
-                                : 'Excluded from scoring'
-                            }
-                          >
-                            <Flex
-                              align="center"
-                              gap="2"
-                              onClick={(e) => e.stopPropagation()}
+                          <>
+                            <Tooltip
+                              content={
+                                round.includedInScoring
+                                  ? 'Included in scoring'
+                                  : 'Excluded from scoring'
+                              }
                             >
-                              <Calculator
-                                size={14}
-                                style={{
-                                  color: round.includedInScoring
-                                    ? 'var(--grass-9)'
-                                    : 'var(--gray-8)',
-                                }}
-                              />
-                              <Switch
-                                size="1"
-                                checked={round.includedInScoring}
-                                onCheckedChange={() =>
-                                  toggleRoundScoring(
-                                    round.id,
-                                    round.includedInScoring
-                                  )
-                                }
-                              />
-                            </Flex>
-                          </Tooltip>
+                              <Flex
+                                align="center"
+                                gap="2"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Calculator
+                                  size={14}
+                                  style={{
+                                    color: round.includedInScoring
+                                      ? 'var(--grass-9)'
+                                      : 'var(--gray-8)',
+                                  }}
+                                />
+                                <Switch
+                                  size="1"
+                                  checked={round.includedInScoring}
+                                  onCheckedChange={() =>
+                                    toggleRoundScoring(
+                                      round.id,
+                                      round.includedInScoring
+                                    )
+                                  }
+                                />
+                              </Flex>
+                            </Tooltip>
+                            <RoundDeleteButton
+                              round={round}
+                              courseName={course?.name || 'Unknown Course'}
+                              tripId={tripId}
+                            />
+                          </>
                         )}
                         <Link
                           to="/trips/$tripId/rounds/$roundId"

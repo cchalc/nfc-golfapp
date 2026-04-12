@@ -30,14 +30,15 @@ function NewRoundPage() {
   const { tripId } = Route.useParams()
   const navigate = useNavigate()
   const [addCourseDialogOpen, setAddCourseDialogOpen] = useState(false)
-  const { canManage } = useTripRole(tripId)
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('')
+  const { canManage, isLoading: roleLoading } = useTripRole(tripId)
 
-  // Redirect non-organizers
+  // Redirect non-organizers (only after role is loaded)
   useEffect(() => {
-    if (!canManage) {
+    if (!roleLoading && !canManage) {
       navigate({ to: '/trips/$tripId/rounds', params: { tripId } })
     }
-  }, [canManage, navigate, tripId])
+  }, [canManage, roleLoading, navigate, tripId])
 
   const { data: trip } = useTrip(tripId)
   const { data: courses } = useCourses()
@@ -51,7 +52,10 @@ function NewRoundPage() {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
 
-    const courseId = formData.get('courseId') as string
+    if (!selectedCourseId) {
+      return // Course is required
+    }
+
     const roundDate = new Date(formData.get('roundDate') as string)
     const notes = (formData.get('notes') as string) || ''
 
@@ -61,7 +65,7 @@ function NewRoundPage() {
       {
         id: roundId,
         tripId,
-        courseId,
+        courseId: selectedCourseId,
         roundDate,
         roundNumber: nextRoundNumber,
         notes,
@@ -78,12 +82,16 @@ function NewRoundPage() {
     )
   }
 
-  if (!trip || !canManage) {
+  if (!trip || roleLoading) {
     return (
       <Container size="2" py="6">
         <Text>Loading...</Text>
       </Container>
     )
+  }
+
+  if (!canManage) {
+    return null // Will redirect via useEffect
   }
 
   const defaultDate = trip.startDate.toISOString().split('T')[0]
@@ -116,7 +124,7 @@ function NewRoundPage() {
               </Text>
               <Flex gap="2" align="end">
                 <Flex direction="column" gap="1" style={{ flex: 1 }}>
-                  <Select.Root name="courseId" required>
+                  <Select.Root value={selectedCourseId} onValueChange={setSelectedCourseId} required>
                     <Select.Trigger placeholder="Select a course" />
                     <Select.Content>
                       {sortedCourses?.map((course) => (
@@ -181,8 +189,8 @@ function NewRoundPage() {
               This will be Round {nextRoundNumber} of the trip
             </Text>
 
-            <Button type="submit" disabled={!sortedCourses || sortedCourses.length === 0}>
-              Create Round
+            <Button type="submit" disabled={!selectedCourseId || createRound.isPending}>
+              {createRound.isPending ? 'Creating...' : 'Create Round'}
             </Button>
           </Flex>
         </form>

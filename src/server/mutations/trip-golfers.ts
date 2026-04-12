@@ -10,6 +10,7 @@ export const insertTripGolfer = createServerFn({ method: 'POST' })
     return wrapMutation('insertTripGolfer', async () => {
       const sql = getDb()
 
+      // Use ON CONFLICT to prevent duplicate golfers in same trip
       const result = await sql`
         INSERT INTO trip_golfers (id, trip_id, golfer_id, status, invited_at, accepted_at, included_in_scoring, handicap_override)
         VALUES (
@@ -22,10 +23,12 @@ export const insertTripGolfer = createServerFn({ method: 'POST' })
           ${tripGolfer.includedInScoring},
           ${tripGolfer.handicapOverride}
         )
+        ON CONFLICT (trip_id, golfer_id) DO NOTHING
         RETURNING id
       `
 
-      return { id: result[0].id as string }
+      // If conflict occurred, return the provided id (no insert happened)
+      return { id: result[0]?.id as string ?? tripGolfer.id }
     })
   })
 
