@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Flex, TextField, Button } from '@radix-ui/themes'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import { courseCollection, formErrorCollection, type Course } from '../../db/collections'
+import { useCreateCourse, useUpdateCourse } from '../../hooks/queries'
 import { FormField } from '../ui/FormField'
 import { courseFormSchema, validateForm } from '../../lib/validation'
+import type { Course } from '../../db/collections'
 
 interface CourseFormProps {
   courseId?: string
@@ -11,13 +12,12 @@ interface CourseFormProps {
 }
 
 export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps) {
-  const formId = `course-form-${courseId || 'new'}`
+  const [errors, setErrors] = useState<Map<string, string>>(new Map())
 
-  const { data: errors } = useLiveQuery(
-    (q) => q.from({ e: formErrorCollection }).where(({ e }) => eq(e.formId, formId)),
-    [formId]
-  )
-  const errorMap = new Map(errors?.map((e) => [e.field, e.message]) ?? [])
+  const createCourse = useCreateCourse()
+  const updateCourse = useUpdateCourse()
+
+  const isPending = createCourse.isPending || updateCourse.isPending
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,35 +32,36 @@ export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps
     }
 
     // Clear old errors
-    errors?.forEach((err) => formErrorCollection.delete(err.id))
+    setErrors(new Map())
 
     // Validate
     const result = validateForm(courseFormSchema, data)
 
     if (!result.success) {
-      Object.entries(result.errors).forEach(([field, message]) => {
-        formErrorCollection.insert({
-          id: crypto.randomUUID(),
-          formId,
-          field,
-          message,
-        })
-      })
+      setErrors(new Map(Object.entries(result.errors)))
       return
     }
 
     if (courseId) {
       // Update existing
-      courseCollection.update(courseId, (draft) => {
-        draft.name = result.data.name
-        draft.location = result.data.location
-        draft.totalPar = result.data.totalPar
-        draft.courseRating = result.data.courseRating
-        draft.slopeRating = result.data.slopeRating
-      })
+      updateCourse.mutate(
+        {
+          id: courseId,
+          changes: {
+            name: result.data.name,
+            location: result.data.location,
+            totalPar: result.data.totalPar,
+            courseRating: result.data.courseRating,
+            slopeRating: result.data.slopeRating,
+          },
+        },
+        {
+          onSuccess: () => onSuccess?.(),
+        }
+      )
     } else {
       // Create new
-      courseCollection.insert({
+      const newCourse: Course = {
         id: crypto.randomUUID(),
         apiId: null,
         name: result.data.name,
@@ -75,16 +76,18 @@ export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps
         totalPar: result.data.totalPar,
         courseRating: result.data.courseRating,
         slopeRating: result.data.slopeRating,
+      }
+
+      createCourse.mutate(newCourse, {
+        onSuccess: () => onSuccess?.(),
       })
     }
-
-    onSuccess?.()
   }
 
   return (
     <form onSubmit={handleSubmit}>
       <Flex direction="column" gap="4">
-        <FormField label="Course Name" name="name" error={errorMap.get('name')} required>
+        <FormField label="Course Name" name="name" error={errors.get('name')} required>
           <TextField.Root
             name="name"
             placeholder="Pebble Beach Golf Links"
@@ -92,7 +95,7 @@ export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps
           />
         </FormField>
 
-        <FormField label="Location" name="location" error={errorMap.get('location')}>
+        <FormField label="Location" name="location" error={errors.get('location')}>
           <TextField.Root
             name="location"
             placeholder="Pebble Beach, CA"
@@ -101,7 +104,7 @@ export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps
         </FormField>
 
         <Flex gap="3">
-          <FormField label="Total Par" name="totalPar" error={errorMap.get('totalPar')}>
+          <FormField label="Total Par" name="totalPar" error={errors.get('totalPar')}>
             <TextField.Root
               name="totalPar"
               type="number"
@@ -110,7 +113,7 @@ export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps
             />
           </FormField>
 
-          <FormField label="Course Rating" name="courseRating" error={errorMap.get('courseRating')}>
+          <FormField label="Course Rating" name="courseRating" error={errors.get('courseRating')}>
             <TextField.Root
               name="courseRating"
               type="number"
@@ -120,7 +123,7 @@ export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps
             />
           </FormField>
 
-          <FormField label="Slope Rating" name="slopeRating" error={errorMap.get('slopeRating')}>
+          <FormField label="Slope Rating" name="slopeRating" error={errors.get('slopeRating')}>
             <TextField.Root
               name="slopeRating"
               type="number"
@@ -130,7 +133,9 @@ export function CourseForm({ courseId, initialData, onSuccess }: CourseFormProps
           </FormField>
         </Flex>
 
-        <Button type="submit">{courseId ? 'Save Changes' : 'Add Course'}</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving...' : courseId ? 'Save Changes' : 'Add Course'}
+        </Button>
       </Flex>
     </form>
   )

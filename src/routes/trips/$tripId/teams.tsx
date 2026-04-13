@@ -12,17 +12,20 @@ import {
   Avatar,
 } from '@radix-ui/themes'
 import { Plus, X } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
 import { useDialogState } from '../../../hooks/useDialogState'
-import {
-  tripCollection,
-  golferCollection,
-  tripGolferCollection,
-  teamCollection,
-  teamMemberCollection,
-} from '../../../db/collections'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { useTripRole } from '../../../hooks/useTripRole'
+import {
+  useTrip,
+  useGolfers,
+  useTripGolfersByTripId,
+  useTeamsByTripId,
+  useTeamMembersByTripId,
+  useCreateTeam,
+  useDeleteTeam,
+  useCreateTeamMember,
+  useDeleteTeamMember,
+} from '../../../hooks/queries'
 
 export const Route = createFileRoute('/trips/$tripId/teams')({
   ssr: false,
@@ -52,43 +55,20 @@ function TeamsPage() {
   const { canManage } = useTripRole(tripId)
   const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState(`add-team-${tripId}`)
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
+  const { data: trip } = useTrip(tripId)
+  const { data: golfers } = useGolfers()
+  const { data: tripGolfers } = useTripGolfersByTripId(tripId)
+  const { data: teams } = useTeamsByTripId(tripId)
+  const { data: teamMembers } = useTeamMembersByTripId(tripId)
 
-  const { data: golfers } = useLiveQuery(
-    (q) => q.from({ golfer: golferCollection }),
-    []
-  )
+  const createTeam = useCreateTeam()
+  const deleteTeamMutation = useDeleteTeam()
+  const createTeamMember = useCreateTeamMember()
+  const deleteTeamMemberMutation = useDeleteTeamMember()
+
   const golferMap = new Map((golfers || []).map((g) => [g.id, g]))
 
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.tripId, tripId))
-        .where(({ tg }) => eq(tg.status, 'accepted')),
-    [tripId]
-  )
-
-  const { data: teams } = useLiveQuery(
-    (q) =>
-      q
-        .from({ team: teamCollection })
-        .where(({ team }) => eq(team.tripId, tripId))
-        .orderBy(({ team }) => team.name, 'asc'),
-    [tripId]
-  )
-
-  const { data: teamMembers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tm: teamMemberCollection })
-        .where(({ tm }) => eq(tm.tripId, tripId)),
-    [tripId]
-  )
+  const acceptedTripGolfers = (tripGolfers || []).filter((tg) => tg.status === 'accepted')
 
   const membersByTeam = new Map<string, string[]>()
   const assignedGolferIds = new Set<string>()
@@ -100,11 +80,13 @@ function TeamsPage() {
     assignedGolferIds.add(tm.golferId)
   }
 
-  const tripGolferIds = (tripGolfers || []).map((tg) => tg.golferId)
+  const tripGolferIds = acceptedTripGolfers.map((tg) => tg.golferId)
   const unassignedGolfers = tripGolferIds
     .filter((id) => !assignedGolferIds.has(id))
     .map((id) => golferMap.get(id))
     .filter((g): g is NonNullable<typeof g> => !!g)
+
+  const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name))
 
   function handleCreateTeam(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -112,19 +94,18 @@ function TeamsPage() {
     const name = formData.get('name') as string
     const color = formData.get('color') as string
 
-    teamCollection.insert({
+    createTeam.mutate({
       id: crypto.randomUUID(),
       tripId,
       name,
       color: color || TEAM_COLORS[teams?.length || 0]?.value || '#3b82f6',
     })
 
-    // Close dialog
     setAddTeamDialogOpen(false)
   }
 
   function addToTeam(teamId: string, golferId: string) {
-    teamMemberCollection.insert({
+    createTeamMember.mutate({
       id: crypto.randomUUID(),
       teamId,
       golferId,
@@ -135,7 +116,7 @@ function TeamsPage() {
   function removeFromTeam(golferId: string) {
     const member = (teamMembers || []).find((tm) => tm.golferId === golferId)
     if (member) {
-      teamMemberCollection.delete(member.id)
+      deleteTeamMemberMutation.mutate({ id: member.id, tripId })
     }
   }
 
@@ -143,9 +124,9 @@ function TeamsPage() {
     // Remove all members first
     const members = (teamMembers || []).filter((tm) => tm.teamId === teamId)
     for (const m of members) {
-      teamMemberCollection.delete(m.id)
+      deleteTeamMemberMutation.mutate({ id: m.id, tripId })
     }
-    teamCollection.delete(teamId)
+    deleteTeamMutation.mutate({ id: teamId, tripId })
   }
 
   if (!trip) {
@@ -224,9 +205,9 @@ function TeamsPage() {
           )}
         </Flex>
 
-        {teams && teams.length > 0 ? (
+        {sortedTeams && sortedTeams.length > 0 ? (
           <Flex direction="column" gap="4">
-            {teams.map((team) => {
+            {sortedTeams.map((team) => {
               const members = membersByTeam.get(team.id) || []
               return (
                 <Card key={team.id}>

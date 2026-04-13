@@ -1,13 +1,13 @@
+import { useState, useMemo } from 'react'
 import { Flex, Text, TextField, TextArea, Button, Select } from '@radix-ui/themes'
-import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
-  challengeCollection,
-  roundCollection,
-  holeCollection,
-  courseCollection,
-  formErrorCollection,
-  type Challenge,
-} from '../../db/collections'
+  useRoundsByTripId,
+  useCourses,
+  useHolesByCourseId,
+  useCreateChallenge,
+  useUpdateChallenge,
+} from '../../hooks/queries'
+import type { Challenge } from '../../db/collections'
 import { getDefaultScope, getChallengeTypeLabel } from '../../lib/challenges'
 import { FormField } from '../ui/FormField'
 import { challengeFormSchema, validateForm } from '../../lib/validation'
@@ -34,46 +34,30 @@ export function ChallengeForm({
   initialData,
   onSuccess,
 }: ChallengeFormProps) {
-  const formId = `challenge-form-${challengeId || 'new'}`
-
-  const { data: errors } = useLiveQuery(
-    (q) => q.from({ e: formErrorCollection }).where(({ e }) => eq(e.formId, formId)),
-    [formId]
-  )
-  const errorMap = new Map(errors?.map((e) => [e.field, e.message]) ?? [])
+  const [errors, setErrors] = useState<Map<string, string>>(new Map())
 
   // Fetch rounds for this trip
-  const { data: rounds } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.tripId, tripId))
-        .orderBy(({ round }) => round.roundNumber, 'asc'),
-    [tripId]
-  )
+  const { data: rounds } = useRoundsByTripId(tripId)
 
   // Fetch courses to show names in round selector
-  const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }),
-    []
+  const { data: courses } = useCourses()
+  const courseMap = useMemo(
+    () => new Map((courses || []).map((c) => [c.id, c])),
+    [courses]
   )
-  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
 
-  // Track form state via data attributes on the form element
-  // We use uncontrolled inputs with form data
+  // Mutations
+  const createChallenge = useCreateChallenge()
+  const updateChallenge = useUpdateChallenge()
 
   function handleTypeChange(value: string, form: HTMLFormElement) {
     const type = value as ChallengeType
     const defaultScope = getDefaultScope(type)
 
     // Update scope select
-    const scopeSelect = form.querySelector('[name="scopeDisplay"]') as HTMLElement
-    if (scopeSelect) {
-      // Radix Select doesn't support direct value setting, so we use a hidden input
-      const scopeHidden = form.querySelector('[name="scope"]') as HTMLInputElement
-      if (scopeHidden) {
-        scopeHidden.value = defaultScope
-      }
+    const scopeHidden = form.querySelector('[name="scope"]') as HTMLInputElement
+    if (scopeHidden) {
+      scopeHidden.value = defaultScope
     }
 
     // Show/hide round and hole selectors based on scope
@@ -110,20 +94,17 @@ export function ChallengeForm({
     }
 
     // Clear old errors
-    errors?.forEach((err) => formErrorCollection.delete(err.id))
+    setErrors(new Map())
 
     // Validate
     const result = validateForm(challengeFormSchema, validationData)
 
     if (!result.success) {
+      const newErrors = new Map<string, string>()
       Object.entries(result.errors).forEach(([field, message]) => {
-        formErrorCollection.insert({
-          id: crypto.randomUUID(),
-          formId,
-          field,
-          message,
-        })
+        newErrors.set(field, message)
       })
+      setErrors(newErrors)
       return
     }
 
@@ -140,18 +121,18 @@ export function ChallengeForm({
 
     if (challengeId) {
       // Update existing
-      challengeCollection.update(challengeId, (d) => {
-        Object.assign(d, data)
-      })
+      updateChallenge.mutate(
+        { id: challengeId, changes: data, tripId },
+        { onSuccess }
+      )
     } else {
       // Insert new
-      challengeCollection.insert({
+      const newChallenge: Challenge = {
         id: crypto.randomUUID(),
         ...data,
-      })
+      }
+      createChallenge.mutate(newChallenge, { onSuccess })
     }
-
-    onSuccess?.()
   }
 
   const defaultType = initialData?.challengeType || 'closest_to_pin'
@@ -159,10 +140,12 @@ export function ChallengeForm({
   const showRoundSelector = defaultScope !== 'trip'
   const showHoleSelector = defaultScope === 'hole'
 
+  const isPending = createChallenge.isPending || updateChallenge.isPending
+
   return (
     <form onSubmit={handleSubmit} data-testid="challenge-form">
       <Flex direction="column" gap="4">
-        <FormField label="Challenge Name (optional)" name="name" error={errorMap.get('name')}>
+        <FormField label="Challenge Name (optional)" name="name" error={errors.get('name')}>
           <TextField.Root
             name="name"
             placeholder="Leave blank to use type as name"
@@ -225,6 +208,7 @@ export function ChallengeForm({
           defaultRoundId={initialData?.roundId || (rounds?.[0]?.id ?? '')}
           defaultHoleId={initialData?.holeId || ''}
           showInitially={showHoleSelector}
+          rounds={rounds || []}
         />
 
         <Flex direction="column" gap="1">
@@ -249,7 +233,9 @@ export function ChallengeForm({
           />
         </Flex>
 
-        <Button type="submit" data-testid="challenge-submit-btn">{challengeId ? 'Save Changes' : 'Create Challenge'}</Button>
+        <Button type="submit" disabled={isPending} data-testid="challenge-submit-btn">
+          {isPending ? 'Saving...' : challengeId ? 'Save Changes' : 'Create Challenge'}
+        </Button>
       </Flex>
     </form>
   )
@@ -259,31 +245,20 @@ interface HoleSelectorFieldProps {
   defaultRoundId: string
   defaultHoleId: string
   showInitially: boolean
+  rounds: Array<{ id: string; courseId: string }>
 }
 
 function HoleSelectorField({
   defaultRoundId,
   defaultHoleId,
   showInitially,
+  rounds,
 }: HoleSelectorFieldProps) {
   // Get the round to find its courseId
-  const { data: rounds } = useLiveQuery(
-    (q) => q.from({ round: roundCollection }),
-    []
-  )
-  const round = rounds?.find((r) => r.id === defaultRoundId)
+  const round = rounds.find((r) => r.id === defaultRoundId)
 
   // Get all holes for the course
-  const { data: holes } = useLiveQuery(
-    (q) =>
-      round?.courseId
-        ? q
-            .from({ hole: holeCollection })
-            .where(({ hole }) => eq(hole.courseId, round.courseId))
-            .orderBy(({ hole }) => hole.holeNumber, 'asc')
-        : q.from({ hole: holeCollection }).where(() => false),
-    [round?.courseId]
-  )
+  const { data: holes } = useHolesByCourseId(round?.courseId || '')
 
   return (
     <Flex

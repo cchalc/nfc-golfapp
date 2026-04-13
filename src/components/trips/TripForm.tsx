@@ -1,6 +1,6 @@
+import { useState } from 'react'
 import { Flex, TextField, TextArea, Button } from '@radix-ui/themes'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import { tripCollection, formErrorCollection } from '../../db/collections'
+import { useCreateTrip, useUpdateTrip } from '../../hooks/queries'
 import { FormField } from '../ui/FormField'
 import { tripFormSchema, validateForm } from '../../lib/validation'
 
@@ -20,13 +20,12 @@ interface TripFormProps {
 
 export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
   const isEditing = !!tripId
-  const formId = `trip-form-${tripId || 'new'}`
+  const [errors, setErrors] = useState<Map<string, string>>(new Map())
 
-  const { data: errors } = useLiveQuery(
-    (q) => q.from({ e: formErrorCollection }).where(({ e }) => eq(e.formId, formId)),
-    [formId]
-  )
-  const errorMap = new Map(errors?.map((e) => [e.field, e.message]) ?? [])
+  const createTrip = useCreateTrip()
+  const updateTrip = useUpdateTrip()
+
+  const isPending = createTrip.isPending || updateTrip.isPending
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -41,51 +40,54 @@ export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
     }
 
     // Clear old errors
-    errors?.forEach((err) => formErrorCollection.delete(err.id))
+    setErrors(new Map())
 
     // Validate
     const result = validateForm(tripFormSchema, data)
 
     if (!result.success) {
-      Object.entries(result.errors).forEach(([field, message]) => {
-        formErrorCollection.insert({
-          id: crypto.randomUUID(),
-          formId,
-          field,
-          message,
-        })
-      })
+      setErrors(new Map(Object.entries(result.errors)))
       return
     }
 
     if (isEditing && tripId) {
-      tripCollection.update(tripId, (draft) => {
-        draft.name = result.data.name
-        draft.description = result.data.description
-        draft.startDate = new Date(result.data.startDate)
-        draft.endDate = new Date(result.data.endDate)
-        draft.location = result.data.location
-      })
+      updateTrip.mutate(
+        {
+          id: tripId,
+          changes: {
+            name: result.data.name,
+            description: result.data.description,
+            startDate: new Date(result.data.startDate),
+            endDate: new Date(result.data.endDate),
+            location: result.data.location,
+          },
+        },
+        {
+          onSuccess: () => onSuccess?.(),
+        }
+      )
     } else {
-      tripCollection.insert({
-        id: crypto.randomUUID(),
-        name: result.data.name,
-        description: result.data.description,
-        startDate: new Date(result.data.startDate),
-        endDate: new Date(result.data.endDate),
-        location: result.data.location,
-        createdBy: 'user',
-        createdAt: new Date(),
-      })
+      createTrip.mutate(
+        {
+          id: crypto.randomUUID(),
+          name: result.data.name,
+          description: result.data.description,
+          startDate: new Date(result.data.startDate),
+          endDate: new Date(result.data.endDate),
+          location: result.data.location,
+          createdBy: 'user',
+        },
+        {
+          onSuccess: () => onSuccess?.(),
+        }
+      )
     }
-
-    onSuccess?.()
   }
 
   return (
     <form onSubmit={handleSubmit}>
       <Flex direction="column" gap="4">
-        <FormField label="Trip Name" name="name" error={errorMap.get('name')} required>
+        <FormField label="Trip Name" name="name" error={errors.get('name')} required>
           <TextField.Root
             id="name"
             name="name"
@@ -94,7 +96,7 @@ export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
           />
         </FormField>
 
-        <FormField label="Description" name="description" error={errorMap.get('description')}>
+        <FormField label="Description" name="description" error={errors.get('description')}>
           <TextArea
             id="description"
             name="description"
@@ -107,7 +109,7 @@ export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
           <FormField
             label="Start Date"
             name="startDate"
-            error={errorMap.get('startDate')}
+            error={errors.get('startDate')}
             required
           >
             <TextField.Root
@@ -118,7 +120,7 @@ export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
             />
           </FormField>
 
-          <FormField label="End Date" name="endDate" error={errorMap.get('endDate')} required>
+          <FormField label="End Date" name="endDate" error={errors.get('endDate')} required>
             <TextField.Root
               id="endDate"
               name="endDate"
@@ -128,7 +130,7 @@ export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
           </FormField>
         </Flex>
 
-        <FormField label="Location" name="location" error={errorMap.get('location')}>
+        <FormField label="Location" name="location" error={errors.get('location')}>
           <TextField.Root
             id="location"
             name="location"
@@ -137,8 +139,8 @@ export function TripForm({ initialData, tripId, onSuccess }: TripFormProps) {
           />
         </FormField>
 
-        <Button type="submit" color="grass" size="3">
-          {isEditing ? 'Save Changes' : 'Create Trip'}
+        <Button type="submit" color="grass" size="3" disabled={isPending}>
+          {isPending ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Trip'}
         </Button>
       </Flex>
     </form>

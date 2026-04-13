@@ -1,7 +1,7 @@
 import { Flex, Text, Button, Avatar, RadioGroup } from '@radix-ui/themes'
 import { Trophy } from 'lucide-react'
 import type { Challenge, Golfer, ChallengeResult } from '../../db/collections'
-import { challengeResultCollection } from '../../db/collections'
+import { useCreateChallengeResult, useDeleteChallengeResult } from '../../hooks/queries'
 
 interface ChallengeResultEntryProps {
   challenge: Challenge
@@ -28,6 +28,9 @@ export function ChallengeResultEntry({
   // Find existing winner
   const existingWinner = existingResults.find((r) => r.isWinner)
 
+  const createChallengeResult = useCreateChallengeResult()
+  const deleteChallengeResult = useDeleteChallengeResult()
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
@@ -35,23 +38,34 @@ export function ChallengeResultEntry({
 
     if (!winnerId) return
 
-    // Delete old results for this challenge
-    for (const existing of existingResults) {
-      challengeResultCollection.delete(existing.id)
-    }
+    // Delete old results for this challenge, then insert new winner
+    const deletePromises = existingResults.map((existing) =>
+      deleteChallengeResult.mutateAsync({ id: existing.id, tripId: challenge.tripId })
+    )
 
-    // Insert winner result
-    challengeResultCollection.insert({
-      id: crypto.randomUUID(),
-      challengeId: challenge.id,
-      golferId: winnerId,
-      resultValue: 'Winner',
-      resultNumeric: null,
-      isWinner: true,
+    Promise.all(deletePromises).then(() => {
+      createChallengeResult.mutate(
+        {
+          result: {
+            id: crypto.randomUUID(),
+            challengeId: challenge.id,
+            golferId: winnerId,
+            resultValue: 'Winner',
+            resultNumeric: null,
+            isWinner: true,
+          },
+          tripId: challenge.tripId,
+        },
+        {
+          onSuccess: () => {
+            onSuccess?.()
+          },
+        }
+      )
     })
-
-    onSuccess?.()
   }
+
+  const isPending = createChallengeResult.isPending || deleteChallengeResult.isPending
 
   return (
     <form onSubmit={handleSubmit} data-testid="result-entry-form">
@@ -95,7 +109,9 @@ export function ChallengeResultEntry({
           </Flex>
         </RadioGroup.Root>
 
-        <Button type="submit">Save Winner</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Saving...' : 'Save Winner'}
+        </Button>
       </Flex>
     </form>
   )

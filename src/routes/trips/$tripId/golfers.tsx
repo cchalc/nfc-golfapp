@@ -13,18 +13,22 @@ import {
 } from '@radix-ui/themes'
 import { ChevronLeft, Edit2, Check, X } from 'lucide-react'
 import { useState } from 'react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
-  tripCollection,
-  golferCollection,
-  tripGolferCollection,
-  roundCollection,
-  courseCollection,
-  holeCollection,
-  scoreCollection,
-  roundSummaryCollection,
-  type TripGolfer,
-} from '../../../db/collections'
+  useTrip,
+  useGolfers,
+  useTripGolfersByTripId,
+  useRoundsByTripId,
+  useCourses,
+  useHoles,
+  useScores,
+  useRoundSummariesByTripId,
+  useCreateTripGolfer,
+  useDeleteTripGolfer,
+  useUpdateTripGolfer,
+  useUpdateScore,
+  useUpdateRoundSummary,
+} from '../../../hooks/queries'
+import type { TripGolfer } from '../../../db/collections'
 import { GolferCard } from '../../../components/golfers/GolferCard'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import {
@@ -47,76 +51,42 @@ function TripGolfersPage() {
   const [editingHandicap, setEditingHandicap] = useState<string | null>(null)
   const [handicapValue, setHandicapValue] = useState('')
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
+  // Query hooks
+  const { data: trip } = useTrip(tripId)
+  const { data: globalGolfers } = useGolfers()
+  const { data: tripGolfers } = useTripGolfersByTripId(tripId)
+  const { data: rounds } = useRoundsByTripId(tripId)
+  const { data: courses } = useCourses()
+  const { data: holes } = useHoles()
+  const { data: allScores } = useScores()
+  const { data: roundSummaries } = useRoundSummariesByTripId(tripId)
 
-  const { data: allGolfers } = useLiveQuery(
-    (q) =>
-      q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
-    []
-  )
+  // Mutation hooks
+  const createTripGolfer = useCreateTripGolfer()
+  const deleteTripGolfer = useDeleteTripGolfer()
+  const updateTripGolfer = useUpdateTripGolfer()
+  const updateScore = useUpdateScore()
+  const updateRoundSummary = useUpdateRoundSummary()
 
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.tripId, tripId)),
-    [tripId]
-  )
-
+  // Derived data
+  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
   const tripGolferMap = new Map((tripGolfers || []).map((tg) => [tg.golferId, tg]))
   const tripGolferIds = new Set((tripGolfers || []).map((tg) => tg.golferId))
 
-  // Fetch rounds for this trip (needed for score recalculation)
-  const { data: rounds } = useLiveQuery(
-    (q) =>
-      q.from({ round: roundCollection }).where(({ round }) => eq(round.tripId, tripId)),
-    [tripId]
-  )
-
-  // Fetch courses (needed for handicap calculation)
-  const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }),
-    []
-  )
-  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
-
-  // Fetch all holes
-  const { data: holes } = useLiveQuery(
-    (q) => q.from({ hole: holeCollection }),
-    []
-  )
-
-  // Fetch all scores
-  const { data: allScores } = useLiveQuery(
-    (q) => q.from({ score: scoreCollection }),
-    []
-  )
-
-  // Fetch round summaries
-  const { data: roundSummaries } = useLiveQuery(
-    (q) => q.from({ summary: roundSummaryCollection }),
-    []
-  )
+  // Filter golfers for this trip
+  const sortedGolfers = [...(globalGolfers || [])].sort((a, b) => a.name.localeCompare(b.name))
+  const addedGolfers = sortedGolfers.filter((g) => tripGolferIds.has(g.id))
+  const availableGolfers = sortedGolfers.filter((g) => !tripGolferIds.has(g.id))
 
   function toggleGolfer(golferId: string) {
-    // Check for existing entry using both the live query data AND a fresh collection lookup
-    // This prevents race conditions when rapidly clicking
-    const existingFromQuery = tripGolfers?.find((tg) => tg.golferId === golferId)
-    const existingFromCollection = [...tripGolferCollection].find(
-      ([, tg]) => tg.tripId === tripId && tg.golferId === golferId
-    )
-    const existing = existingFromQuery || (existingFromCollection ? existingFromCollection[1] : null)
+    const existing = tripGolfers?.find((tg) => tg.golferId === golferId)
 
     if (existing) {
-      tripGolferCollection.delete(existing.id)
+      deleteTripGolfer.mutate(existing.id)
     } else {
-      // Double-check no duplicate exists before inserting
-      const duplicateCheck = [...tripGolferCollection].some(
-        ([, tg]) => tg.tripId === tripId && tg.golferId === golferId
+      // Check for duplicate before inserting
+      const duplicateCheck = tripGolfers?.some(
+        (tg) => tg.tripId === tripId && tg.golferId === golferId
       )
       if (duplicateCheck) {
         console.warn(`Golfer ${golferId} already in trip ${tripId}, skipping duplicate`)
@@ -124,12 +94,10 @@ function TripGolfersPage() {
       }
 
       // Capture the golfer's current handicap when adding them to the trip
-      // This ensures the trip uses a locked-in handicap that won't change
-      // if the golfer's main handicap is updated later
-      const golfer = allGolfers?.find((g) => g.id === golferId)
+      const golfer = globalGolfers?.find((g) => g.id === golferId)
       const capturedHandicap = golfer?.handicap ?? 0
 
-      tripGolferCollection.insert({
+      createTripGolfer.mutate({
         id: crypto.randomUUID(),
         tripId,
         golferId,
@@ -160,8 +128,9 @@ function TripGolfersPage() {
     }
 
     // Update the trip golfer handicap
-    tripGolferCollection.update(tripGolferId, (draft) => {
-      draft.handicapOverride = value
+    updateTripGolfer.mutate({
+      id: tripGolferId,
+      changes: { handicapOverride: value },
     })
 
     // Recalculate all scores for this golfer in this trip
@@ -218,10 +187,14 @@ function TripGolfersPage() {
         const stablefordPoints = calculateStablefordPoints(netScore, hole.par)
 
         // Update the score
-        scoreCollection.update(score.id, (draft) => {
-          draft.handicapStrokes = handicapStrokes
-          draft.netScore = netScore
-          draft.stablefordPoints = stablefordPoints
+        updateScore.mutate({
+          id: score.id,
+          changes: {
+            handicapStrokes,
+            netScore,
+            stablefordPoints,
+          },
+          roundId: round.id,
         })
 
         totalGross += score.grossScore
@@ -239,11 +212,15 @@ function TripGolfersPage() {
         )
 
         if (existingSummary) {
-          roundSummaryCollection.update(existingSummary.id, (draft) => {
-            draft.totalGross = totalGross
-            draft.totalNet = totalNet
-            draft.totalStableford = totalStableford
-            draft.birdiesOrBetter = birdiesOrBetter
+          updateRoundSummary.mutate({
+            id: existingSummary.id,
+            changes: {
+              totalGross,
+              totalNet,
+              totalStableford,
+              birdiesOrBetter,
+            },
+            roundId: round.id,
           })
         }
       }
@@ -262,9 +239,6 @@ function TripGolfersPage() {
       </Container>
     )
   }
-
-  const addedGolfers = (allGolfers || []).filter((g) => tripGolferIds.has(g.id))
-  const availableGolfers = (allGolfers || []).filter((g) => !tripGolferIds.has(g.id))
 
   return (
     <Container size="2" py="6">
@@ -435,7 +409,7 @@ function TripGolfersPage() {
           </Flex>
         )}
 
-        {(!allGolfers || allGolfers.length === 0) && (
+        {(!globalGolfers || globalGolfers.length === 0) && (
           <EmptyState
             title="No golfers in directory"
             description="Add golfers to your directory first"

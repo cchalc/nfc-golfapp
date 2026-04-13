@@ -13,20 +13,21 @@ import {
   Spinner,
 } from '@radix-ui/themes'
 import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useRequireAuth } from '../../../hooks/useRequireAuth'
 import { useTripRole } from '../../../hooks/useTripRole'
 import {
-  tripCollection,
-  golferCollection,
-  tripGolferCollection,
-  roundCollection,
-  courseCollection,
-  roundSummaryCollection,
-  teamCollection,
-  teamMemberCollection,
-} from '../../../db/collections'
+  useTrip,
+  useGolfers,
+  useTripGolfersByTripId,
+  useRoundsByTripId,
+  useCourses,
+  useRoundSummariesByTripId,
+  useTeamsByTripId,
+  useTeamMembersByTripId,
+  useUpdateTripGolfer,
+  useUpdateRoundSummary,
+} from '../../../hooks/queries'
 import {
   LeaderboardTable,
   type LeaderboardEntry,
@@ -44,172 +45,194 @@ function LeaderboardsPage() {
   useRequireAuth()
   const { role, isLoading: roleLoading } = useTripRole(tripId)
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
+  // Fetch trip data
+  const { data: trip } = useTrip(tripId)
 
-  const { data: golfers } = useLiveQuery(
-    (q) => q.from({ golfer: golferCollection }),
-    []
-  )
-  const golferMap = new Map((golfers || []).map((g) => [g.id, g]))
+  // Fetch all golfers
+  const { data: golfers } = useGolfers()
 
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.tripId, tripId))
-        .where(({ tg }) => eq(tg.status, 'accepted')),
-    [tripId]
+  // Memoize lookup tables
+  const golferMap = useMemo(
+    () => new Map((golfers || []).map((g) => [g.id, g])),
+    [golfers]
   )
 
-  const tripGolferIds = new Set((tripGolfers || []).map((tg) => tg.golferId))
-  const includedGolferIds = new Set(
-    (tripGolfers || []).filter((tg) => tg.includedInScoring).map((tg) => tg.golferId)
-  )
-  const tripGolferMap = new Map((tripGolfers || []).map((tg) => [tg.golferId, tg]))
+  // Fetch trip golfers
+  const { data: allTripGolfers } = useTripGolfersByTripId(tripId)
 
-  function toggleGolferScoring(golferId: string) {
+  // Filter to accepted trip golfers
+  const tripGolfers = useMemo(
+    () => (allTripGolfers || []).filter((tg) => tg.status === 'accepted'),
+    [allTripGolfers]
+  )
+
+  const tripGolferIds = useMemo(
+    () => new Set((tripGolfers || []).map((tg) => tg.golferId)),
+    [tripGolfers]
+  )
+
+  const includedGolferIds = useMemo(
+    () => new Set((tripGolfers || []).filter((tg) => tg.includedInScoring).map((tg) => tg.golferId)),
+    [tripGolfers]
+  )
+
+  const tripGolferMap = useMemo(
+    () => new Map((tripGolfers || []).map((tg) => [tg.golferId, tg])),
+    [tripGolfers]
+  )
+
+  // Mutations
+  const updateTripGolfer = useUpdateTripGolfer()
+  const updateRoundSummary = useUpdateRoundSummary()
+
+  const toggleGolferScoring = useCallback((golferId: string) => {
     const tg = tripGolferMap.get(golferId)
     if (tg) {
-      tripGolferCollection.update(tg.id, (draft) => {
-        draft.includedInScoring = !draft.includedInScoring
+      updateTripGolfer.mutate({
+        id: tg.id,
+        changes: { includedInScoring: !tg.includedInScoring },
       })
     }
-  }
+  }, [tripGolferMap, updateTripGolfer])
 
   // State for round selection dialog
   const [selectedGolferId, setSelectedGolferId] = useState<string | null>(null)
 
-  // Get all rounds for this trip
-  const { data: allRounds } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.tripId, tripId))
-        .orderBy(({ round }) => round.roundNumber, 'asc'),
-    [tripId]
+  // Get rounds
+  const { data: allRounds } = useRoundsByTripId(tripId)
+
+  // Sort rounds by round number
+  const sortedRounds = useMemo(
+    () => [...(allRounds || [])].sort((a, b) => a.roundNumber - b.roundNumber),
+    [allRounds]
   )
-  const roundMap = new Map((allRounds || []).map((r) => [r.id, r]))
+
+  const roundMap = useMemo(
+    () => new Map((sortedRounds || []).map((r) => [r.id, r])),
+    [sortedRounds]
+  )
 
   // Get included rounds (trip-level)
-  const includedRoundIds = new Set(
-    (allRounds || []).filter((r) => r.includedInScoring).map((r) => r.id)
+  const includedRoundIds = useMemo(
+    () => new Set((sortedRounds || []).filter((r) => r.includedInScoring).map((r) => r.id)),
+    [sortedRounds]
   )
 
   // Get courses for round names
-  const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }),
-    []
-  )
-  const courseMap = new Map((courses || []).map((c) => [c.id, c]))
+  const { data: courses } = useCourses()
 
-  // Get all round summaries
-  const { data: allSummaries } = useLiveQuery(
-    (q) => q.from({ summary: roundSummaryCollection }),
-    []
+  const courseMap = useMemo(
+    () => new Map((courses || []).map((c) => [c.id, c])),
+    [courses]
   )
 
-  // Filter summaries to only included rounds from this trip AND where summary.includedInScoring is true
-  const tripSummaries = (allSummaries || []).filter(
-    (s) => includedRoundIds.has(s.roundId) && s.includedInScoring !== false
+  // Get round summaries
+  const { data: allSummaries } = useRoundSummariesByTripId(tripId)
+
+  // Filter summaries to only included rounds AND where summary.includedInScoring is true
+  const tripSummaries = useMemo(
+    () => (allSummaries || []).filter(
+      (s) => includedRoundIds.has(s.roundId) && s.includedInScoring !== false
+    ),
+    [allSummaries, includedRoundIds]
   )
 
   // Get summaries for selected golfer (for round selection dialog)
-  const selectedGolferSummaries = selectedGolferId
-    ? (allSummaries || []).filter(
-        (s) => s.golferId === selectedGolferId && includedRoundIds.has(s.roundId)
-      )
-    : []
+  const selectedGolferSummaries = useMemo(
+    () => selectedGolferId
+      ? (allSummaries || []).filter(
+          (s) => s.golferId === selectedGolferId && includedRoundIds.has(s.roundId)
+        )
+      : [],
+    [selectedGolferId, allSummaries, includedRoundIds]
+  )
 
-  function toggleRoundForGolfer(summaryId: string, currentValue: boolean) {
-    roundSummaryCollection.update(summaryId, (draft) => {
-      draft.includedInScoring = !currentValue
+  const toggleRoundForGolfer = useCallback((summaryId: string, roundId: string, currentValue: boolean) => {
+    updateRoundSummary.mutate({
+      id: summaryId,
+      roundId,
+      changes: { includedInScoring: !currentValue },
     })
-  }
+  }, [updateRoundSummary])
 
   // Aggregate Stableford data
-  const stablefordByGolfer = new Map<string, { totalPoints: number; rounds: number }>()
-  for (const summary of tripSummaries) {
-    const existing = stablefordByGolfer.get(summary.golferId) || { totalPoints: 0, rounds: 0 }
-    stablefordByGolfer.set(summary.golferId, {
-      totalPoints: existing.totalPoints + summary.totalStableford,
-      rounds: existing.rounds + 1,
-    })
-  }
-  const stablefordData = Array.from(stablefordByGolfer.entries())
-    .map(([golferId, data]) => ({ golferId, ...data }))
-    .sort((a, b) => b.totalPoints - a.totalPoints)
-
-  // Aggregate Net data (best net)
-  const netByGolfer = new Map<string, { bestNet: number; rounds: number }>()
-  for (const summary of tripSummaries) {
-    const existing = netByGolfer.get(summary.golferId)
-    if (!existing || summary.totalNet < existing.bestNet) {
-      netByGolfer.set(summary.golferId, {
-        bestNet: summary.totalNet,
-        rounds: (existing?.rounds || 0) + 1,
-      })
-    } else {
-      netByGolfer.set(summary.golferId, {
-        ...existing,
+  const stablefordData = useMemo(() => {
+    const byGolfer = new Map<string, { totalPoints: number; rounds: number }>()
+    for (const summary of tripSummaries) {
+      const existing = byGolfer.get(summary.golferId) || { totalPoints: 0, rounds: 0 }
+      byGolfer.set(summary.golferId, {
+        totalPoints: existing.totalPoints + summary.totalStableford,
         rounds: existing.rounds + 1,
       })
     }
-  }
-  const netData = Array.from(netByGolfer.entries())
-    .map(([golferId, data]) => ({ golferId, ...data }))
-    .sort((a, b) => a.bestNet - b.bestNet)
+    return Array.from(byGolfer.entries())
+      .map(([golferId, data]) => ({ golferId, ...data }))
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+  }, [tripSummaries])
+
+  // Aggregate Net data (best net)
+  const netData = useMemo(() => {
+    const byGolfer = new Map<string, { bestNet: number; rounds: number }>()
+    for (const summary of tripSummaries) {
+      const existing = byGolfer.get(summary.golferId)
+      if (!existing || summary.totalNet < existing.bestNet) {
+        byGolfer.set(summary.golferId, {
+          bestNet: summary.totalNet,
+          rounds: (existing?.rounds || 0) + 1,
+        })
+      } else {
+        byGolfer.set(summary.golferId, {
+          ...existing,
+          rounds: existing.rounds + 1,
+        })
+      }
+    }
+    return Array.from(byGolfer.entries())
+      .map(([golferId, data]) => ({ golferId, ...data }))
+      .sort((a, b) => a.bestNet - b.bestNet)
+  }, [tripSummaries])
 
   // Aggregate Birdies data
-  const birdiesByGolfer = new Map<string, { totalBirdies: number; rounds: number }>()
-  for (const summary of tripSummaries) {
-    const existing = birdiesByGolfer.get(summary.golferId) || { totalBirdies: 0, rounds: 0 }
-    birdiesByGolfer.set(summary.golferId, {
-      totalBirdies: existing.totalBirdies + summary.birdiesOrBetter,
-      rounds: existing.rounds + 1,
-    })
-  }
-  const birdiesData = Array.from(birdiesByGolfer.entries())
-    .map(([golferId, data]) => ({ golferId, ...data }))
-    .sort((a, b) => b.totalBirdies - a.totalBirdies)
+  const birdiesData = useMemo(() => {
+    const byGolfer = new Map<string, { totalBirdies: number; rounds: number }>()
+    for (const summary of tripSummaries) {
+      const existing = byGolfer.get(summary.golferId) || { totalBirdies: 0, rounds: 0 }
+      byGolfer.set(summary.golferId, {
+        totalBirdies: existing.totalBirdies + summary.birdiesOrBetter,
+        rounds: existing.rounds + 1,
+      })
+    }
+    return Array.from(byGolfer.entries())
+      .map(([golferId, data]) => ({ golferId, ...data }))
+      .sort((a, b) => b.totalBirdies - a.totalBirdies)
+  }, [tripSummaries])
 
   // Aggregate KPs data
-  const kpsByGolfer = new Map<string, { totalKps: number; rounds: number }>()
-  for (const summary of tripSummaries) {
-    const existing = kpsByGolfer.get(summary.golferId) || { totalKps: 0, rounds: 0 }
-    kpsByGolfer.set(summary.golferId, {
-      totalKps: existing.totalKps + summary.kps,
-      rounds: existing.rounds + 1,
-    })
-  }
-  const kpsData = Array.from(kpsByGolfer.entries())
-    .map(([golferId, data]) => ({ golferId, ...data }))
-    .sort((a, b) => b.totalKps - a.totalKps)
+  const kpsData = useMemo(() => {
+    const byGolfer = new Map<string, { totalKps: number; rounds: number }>()
+    for (const summary of tripSummaries) {
+      const existing = byGolfer.get(summary.golferId) || { totalKps: 0, rounds: 0 }
+      byGolfer.set(summary.golferId, {
+        totalKps: existing.totalKps + summary.kps,
+        rounds: existing.rounds + 1,
+      })
+    }
+    return Array.from(byGolfer.entries())
+      .map(([golferId, data]) => ({ golferId, ...data }))
+      .sort((a, b) => b.totalKps - a.totalKps)
+  }, [tripSummaries])
 
   // Teams
-  const { data: teams } = useLiveQuery(
-    (q) =>
-      q.from({ team: teamCollection }).where(({ team }) => eq(team.tripId, tripId)),
-    [tripId]
-  )
+  const { data: teams } = useTeamsByTripId(tripId)
 
-  const { data: teamMembers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tm: teamMemberCollection })
-        .where(({ tm }) => eq(tm.tripId, tripId)),
-    [tripId]
-  )
+  const { data: teamMembers } = useTeamMembersByTripId(tripId)
 
-  function buildLeaderboard<T extends { golferId: string; rounds: number }>(
+  const buildLeaderboard = useCallback(<T extends { golferId: string; rounds: number }>(
     data: T[],
     getValue: (d: T) => number,
     formatValue: (d: T) => string,
     sortAsc: boolean = false
-  ): LeaderboardEntry[] {
+  ): LeaderboardEntry[] => {
     // Filter to trip golfers only
     const tripData = data.filter((d) => tripGolferIds.has(d.golferId))
 
@@ -260,51 +283,67 @@ function LeaderboardsPage() {
     })
 
     return [...includedEntries, ...excludedEntries]
-  }
+  }, [tripGolferIds, includedGolferIds, golferMap])
 
-  const stablefordLeaderboard = buildLeaderboard(
-    stablefordData,
-    (d) => d.totalPoints,
-    (d) => `${d.totalPoints} pts`
+  const stablefordLeaderboard = useMemo(() =>
+    buildLeaderboard(
+      stablefordData,
+      (d) => d.totalPoints,
+      (d) => `${d.totalPoints} pts`
+    ),
+    [stablefordData, buildLeaderboard]
   )
 
-  const netLeaderboard = buildLeaderboard(
-    netData,
-    (d) => d.bestNet,
-    (d) => `${d.bestNet}`,
-    true
+  const netLeaderboard = useMemo(() =>
+    buildLeaderboard(
+      netData,
+      (d) => d.bestNet,
+      (d) => `${d.bestNet}`,
+      true
+    ),
+    [netData, buildLeaderboard]
   )
 
-  const birdiesLeaderboard = buildLeaderboard(
-    birdiesData,
-    (d) => d.totalBirdies,
-    (d) => `${d.totalBirdies}`
+  const birdiesLeaderboard = useMemo(() =>
+    buildLeaderboard(
+      birdiesData,
+      (d) => d.totalBirdies,
+      (d) => `${d.totalBirdies}`
+    ),
+    [birdiesData, buildLeaderboard]
   )
 
-  const kpsLeaderboard = buildLeaderboard(
-    kpsData,
-    (d) => d.totalKps,
-    (d) => `${d.totalKps}`
+  const kpsLeaderboard = useMemo(() =>
+    buildLeaderboard(
+      kpsData,
+      (d) => d.totalKps,
+      (d) => `${d.totalKps}`
+    ),
+    [kpsData, buildLeaderboard]
   )
 
   // Team leaderboard
-  const teamLeaderboard = (teams || [])
-    .map((team) => {
-      const members = (teamMembers || []).filter((tm) => tm.teamId === team.id)
-      const memberIds = members.map((m) => m.golferId)
+  const teamLeaderboard = useMemo(() =>
+    (teams || [])
+      .map((team) => {
+        const members = (teamMembers || []).filter((tm) => tm.teamId === team.id)
+        const memberIds = members.map((m) => m.golferId)
 
-      const memberPoints = (stablefordData || [])
-        .filter((d) => memberIds.includes(d.golferId))
-        .reduce((sum, d) => sum + d.totalPoints, 0)
+        const memberPoints = (stablefordData || [])
+          .filter((d) => memberIds.includes(d.golferId))
+          .reduce((sum, d) => sum + d.totalPoints, 0)
 
-      return {
-        team,
-        totalPoints: memberPoints,
-        memberCount: members.length,
-      }
-    })
-    .sort((a, b) => b.totalPoints - a.totalPoints)
+        return {
+          team,
+          totalPoints: memberPoints,
+          memberCount: members.length,
+        }
+      })
+      .sort((a, b) => b.totalPoints - a.totalPoints),
+    [teams, teamMembers, stablefordData]
+  )
 
+  // Show loading while role is being determined
   if (roleLoading) {
     return (
       <Container size="2" py="6">
@@ -514,7 +553,7 @@ function LeaderboardsPage() {
                     <Switch
                       size="1"
                       checked={isIncluded}
-                      onCheckedChange={() => toggleRoundForGolfer(summary.id, isIncluded)}
+                      onCheckedChange={() => toggleRoundForGolfer(summary.id, summary.roundId, isIncluded)}
                     />
                   </Flex>
                 </Card>

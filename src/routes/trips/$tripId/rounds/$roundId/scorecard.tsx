@@ -1,17 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Container, Flex, Heading, Text, Button, Badge, Select, Card } from '@radix-ui/themes'
 import { ArrowLeft, Trophy, ChevronLeft, ChevronRight, Users } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import {
-  roundCollection,
-  courseCollection,
-  holeCollection,
-  golferCollection,
-  scoreCollection,
-  roundSummaryCollection,
-  tripCollection,
-  tripGolferCollection,
-} from '../../../../../db/collections'
+import { useMemo, useCallback } from 'react'
 import { Scorecard } from '../../../../../components/scoring/Scorecard'
 import {
   getPlayingHandicap,
@@ -20,8 +10,22 @@ import {
   calculateStablefordPoints,
   isBirdieOrBetter,
 } from '../../../../../lib/scoring'
-import type { RoundSummary } from '../../../../../db/collections'
 import { useTripRole } from '../../../../../hooks/useTripRole'
+import {
+  useTrip,
+  useRound,
+  useCourse,
+  useHolesByCourseId,
+  useTripGolfersByTripId,
+  useGolfers,
+  useScoresByRoundId,
+  useRoundSummariesByRoundId,
+  useCreateScore,
+  useUpdateScore,
+  useCreateRoundSummary,
+  useUpdateRoundSummary,
+} from '../../../../../hooks/queries'
+import type { TripGolfer, Golfer, Score, Hole, RoundSummary } from '../../../../../db/collections'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/$roundId/scorecard')({
   ssr: false,
@@ -42,93 +46,136 @@ function ScorecardPage() {
     return canManage || access?.golferId === targetGolferId
   }
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
+  // TanStack Query hooks
+  const { data: trip } = useTrip(tripId)
+  const { data: round } = useRound(roundId)
+  const { data: course } = useCourse(round?.courseId ?? '')
+  const { data: holes } = useHolesByCourseId(course?.id ?? '')
+  const { data: tripGolfers } = useTripGolfersByTripId(tripId)
+  const { data: allGolfers } = useGolfers()
+  const { data: allScores } = useScoresByRoundId(roundId)
+  const { data: roundSummaries } = useRoundSummariesByRoundId(roundId)
 
-  const { data: rounds } = useLiveQuery(
-    (q) =>
-      q.from({ round: roundCollection }).where(({ round }) => eq(round.id, roundId)),
-    [roundId]
-  )
-  const round = rounds?.[0]
+  // Mutations
+  const createScore = useCreateScore()
+  const updateScore = useUpdateScore()
+  const createRoundSummary = useCreateRoundSummary()
+  const updateRoundSummaryMutation = useUpdateRoundSummary()
 
-  const { data: courses } = useLiveQuery(
-    (q) =>
-      round
-        ? q
-            .from({ course: courseCollection })
-            .where(({ course }) => eq(course.id, round.courseId))
-        : undefined,
-    [round?.courseId]
-  )
-  const course = courses?.[0]
-
-  const { data: holes } = useLiveQuery(
-    (q) =>
-      course
-        ? q
-            .from({ hole: holeCollection })
-            .where(({ hole }) => eq(hole.courseId, course.id))
-            .orderBy(({ hole }) => hole.holeNumber, 'asc')
-        : undefined,
-    [course?.id]
+  // Memoize lookup maps
+  const acceptedTripGolfers = useMemo(
+    () => (tripGolfers ?? []).filter((tg: TripGolfer) => tg.status === 'accepted'),
+    [tripGolfers]
   )
 
-  // Get all golfers in this trip
-  const { data: tripGolfers } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tg: tripGolferCollection })
-        .where(({ tg }) => eq(tg.tripId, tripId))
-        .where(({ tg }) => eq(tg.status, 'accepted')),
-    [tripId]
+  const tripGolferIds = useMemo(
+    () => acceptedTripGolfers.map((tg: TripGolfer) => tg.golferId),
+    [acceptedTripGolfers]
   )
-  const tripGolferIds = (tripGolfers || []).map((tg) => tg.golferId)
-  const tripGolferMap = new Map((tripGolfers || []).map((tg) => [tg.golferId, tg]))
 
-  const { data: allGolfers } = useLiveQuery(
-    (q) => q.from({ golfer: golferCollection }).orderBy(({ golfer }) => golfer.name, 'asc'),
-    []
+  const tripGolferMap = useMemo<Map<string, TripGolfer>>(
+    () => new Map(acceptedTripGolfers.map((tg: TripGolfer) => [tg.golferId, tg])),
+    [acceptedTripGolfers]
   )
-  const golferMap = new Map((allGolfers || []).map((g) => [g.id, g]))
+
+  const golferMap = useMemo<Map<string, Golfer>>(
+    () => new Map((allGolfers ?? []).map((g: Golfer) => [g.id, g])),
+    [allGolfers]
+  )
 
   // Get golfers in this trip, sorted by name
-  const playingGolfers = tripGolferIds
-    .map((id) => golferMap.get(id))
-    .filter((g): g is NonNullable<typeof g> => !!g)
-    .sort((a, b) => a.name.localeCompare(b.name))
-
-  const golfer = golferMap.get(golferId)
-
-  // Find current golfer index for prev/next navigation
-  const currentGolferIndex = playingGolfers.findIndex((g) => g.id === golferId)
-  const prevGolfer = currentGolferIndex > 0 ? playingGolfers[currentGolferIndex - 1] : null
-  const nextGolfer = currentGolferIndex < playingGolfers.length - 1 ? playingGolfers[currentGolferIndex + 1] : null
-
-  const { data: scores } = useLiveQuery(
-    (q) =>
-      q
-        .from({ score: scoreCollection })
-        .where(({ score }) => eq(score.roundId, roundId))
-        .where(({ score }) => eq(score.golferId, golferId)),
-    [roundId, golferId]
+  const playingGolfers = useMemo<Golfer[]>(
+    () => tripGolferIds
+      .map((id: string) => golferMap.get(id))
+      .filter((g: Golfer | undefined): g is Golfer => !!g)
+      .sort((a: Golfer, b: Golfer) => a.name.localeCompare(b.name)),
+    [tripGolferIds, golferMap]
   )
 
-  function navigateToGolfer(newGolferId: string) {
+  const golfer = useMemo(
+    () => golferMap.get(golferId),
+    [golferMap, golferId]
+  )
+
+  // Filter scores for current golfer
+  const scores = useMemo<Score[]>(
+    () => (allScores ?? []).filter((s: Score) => s.golferId === golferId),
+    [allScores, golferId]
+  )
+
+  // Find current golfer index for prev/next navigation
+  const { prevGolfer, nextGolfer } = useMemo(() => {
+    const index = playingGolfers.findIndex((g: Golfer) => g.id === golferId)
+    return {
+      prevGolfer: index > 0 ? playingGolfers[index - 1] : null,
+      nextGolfer: index < playingGolfers.length - 1 ? playingGolfers[index + 1] : null,
+    }
+  }, [playingGolfers, golferId])
+
+  const navigateToGolfer = useCallback((newGolferId: string) => {
     navigate({
       to: '/trips/$tripId/rounds/$roundId/scorecard',
       params: { tripId, roundId },
       search: { golferId: newGolferId },
     })
-  }
+  }, [navigate, tripId, roundId])
 
-  function handleScoreChange(holeId: string, grossScore: number) {
+  const updateRoundSummaryFn = useCallback(() => {
     if (!golfer || !holes || !course) return
 
-    const hole = holes.find((h) => h.id === holeId)
+    let totalGross = 0
+    let totalNet = 0
+    let totalStableford = 0
+    let birdiesOrBetter = 0
+
+    for (const score of scores) {
+      const hole = holes.find((h: Hole) => h.id === score.holeId)
+      if (!hole) continue
+
+      totalGross += score.grossScore
+      totalNet += score.netScore
+      totalStableford += score.stablefordPoints
+
+      if (isBirdieOrBetter(score.netScore, hole.par)) {
+        birdiesOrBetter++
+      }
+    }
+
+    // Check for existing summary
+    const existing = roundSummaries?.find(
+      (s: RoundSummary) => s.roundId === roundId && s.golferId === golferId
+    )
+
+    if (existing) {
+      updateRoundSummaryMutation.mutate({
+        id: existing.id,
+        changes: {
+          totalGross,
+          totalNet,
+          totalStableford,
+          birdiesOrBetter,
+        },
+        roundId,
+      })
+    } else if (scores.length > 0) {
+      createRoundSummary.mutate({
+        id: crypto.randomUUID(),
+        roundId,
+        golferId,
+        totalGross,
+        totalNet,
+        totalStableford,
+        birdiesOrBetter,
+        kps: 0,
+        includedInScoring: true,
+      })
+    }
+  }, [golfer, holes, course, roundId, golferId, scores, roundSummaries, updateRoundSummaryMutation, createRoundSummary])
+
+  const handleScoreChange = useCallback((holeId: string, grossScore: number) => {
+    if (!golfer || !holes || !course) return
+
+    const hole = holes.find((h: Hole) => h.id === holeId)
     if (!hole) return
 
     // Use trip handicap override if set
@@ -146,17 +193,23 @@ function ScorecardPage() {
     const netScore = calculateNetScore(grossScore, handicapStrokes)
     const stablefordPoints = calculateStablefordPoints(netScore, hole.par)
 
-    const existingScore = scores?.find((s) => s.holeId === holeId)
+    const existingScore = scores.find((s: Score) => s.holeId === holeId)
 
     if (existingScore) {
-      scoreCollection.update(existingScore.id, (draft) => {
-        draft.grossScore = grossScore
-        draft.handicapStrokes = handicapStrokes
-        draft.netScore = netScore
-        draft.stablefordPoints = stablefordPoints
+      updateScore.mutate({
+        id: existingScore.id,
+        changes: {
+          grossScore,
+          handicapStrokes,
+          netScore,
+          stablefordPoints,
+        },
+        roundId,
+      }, {
+        onSuccess: () => updateRoundSummaryFn(),
       })
     } else {
-      scoreCollection.insert({
+      createScore.mutate({
         id: crypto.randomUUID(),
         roundId,
         golferId,
@@ -165,66 +218,21 @@ function ScorecardPage() {
         handicapStrokes,
         netScore,
         stablefordPoints,
+      }, {
+        onSuccess: () => updateRoundSummaryFn(),
       })
     }
+  }, [golfer, holes, course, golferId, roundId, scores, tripGolferMap, updateScore, createScore, updateRoundSummaryFn])
 
-    // Update round summary
-    updateRoundSummary()
-  }
-
-  function updateRoundSummary() {
-    if (!golfer || !holes || !course) return
-
-    // Re-query to get latest scores
-    const allScores = scores || []
-
-    let totalGross = 0
-    let totalNet = 0
-    let totalStableford = 0
-    let birdiesOrBetter = 0
-
-    for (const score of allScores) {
-      const hole = holes.find((h) => h.id === score.holeId)
-      if (!hole) continue
-
-      totalGross += score.grossScore
-      totalNet += score.netScore
-      totalStableford += score.stablefordPoints
-
-      if (isBirdieOrBetter(score.netScore, hole.par)) {
-        birdiesOrBetter++
-      }
-    }
-
-    // Check for existing summary by querying the collection
-    let existing: RoundSummary | undefined = undefined
-    for (const [, s] of roundSummaryCollection.entries()) {
-      if (s.roundId === roundId && s.golferId === golferId) {
-        existing = s
-        break
-      }
-    }
-
-    if (existing) {
-      roundSummaryCollection.update(existing.id, (draft) => {
-        draft.totalGross = totalGross
-        draft.totalNet = totalNet
-        draft.totalStableford = totalStableford
-        draft.birdiesOrBetter = birdiesOrBetter
-      })
-    } else if (allScores.length > 0) {
-      roundSummaryCollection.insert({
-        id: crypto.randomUUID(),
-        roundId,
-        golferId,
-        totalGross,
-        totalNet,
-        totalStableford,
-        birdiesOrBetter,
-        kps: 0,
-      })
-    }
-  }
+  // Eliminate O(n²) pattern with Map lookup
+  const holeScores = useMemo(() => {
+    if (!holes) return []
+    const scoreMap = new Map<string, Score>(scores.map((s: Score) => [s.holeId, s]))
+    return holes.map((hole: Hole) => ({
+      holeId: hole.id,
+      grossScore: scoreMap.get(hole.id)?.grossScore ?? null,
+    }))
+  }, [holes, scores])
 
   if (!round || !course || !golfer) {
     return (
@@ -233,15 +241,6 @@ function ScorecardPage() {
       </Container>
     )
   }
-
-  const holeScores =
-    holes?.map((hole) => {
-      const score = scores?.find((s) => s.holeId === hole.id)
-      return {
-        holeId: hole.id,
-        grossScore: score?.grossScore ?? null,
-      }
-    }) ?? []
 
   return (
     <Container size="2" py="6">
@@ -300,7 +299,7 @@ function ScorecardPage() {
                   </Flex>
                 </Select.Trigger>
                 <Select.Content>
-                  {playingGolfers.map((g) => (
+                  {playingGolfers.map((g: Golfer) => (
                     <Select.Item key={g.id} value={g.id}>
                       {g.name}
                     </Select.Item>

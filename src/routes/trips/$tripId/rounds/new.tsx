@@ -12,14 +12,14 @@ import {
 } from '@radix-ui/themes'
 import { ChevronLeft, Search } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import {
-  tripCollection,
-  courseCollection,
-  roundCollection,
-} from '../../../../db/collections'
 import { CourseSearch } from '../../../../components/courses/CourseSearch'
 import { useTripRole } from '../../../../hooks/useTripRole'
+import {
+  useTrip,
+  useCourses,
+  useRoundsByTripId,
+  useCreateRound,
+} from '../../../../hooks/queries'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/new')({
   ssr: false,
@@ -30,69 +30,68 @@ function NewRoundPage() {
   const { tripId } = Route.useParams()
   const navigate = useNavigate()
   const [addCourseDialogOpen, setAddCourseDialogOpen] = useState(false)
-  const { canManage } = useTripRole(tripId)
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('')
+  const { canManage, isLoading: roleLoading } = useTripRole(tripId)
 
-  // Redirect non-organizers
+  // Redirect non-organizers (only after role is loaded)
   useEffect(() => {
-    if (!canManage) {
+    if (!roleLoading && !canManage) {
       navigate({ to: '/trips/$tripId/rounds', params: { tripId } })
     }
-  }, [canManage, navigate, tripId])
+  }, [canManage, roleLoading, navigate, tripId])
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
+  const { data: trip } = useTrip(tripId)
+  const { data: courses } = useCourses()
+  const { data: existingRounds } = useRoundsByTripId(tripId)
+  const createRound = useCreateRound()
 
-  const { data: courses } = useLiveQuery(
-    (q) =>
-      q.from({ course: courseCollection }).orderBy(({ course }) => course.name, 'asc'),
-    []
-  )
-
-  const { data: existingRounds } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.tripId, tripId)),
-    [tripId]
-  )
-
+  const sortedCourses = courses?.slice().sort((a, b) => a.name.localeCompare(b.name))
   const nextRoundNumber = (existingRounds?.length ?? 0) + 1
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
 
-    const courseId = formData.get('courseId') as string
+    if (!selectedCourseId) {
+      return // Course is required
+    }
+
     const roundDate = new Date(formData.get('roundDate') as string)
     const notes = (formData.get('notes') as string) || ''
 
     const roundId = crypto.randomUUID()
 
-    roundCollection.insert({
-      id: roundId,
-      tripId,
-      courseId,
-      roundDate,
-      roundNumber: nextRoundNumber,
-      notes,
-      includedInScoring: true,
-    })
-
-    navigate({
-      to: '/trips/$tripId/rounds/$roundId',
-      params: { tripId, roundId },
-    })
+    createRound.mutate(
+      {
+        id: roundId,
+        tripId,
+        courseId: selectedCourseId,
+        roundDate,
+        roundNumber: nextRoundNumber,
+        notes,
+        includedInScoring: true,
+      },
+      {
+        onSuccess: () => {
+          navigate({
+            to: '/trips/$tripId/rounds/$roundId',
+            params: { tripId, roundId },
+          })
+        },
+      }
+    )
   }
 
-  if (!trip || !canManage) {
+  if (!trip || roleLoading) {
     return (
       <Container size="2" py="6">
         <Text>Loading...</Text>
       </Container>
     )
+  }
+
+  if (!canManage) {
+    return null // Will redirect via useEffect
   }
 
   const defaultDate = trip.startDate.toISOString().split('T')[0]
@@ -125,10 +124,10 @@ function NewRoundPage() {
               </Text>
               <Flex gap="2" align="end">
                 <Flex direction="column" gap="1" style={{ flex: 1 }}>
-                  <Select.Root name="courseId" required>
+                  <Select.Root value={selectedCourseId} onValueChange={setSelectedCourseId} required>
                     <Select.Trigger placeholder="Select a course" />
                     <Select.Content>
-                      {courses?.map((course) => (
+                      {sortedCourses?.map((course) => (
                         <Select.Item key={course.id} value={course.id}>
                           {course.name}
                         </Select.Item>
@@ -155,7 +154,7 @@ function NewRoundPage() {
                   </Dialog.Content>
                 </Dialog.Root>
               </Flex>
-              {(!courses || courses.length === 0) && (
+              {(!sortedCourses || sortedCourses.length === 0) && (
                 <Text size="1" color="amber">
                   No courses available. Click "Find Course" to search and add one.
                 </Text>
@@ -190,8 +189,8 @@ function NewRoundPage() {
               This will be Round {nextRoundNumber} of the trip
             </Text>
 
-            <Button type="submit" disabled={!courses || courses.length === 0}>
-              Create Round
+            <Button type="submit" disabled={!selectedCourseId || createRound.isPending}>
+              {createRound.isPending ? 'Creating...' : 'Create Round'}
             </Button>
           </Flex>
         </form>

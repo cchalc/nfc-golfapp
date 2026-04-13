@@ -9,7 +9,7 @@ import {
   isApiConfigured,
   type ApiCourse,
 } from '../../lib/golfCourseApi'
-import { importCourseWithDetails } from '../../server/mutations'
+import { useImportCourseWithDetails } from '../../hooks/queries'
 import { CourseForm } from './CourseForm'
 
 interface CourseSearchProps {
@@ -21,9 +21,11 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ApiCourse[]>([])
   const [isSearching, setIsSearching] = useState(false)
-  const [isImporting, setIsImporting] = useState<number | null>(null)
+  const [importingId, setImportingId] = useState<number | null>(null)
   const [importedId, setImportedId] = useState<number | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
+
+  const importMutation = useImportCourseWithDetails()
 
   // Debounced search
   useEffect(() => {
@@ -55,7 +57,8 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
   }, [query])
 
   async function handleImportCourse(apiCourse: ApiCourse) {
-    setIsImporting(apiCourse.id)
+    setImportingId(apiCourse.id)
+    setSearchError(null)
 
     try {
       // Fetch full course details
@@ -113,25 +116,23 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
         yardage: hole.yardage,
       }))
 
-      // Import everything in a single batched transaction
-      const result = await importCourseWithDetails({
-        data: { course, teeBoxes, holes },
-      })
+      // Import everything using mutation hook
+      const result = await importMutation.mutateAsync({ course, teeBoxes, holes })
 
       console.log(
-        `Imported course "${course.name}" with ${result.teeBoxCount} tee boxes and ${result.holeCount} holes (txid: ${result.txid})`
+        `Imported course "${course.name}" with ${result.teeBoxCount} tee boxes and ${result.holeCount} holes`
       )
 
       setImportedId(apiCourse.id)
-      // Give Electric a moment to sync before closing dialog
+      // Brief delay before closing dialog
       setTimeout(() => {
         onSuccess?.()
-      }, 1000)
+      }, 500)
     } catch (error) {
       console.error('Failed to import course:', error)
       setSearchError('Failed to import course. Please try again.')
     } finally {
-      setIsImporting(null)
+      setImportingId(null)
     }
   }
 
@@ -241,10 +242,10 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
                   size="1"
                   variant={importedId === course.id ? 'soft' : 'solid'}
                   color={importedId === course.id ? 'grass' : undefined}
-                  disabled={isImporting !== null}
+                  disabled={importingId !== null}
                   onClick={() => handleImportCourse(course)}
                 >
-                  {isImporting === course.id ? (
+                  {importingId === course.id ? (
                     <Spinner size="1" />
                   ) : importedId === course.id ? (
                     <>

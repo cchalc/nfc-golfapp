@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getDb, type MutationResult } from '../mutations/db'
+import { getDb } from '../mutations/db'
 import { getSession } from './mutations'
 import { requireOrganizer } from './authorization'
 import { generateInviteToken, INVITE_EXPIRY_MS } from './utils'
@@ -35,7 +35,7 @@ export const createTripInvite = createServerFn({ method: 'POST' })
   .handler(
     async ({
       data: { tripId, maxUses },
-    }): Promise<MutationResult<{ token: string; inviteUrl: string }>> => {
+    }): Promise<{ token: string; inviteUrl: string }> => {
       // Verify user is organizer
       await requireOrganizer({ data: { tripId } })
 
@@ -46,14 +46,11 @@ export const createTripInvite = createServerFn({ method: 'POST' })
       const token = generateInviteToken()
       const expiresAt = new Date(Date.now() + INVITE_EXPIRY_MS)
 
-      const [_result, txidResult] = await sql.transaction((txn) => [
-        txn`
-          INSERT INTO trip_invites (trip_id, token, created_by, expires_at, max_uses)
-          VALUES (${tripId}, ${token}, ${session.identityId}, ${expiresAt}, ${maxUses ?? null})
-          RETURNING id
-        `,
-        txn`SELECT txid_current()::text AS txid`,
-      ])
+      await sql`
+        INSERT INTO trip_invites (trip_id, token, created_by, expires_at, max_uses)
+        VALUES (${tripId}, ${token}, ${session.identityId}, ${expiresAt}, ${maxUses ?? null})
+        RETURNING id
+      `
 
       const baseUrl = process.env.APP_URL || 'http://localhost:5173'
       const inviteUrl = `${baseUrl}/invite/${token}`
@@ -61,7 +58,6 @@ export const createTripInvite = createServerFn({ method: 'POST' })
       return {
         token,
         inviteUrl,
-        txid: parseInt(txidResult[0].txid as string),
       }
     }
   )
@@ -122,7 +118,7 @@ export const acceptTripInvite = createServerFn({ method: 'POST' })
   .handler(
     async ({
       data: { token },
-    }): Promise<MutationResult<{ tripId: string; success: boolean }>> => {
+    }): Promise<{ tripId: string; success: boolean }> => {
       const session = await getSession()
       if (!session) throw new Error('Not authenticated')
       if (!session.golferId) throw new Error('No golfer profile linked')
@@ -169,30 +165,25 @@ export const acceptTripInvite = createServerFn({ method: 'POST' })
         return {
           tripId,
           success: true,
-          txid: 0,
         }
       }
 
       // Add to trip and increment use count
-      const [_addResult, _updateResult, txidResult] = await sql.transaction(
-        (txn) => [
-          txn`
+      await sql.transaction((txn) => [
+        txn`
           INSERT INTO trip_golfers (trip_id, golfer_id, status, accepted_at)
           VALUES (${tripId}, ${session.golferId}, 'accepted', NOW())
         `,
-          txn`
+        txn`
           UPDATE trip_invites
           SET use_count = use_count + 1
           WHERE id = ${invite.id}
         `,
-          txn`SELECT txid_current()::text AS txid`,
-        ]
-      )
+      ])
 
       return {
         tripId,
         success: true,
-        txid: parseInt(txidResult[0].txid as string),
       }
     }
   )
@@ -235,19 +226,15 @@ export const deleteTripInvite = createServerFn({ method: 'POST' })
   .handler(
     async ({
       data: { tripId, inviteId },
-    }): Promise<MutationResult<{ success: boolean }>> => {
+    }): Promise<{ success: boolean }> => {
       await requireOrganizer({ data: { tripId } })
 
       const sql = getDb()
 
-      const [_deleteResult, txidResult] = await sql.transaction((txn) => [
-        txn`DELETE FROM trip_invites WHERE id = ${inviteId} AND trip_id = ${tripId}`,
-        txn`SELECT txid_current()::text AS txid`,
-      ])
+      await sql`DELETE FROM trip_invites WHERE id = ${inviteId} AND trip_id = ${tripId}`
 
       return {
         success: true,
-        txid: parseInt(txidResult[0].txid as string),
       }
     }
   )

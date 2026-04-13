@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Container, Flex, Heading, Text, Button, Card, Grid } from '@radix-ui/themes'
-import { Flag, Users, Trophy, LogIn } from 'lucide-react'
-import { useLiveQuery, count } from '@tanstack/react-db'
-import { tripCollection, golferCollection, roundCollection } from '../db/collections'
+import { Flag, Users, MapPin, Trophy, LogIn } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useTrips } from '../hooks/queries'
 
 export const Route = createFileRoute('/')({
   ssr: false,
@@ -14,83 +13,25 @@ function HomePage() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
 
-  const { data: tripStats } = useLiveQuery(
-    (q) =>
-      q.from({ trip: tripCollection }).select(({ trip }) => ({
-        total: count(trip.id),
-      })),
-    []
-  )
-
-  const { data: golferStats } = useLiveQuery(
-    (q) =>
-      q.from({ golfer: golferCollection }).select(({ golfer }) => ({
-        total: count(golfer.id),
-      })),
-    []
-  )
-
-  const { data: roundStats } = useLiveQuery(
-    (q) =>
-      q.from({ round: roundCollection }).select(({ round }) => ({
-        total: count(round.id),
-      })),
-    []
-  )
-
-  const tripCount = tripStats?.[0]?.total ?? 0
-  const golferCount = golferStats?.[0]?.total ?? 0
-  const roundCount = roundStats?.[0]?.total ?? 0
+  const { data: trips } = useTrips()
+  const tripCount = trips?.length ?? 0
 
   return (
     <Container size="2" py="9">
       <Flex direction="column" gap="6">
         <Flex direction="column" gap="4" align="center" className="animate-reveal-1">
-          <Heading size="8">Golf Trip Planner</Heading>
+          <Heading size="8" style={{ color: 'var(--grass-9)' }}>Golf Trip</Heading>
           <Text size="3" color="gray">
             Plan trips, track scores, and compete with friends
           </Text>
         </Flex>
 
-        <Grid columns={{ initial: '1', sm: '3' }} gap="4" className="animate-reveal-2">
-          <Card className="card-gold-hover">
-            <Flex direction="column" align="center" gap="2" py="3">
-              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
-                {tripCount}
-              </Heading>
-              <Text size="2" color="gray">
-                Trips
-              </Text>
-            </Flex>
-          </Card>
-          <Card className="card-gold-hover">
-            <Flex direction="column" align="center" gap="2" py="3">
-              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
-                {golferCount}
-              </Heading>
-              <Text size="2" color="gray">
-                Golfers
-              </Text>
-            </Flex>
-          </Card>
-          <Card className="card-gold-hover">
-            <Flex direction="column" align="center" gap="2" py="3">
-              <Heading size="6" style={{ color: 'var(--amber-9)' }}>
-                {roundCount}
-              </Heading>
-              <Text size="2" color="gray">
-                Rounds
-              </Text>
-            </Flex>
-          </Card>
-        </Grid>
-
-        <Grid columns={{ initial: '1', sm: '2' }} gap="3" className="animate-reveal-3">
+        <Grid columns={{ initial: '1', sm: '3' }} gap="3" className="animate-reveal-2">
           <Link to="/trips" style={{ textDecoration: 'none' }}>
             <Card asChild>
               <Flex direction="column" align="center" gap="2" py="4">
                 <Flag size={32} style={{ color: 'var(--grass-9)' }} />
-                <Text weight="medium">View Trips</Text>
+                <Text weight="medium">Trips</Text>
               </Flex>
             </Card>
           </Link>
@@ -99,6 +40,14 @@ function HomePage() {
               <Flex direction="column" align="center" gap="2" py="4">
                 <Users size={32} style={{ color: 'var(--grass-9)' }} />
                 <Text weight="medium">Golfers</Text>
+              </Flex>
+            </Card>
+          </Link>
+          <Link to="/courses" style={{ textDecoration: 'none' }}>
+            <Card asChild>
+              <Flex direction="column" align="center" gap="2" py="4">
+                <MapPin size={32} style={{ color: 'var(--grass-9)' }} />
+                <Text weight="medium">Courses</Text>
               </Flex>
             </Card>
           </Link>

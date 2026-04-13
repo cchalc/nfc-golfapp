@@ -1,14 +1,22 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { Container, Flex, Heading, Button, Card, Text, Badge, AlertDialog } from '@radix-ui/themes'
-import { Plus, ChevronRight, Trash2 } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
 import {
-  tripCollection,
-  roundCollection,
-  courseCollection,
-} from '../../../../db/collections'
+  Badge,
+  Button,
+  Card,
+  Container,
+  Flex,
+  Heading,
+  Text,
+} from '@radix-ui/themes'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { ChevronRight, Plus } from 'lucide-react'
+import { RoundDeleteButton } from '../../../../components/rounds/RoundDeleteButton'
 import { EmptyState } from '../../../../components/ui/EmptyState'
 import { useTripRole } from '../../../../hooks/useTripRole'
+import {
+  useTrip,
+  useRoundsByTripId,
+  useCourses,
+} from '../../../../hooks/queries'
 
 export const Route = createFileRoute('/trips/$tripId/rounds/')({
   ssr: false,
@@ -27,31 +35,11 @@ function RoundsPage() {
   const { tripId } = Route.useParams()
   const { canManage } = useTripRole(tripId)
 
-  const { data: trips } = useLiveQuery(
-    (q) => q.from({ trip: tripCollection }).where(({ trip }) => eq(trip.id, tripId)),
-    [tripId]
-  )
-  const trip = trips?.[0]
-
-  const { data: rounds } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.tripId, tripId))
-        .orderBy(({ round }) => round.roundNumber, 'asc'),
-    [tripId]
-  )
-
-  const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }),
-    []
-  )
+  const { data: trip } = useTrip(tripId)
+  const { data: rounds } = useRoundsByTripId(tripId)
+  const { data: courses } = useCourses()
 
   const courseMap = new Map((courses || []).map((c) => [c.id, c]))
-
-  function handleDeleteRound(roundId: string) {
-    roundCollection.delete(roundId)
-  }
 
   if (!trip) {
     return (
@@ -113,40 +101,17 @@ function RoundsPage() {
                         to="/trips/$tripId/rounds/$roundId"
                         params={{ tripId, roundId: round.id }}
                       >
-                        <ChevronRight size={16} style={{ color: 'var(--gray-9)' }} />
+                        <ChevronRight
+                          size={16}
+                          style={{ color: 'var(--gray-9)' }}
+                        />
                       </Link>
                       {canManage && (
-                        <AlertDialog.Root>
-                          <AlertDialog.Trigger>
-                            <Button variant="ghost" size="1" color="red">
-                              <Trash2 size={14} />
-                            </Button>
-                          </AlertDialog.Trigger>
-                          <AlertDialog.Content maxWidth="400px">
-                            <AlertDialog.Title>Delete Round</AlertDialog.Title>
-                            <AlertDialog.Description size="2">
-                              Are you sure you want to delete Round {round.roundNumber} at{' '}
-                              {course?.name || 'Unknown Course'}? This will permanently remove all
-                              scores for this round.
-                            </AlertDialog.Description>
-                            <Flex gap="3" mt="4" justify="end">
-                              <AlertDialog.Cancel>
-                                <Button variant="soft" color="gray">
-                                  Cancel
-                                </Button>
-                              </AlertDialog.Cancel>
-                              <AlertDialog.Action>
-                                <Button
-                                  variant="solid"
-                                  color="red"
-                                  onClick={() => handleDeleteRound(round.id)}
-                                >
-                                  Delete Round
-                                </Button>
-                              </AlertDialog.Action>
-                            </Flex>
-                          </AlertDialog.Content>
-                        </AlertDialog.Root>
+                        <RoundDeleteButton
+                          round={round}
+                          courseName={course?.name || 'Unknown Course'}
+                          tripId={tripId}
+                        />
                       )}
                     </Flex>
                   </Flex>

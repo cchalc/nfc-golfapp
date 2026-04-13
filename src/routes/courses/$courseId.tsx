@@ -16,13 +16,20 @@ import {
   Spinner,
 } from '@radix-ui/themes'
 import { ArrowLeft, MapPin, Flag, Edit, Plus, Trash2, RefreshCw } from 'lucide-react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import { courseCollection, holeCollection, teeBoxCollection, roundCollection } from '../../db/collections'
 import { CourseForm } from '../../components/courses/CourseForm'
 import { useDialogState } from '../../hooks/useDialogState'
-import { getCourse, getAllTees, getPrimaryTee } from '../../lib/golfCourseApi'
+import { getCourse as fetchCourseFromApi, getAllTees, getPrimaryTee } from '../../lib/golfCourseApi'
 import { resyncCourseDetails } from '../../server/mutations'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
+import {
+  useCourse,
+  useHolesByCourseId,
+  useTeeBoxesByCourseId,
+  useDeleteCourse,
+  useCreateHole,
+  useDeleteHole,
+  useRounds,
+} from '../../hooks/queries'
 
 export const Route = createFileRoute('/courses/$courseId')({
   ssr: false,
@@ -37,39 +44,22 @@ function CourseDetailPage() {
   const [addHoleDialogOpen, setAddHoleDialogOpen] = useDialogState(`add-hole-${courseId}`)
   const [isResyncing, setIsResyncing] = useState(false)
 
-  const { data: courses } = useLiveQuery(
-    (q) => q.from({ course: courseCollection }).where(({ course }) => eq(course.id, courseId)),
-    [courseId]
-  )
-  const course = courses?.[0]
+  const { data: course } = useCourse(courseId)
+  const { data: holes } = useHolesByCourseId(courseId)
+  const { data: teeBoxes } = useTeeBoxesByCourseId(courseId)
+  const { data: allRounds } = useRounds()
 
-  const { data: holes } = useLiveQuery(
-    (q) =>
-      q
-        .from({ hole: holeCollection })
-        .where(({ hole }) => eq(hole.courseId, courseId))
-        .orderBy(({ hole }) => hole.holeNumber, 'asc'),
-    [courseId]
-  )
+  // Filter rounds using this course
+  const roundsUsingCourse = allRounds?.filter((r) => r.courseId === courseId) ?? []
+  const isInUse = roundsUsingCourse.length > 0
 
-  const { data: teeBoxes } = useLiveQuery(
-    (q) =>
-      q
-        .from({ tee: teeBoxCollection })
-        .where(({ tee }) => eq(tee.courseId, courseId))
-        .orderBy(({ tee }) => tee.totalYards, 'desc'),
-    [courseId]
-  )
+  // Mutations
+  const deleteCourseMutation = useDeleteCourse()
+  const createHoleMutation = useCreateHole()
+  const deleteHoleMutation = useDeleteHole()
 
-  // Check if course is used by any rounds
-  const { data: roundsUsingCourse } = useLiveQuery(
-    (q) =>
-      q
-        .from({ round: roundCollection })
-        .where(({ round }) => eq(round.courseId, courseId)),
-    [courseId]
-  )
-  const isInUse = (roundsUsingCourse?.length ?? 0) > 0
+  // Sort holes by hole number
+  const holeList = [...(holes ?? [])].sort((a, b) => a.holeNumber - b.holeNumber)
 
   function handleAddHole(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -80,7 +70,7 @@ function CourseDetailPage() {
     const strokeIndex = parseInt(formData.get('strokeIndex') as string)
     const yardage = parseInt(formData.get('yardage') as string) || null
 
-    holeCollection.insert({
+    createHoleMutation.mutate({
       id: crypto.randomUUID(),
       courseId,
       holeNumber,
@@ -93,7 +83,7 @@ function CourseDetailPage() {
   }
 
   function handleDeleteHole(holeId: string) {
-    holeCollection.delete(holeId)
+    deleteHoleMutation.mutate({ id: holeId, courseId })
   }
 
   function handleGenerateHoles() {
@@ -102,7 +92,7 @@ function CourseDetailPage() {
     const strokeIndices = [7, 15, 3, 11, 1, 13, 5, 9, 17, 8, 16, 4, 12, 2, 14, 6, 10, 18]
 
     for (let i = 0; i < 18; i++) {
-      holeCollection.insert({
+      createHoleMutation.mutate({
         id: crypto.randomUUID(),
         courseId,
         holeNumber: i + 1,
@@ -114,8 +104,11 @@ function CourseDetailPage() {
   }
 
   function handleDeleteCourse() {
-    courseCollection.delete(courseId)
-    navigate({ to: '/courses' })
+    deleteCourseMutation.mutate(courseId, {
+      onSuccess: () => {
+        navigate({ to: '/courses' })
+      },
+    })
   }
 
   async function handleResyncCourse() {
@@ -124,7 +117,7 @@ function CourseDetailPage() {
     setIsResyncing(true)
     try {
       // Fetch fresh data from API
-      const fullCourse = await getCourse(course.apiId)
+      const fullCourse = await fetchCourseFromApi(course.apiId)
       if (!fullCourse) {
         throw new Error('Failed to fetch course details')
       }
@@ -171,7 +164,7 @@ function CourseDetailPage() {
         data: { courseId, courseUpdates, teeBoxes: newTeeBoxes, holes: newHoles },
       })
 
-      console.log(`Resynced course with ${result.teeBoxCount} tee boxes and ${result.holeCount} holes (txid: ${result.txid})`)
+      console.log(`Resynced course with ${result.teeBoxCount} tee boxes and ${result.holeCount} holes`)
     } catch (error) {
       console.error('Failed to resync course:', error)
     } finally {
@@ -195,7 +188,6 @@ function CourseDetailPage() {
     )
   }
 
-  const holeList = holes || []
   const totalPar = holeList.reduce((sum, h) => sum + h.par, 0)
   const frontNine = holeList.filter((h) => h.holeNumber <= 9)
   const backNine = holeList.filter((h) => h.holeNumber > 9)
@@ -313,7 +305,7 @@ function CourseDetailPage() {
             <Flex align="center" gap="2" py="1">
               <Badge color="amber" variant="soft">In Use</Badge>
               <Text size="2" color="gray">
-                This course is used by {roundsUsingCourse?.length} round(s) and cannot be deleted.
+                This course is used by {roundsUsingCourse.length} round(s) and cannot be deleted.
               </Text>
             </Flex>
           </Card>
@@ -335,7 +327,7 @@ function CourseDetailPage() {
                   </Table.Row>
                 </Table.Header>
                 <Table.Body>
-                  {teeBoxes.map((tee) => (
+                  {[...teeBoxes].sort((a, b) => b.totalYards - a.totalYards).map((tee) => (
                     <Table.Row key={tee.id}>
                       <Table.Cell>
                         <Flex align="center" gap="2">

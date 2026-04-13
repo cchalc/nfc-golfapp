@@ -1,46 +1,17 @@
-import { useCallback } from 'react'
-import { useLiveQuery, eq } from '@tanstack/react-db'
-import { uiStateCollection } from '../db/collections'
+import { useState, useCallback } from 'react'
 
 /**
- * Hook to manage dialog open state via TanStack DB collection.
- * This allows dialogs to close properly after form submission.
+ * Hook to manage dialog open state with simple React state.
  *
- * @param dialogId - Unique identifier for this dialog instance
+ * @param _dialogId - Unique identifier for this dialog instance (unused, kept for API compatibility)
  * @returns [isOpen, setOpen] tuple
  */
-export function useDialogState(dialogId: string): [boolean, (open: boolean) => void] {
-  const { data: uiStates } = useLiveQuery(
-    (q) =>
-      q.from({ ui: uiStateCollection }).where(({ ui }) => eq(ui.dialogId, dialogId)),
-    [dialogId]
-  )
+export function useDialogState(_dialogId: string): [boolean, (open: boolean) => void] {
+  const [isOpen, setIsOpen] = useState(false)
 
-  const uiState = uiStates?.[0]
-  const isOpen = uiState?.isOpen ?? false
-
-  // Use useCallback to stabilize the function reference and query fresh from
-  // the collection to avoid stale closure issues with Electric's async sync
-  const setOpen = useCallback(
-    (open: boolean) => {
-      // Query the collection directly to get fresh state
-      const entries = [...uiStateCollection]
-      const existing = entries.find(([, s]) => s.dialogId === dialogId)
-
-      if (existing) {
-        uiStateCollection.update(existing[0], (d) => {
-          d.isOpen = open
-        })
-      } else {
-        uiStateCollection.insert({
-          id: crypto.randomUUID(),
-          dialogId,
-          isOpen: open,
-        })
-      }
-    },
-    [dialogId]
-  )
+  const setOpen = useCallback((open: boolean) => {
+    setIsOpen(open)
+  }, [])
 
   return [isOpen, setOpen]
 }

@@ -9,6 +9,7 @@ import { Theme, Container, Heading, Text, Flex } from '@radix-ui/themes'
 import { Header } from '../components/Header'
 import { ThemeProvider } from '../contexts/ThemeContext'
 import { AuthProvider } from '../contexts/AuthContext'
+import { QueryProvider } from '../contexts/QueryContext'
 import { DataLoader } from '../components/DataLoader'
 import { ClientOnly } from '../components/ClientOnly'
 import { ErrorBoundary } from '../components/ui/ErrorBoundary'
@@ -31,7 +32,7 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
+      { title: 'Golf Trip' },
     ],
     links: [
       { rel: 'stylesheet', href: radixCss },
@@ -73,14 +74,16 @@ function RootComponent() {
         <Theme appearance="dark" accentColor="grass" grayColor="sage" radius="medium">
           <ErrorBoundary>
             <ClientOnly>
-              <AuthProvider>
-                <ThemeProvider>
-                  <DataLoader>
-                    <Header />
-                    <Outlet />
-                  </DataLoader>
-                </ThemeProvider>
-              </AuthProvider>
+              <QueryProvider>
+                <AuthProvider>
+                  <ThemeProvider>
+                    <DataLoader>
+                      <Header />
+                      <Outlet />
+                    </DataLoader>
+                  </ThemeProvider>
+                </AuthProvider>
+              </QueryProvider>
             </ClientOnly>
           </ErrorBoundary>
         </Theme>
