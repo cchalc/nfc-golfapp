@@ -121,8 +121,6 @@ function RoundsPage() {
           </Flex>
         ) : (
           <EmptyState
-            title="No rounds yet"
-            description="Add your first round to start tracking scores"
             action={
               canManage ? (
                 <Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
