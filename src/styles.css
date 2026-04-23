@@ -365,7 +365,7 @@ body {
 /* Stagger animation item */
 .stagger-item {
   animation: fadeSlideUp var(--duration-slow) ease-out forwards;
-  animation-delay: calc(var(--stagger-index, 0) * 50ms);
+  animation-delay: calc(var(--stagger-index, 0) * var(--stagger-ms, 50ms));
   opacity: 0;
 }
 
