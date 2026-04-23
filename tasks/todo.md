@@ -9,9 +9,133 @@
 - **Package Manager**: Use `pnpm`, not `npm`
 - **TanStack Start**: `src/start.ts` MUST export `startInstance` (even as `undefined`) for hydration to work
 
+## Usability Guide
+
+### User Roles
+
+| Role | Capabilities |
+|------|-------------|
+| **Owner** | Full trip control, can delete trip, manage organizers |
+| **Organizer** | Add/edit rounds, golfers, scores for anyone, challenges |
+| **Participant** | View trip, edit own scores and profile |
+| **None** | No access to trip |
+
+### User Flows
+
+**Admin adds a golfer:**
+1. Go to trip → Golfers → Add Golfer
+2. Enter golfer's name and **email** (important for linking)
+3. Golfer is added to trip with "invited" status
+
+**Golfer joins and logs in:**
+1. Golfer receives invite or visits app
+2. Signs in with their email (magic link code)
+3. System auto-links identity to existing golfer record (by email match)
+4. Golfer now has access to all trips they were added to
+
+**Entering scores:**
+- Organizers: Can enter scores for any golfer
+- Participants: Can only enter their own scores
+- Navigate to: Trip → Round → Scorecard
+
+**Viewing standings:**
+- Leaderboards page shows Stableford, Best Net, Birdies, KPs tabs
+- Use round selector to view Trip Total or individual rounds
+- Teams tab shows team standings (if teams exist)
+
+### Key Pages
+
+| Page | Path | Purpose |
+|------|------|---------|
+| Dashboard | `/trips/:tripId` | Trip overview, quick actions, rounds list |
+| Leaderboards | `/trips/:tripId/leaderboards` | Standings by metric and round |
+| Challenges | `/trips/:tripId/challenges` | KP, LD, custom challenges grouped by round |
+| Scorecard | `/trips/:tripId/rounds/:roundId/scorecard` | Enter hole-by-hole scores |
+| Golfers | `/trips/:tripId/golfers` | Manage trip participants |
+
+---
+
+## Architecture
+
+### Data Flow
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Client    │────▶│  Electric   │────▶│    Neon     │
+│ TanStack DB │◀────│   Proxy     │◀────│  PostgreSQL │
+└─────────────┘     └─────────────┘     └─────────────┘
+       │                                       ▲
+       │         Server Functions              │
+       └──────────────────────────────────────┘
+              (mutations with auth)
+```
+
+**Reading data**: Electric SQL shapes → TanStack DB collections → `useLiveQuery`
+**Writing data**: Collection methods → Server mutations (with auth checks) → PostgreSQL
+
+### Authorization Model
+
+```
+identities (email, golferId)
+     │
+     ├── trip_organizers (tripId, role: owner|organizer)
+     │
+     └── golfers ──── trip_golfers (tripId, status)
+```
+
+**Field-level permissions** (enforced in server mutations):
+- `scores.ts` - Organizers edit all, participants only own
+- `round-summaries.ts` - Same model
+- `golfers.ts` - Users can only edit own profile
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/db/collections.ts` | Zod schemas + TanStack DB collections |
+| `src/server/mutations/*.ts` | Server functions with auth |
+| `src/server/auth/authorization.ts` | Role checking helpers |
+| `src/server/auth/mutations.ts` | Login/session management |
+| `src/routes/api/electric/*.ts` | Electric proxy routes |
+
+---
+
+## Todos
+
+### High Priority
+- [ ] Add "Invite by Email" feature that sends email notification when admin adds golfer
+- [ ] Add UI feedback when authorization fails (toast: "You can only edit your own scores")
+- [ ] Test the full admin→golfer flow end-to-end
+
+### Medium Priority
+- [ ] Add audit trail for score changes (who changed what, when)
+- [ ] Allow organizers to "impersonate" a golfer for score entry on their behalf
+- [ ] Add profile page where users can edit their own info
+
+### Low Priority
+- [ ] Add more challenge types (best_net, best_stableford) to schema
+- [ ] Add team score calculations beyond just Stableford
+- [ ] Export leaderboard to PDF/image for sharing
+
+### Technical Debt
+- [ ] Fix remaining test file TypeScript errors
+- [ ] Add integration tests for authorization
+- [ ] Consider row-level security in PostgreSQL as additional protection
+
+---
+
 ## Recently Completed
 
-### Session 2026-04-23: Challenges by Round + Per-Round Leaderboards
+### Session 2026-04-23: Permissions, Challenges, Leaderboards
+
+#### Field-Level Permissions
+- [x] Added authorization to `scores.ts` mutations
+- [x] Added authorization to `round-summaries.ts` mutations
+- [x] Added authorization to `golfers.ts` mutations
+- [x] Organizers can edit all data, participants only their own
+
+#### Edit Trip Description
+- [x] Added description field to EditTripDialog
 
 #### Challenges Page Redesign
 - [x] Replaced Active/Completed grouping with round-based sections
@@ -25,8 +149,18 @@
 - [x] Individual round selection shows that round's standings without aggregation
 - [x] All metric tabs work for both views: Stableford, Best Net, Birdies, KPs
 
+#### Bug Fixes
+- [x] Fixed `round.date` → `round.roundDate` in ChallengeForm
+- [x] Fixed undefined name field in ChallengeForm
+- [x] Removed dead code checking for non-existent challenge types
+
 #### Files Modified
-- `src/routes/trips/$tripId/challenges.tsx` - Round-based grouping
+- `src/server/mutations/scores.ts` - Auth checks
+- `src/server/mutations/round-summaries.ts` - Auth checks
+- `src/server/mutations/golfers.ts` - Auth checks
+- `src/components/trips/EditTripDialog.tsx` - Description field
+- `src/components/challenges/ChallengeForm.tsx` - Bug fixes
+- `src/routes/trips/$tripId/challenges.tsx` - Round grouping
 - `src/routes/trips/$tripId/leaderboards.tsx` - Round selector
 
 ### Session 2026-04-05: Performance Optimization

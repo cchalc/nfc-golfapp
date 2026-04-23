@@ -578,3 +578,114 @@ curl -s "http://localhost:5173/api/electric/golfers?offset=0_0&handle=<HANDLE>"
 ```
 
 **Note**: Electric's protocol is two-phase - first request returns metadata/handle, subsequent requests return data. Empty `snapshot-end` responses are normal for the first request.
+
+## Email-Based User Linking (Admin Adds Golfer Flow)
+
+**Pattern**: When an admin adds a golfer to a trip, the golfer can later log in and automatically get access.
+
+**How it works**:
+1. Admin creates golfer record with name and **email**
+2. Admin adds golfer to trip (creates `trip_golfers` entry)
+3. Golfer visits app and logs in with their email
+4. `verifyMagicLink` checks: "Is there a golfer with this email?"
+5. If yes, auto-links `identity.golferId` to that golfer
+6. Golfer now has access to all trips they were added to
+
+**Key code** (in `src/server/auth/mutations.ts`):
+```typescript
+// During login, check for existing golfer by email
+const golfers = await sql`
+  SELECT id FROM golfers
+  WHERE LOWER(email) = ${normalizedEmail}
+  LIMIT 1
+`
+if (golfers.length > 0) {
+  golferId = golfers[0].id as string
+}
+// Link to identity
+await sql`INSERT INTO identities (email, golfer_id, ...) VALUES (...)`
+```
+
+**Critical**: Admin must enter the golfer's **actual email address** for auto-linking to work.
+
+## Field-Level Permissions Pattern
+
+**Pattern**: Server mutations should check authorization before modifying data.
+
+**Model**:
+| Role | Own Data | Others' Data |
+|------|----------|--------------|
+| Owner/Organizer | ✅ Edit | ✅ Edit |
+| Participant | ✅ Edit | ❌ Denied |
+| None | ❌ Denied | ❌ Denied |
+
+**Implementation** (in mutation files):
+```typescript
+import { getTripRole } from '../auth/authorization'
+import { getSession } from '../auth/mutations'
+
+async function requireScoreAccess(roundId: string, golferId: string): Promise<void> {
+  const session = await getSession()
+  if (!session) throw new Error('Not authenticated')
+
+  // Look up trip from round
+  const sql = getDb()
+  const rounds = await sql`SELECT trip_id FROM rounds WHERE id = ${roundId}`
+  if (rounds.length === 0) throw new Error('Round not found')
+
+  const tripId = rounds[0].trip_id as string
+  const access = await getTripRole({ data: { tripId } })
+
+  // Organizers can edit all
+  if (access.role === 'owner' || access.role === 'organizer') return
+
+  // Participants can only edit their own
+  if (access.role === 'participant' && access.golferId === golferId) return
+
+  throw new Error('Unauthorized')
+}
+
+// Use in mutation handler
+export const updateScore = createServerFn({ method: 'POST' })
+  .inputValidator(...)
+  .handler(async ({ data }) => {
+    await requireScoreAccess(data.roundId, data.golferId)  // Check first!
+    // ... do the update
+  })
+```
+
+**Note**: Authorization should be in server mutations (enforced), not just UI (bypassable).
+
+## Schema Field Naming: roundDate vs date
+
+**Issue**: The `rounds` table schema uses `roundDate` but code often assumes `date`.
+
+**Symptom**: TypeScript error "Property 'date' does not exist on type..."
+
+**Solution**: Always use `round.roundDate` in code:
+```typescript
+// ❌ DON'T
+const dateStr = new Date(round.date).toLocaleDateString()
+
+// ✅ DO
+const dateStr = new Date(round.roundDate).toLocaleDateString()
+```
+
+**Prevention**: Check `src/db/collections.ts` schema definitions when unsure about field names.
+
+## Dead Code from Non-Existent Enum Values
+
+**Issue**: Code checking for enum values that don't exist in the schema causes TypeScript errors.
+
+**Symptom**: `This comparison appears to be unintentional because the types have no overlap`
+
+**Example**:
+```typescript
+// Schema only has: closest_to_pin, longest_drive, most_birdies, custom
+// This code checks for values that don't exist:
+if (challenge.challengeType === 'best_net') {  // TS error - 'best_net' not in enum
+  // dead code
+}
+```
+
+**Solution**: Remove dead code or add missing values to the schema if actually needed.
