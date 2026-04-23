@@ -146,3 +146,4 @@ public/typography.css
 
 # Include SQL migrations (override global *.sql ignore)
 !src/db/drizzle/migrations/*.sql
+.superpowers/
