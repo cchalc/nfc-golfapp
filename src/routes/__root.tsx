@@ -13,6 +13,8 @@ import { QueryProvider } from '../contexts/QueryContext'
 import { DataLoader } from '../components/DataLoader'
 import { ClientOnly } from '../components/ClientOnly'
 import { ErrorBoundary } from '../components/ui/ErrorBoundary'
+import { ToastProvider } from '../contexts/ToastContext'
+import { ToastContainer } from '../components/ui/Toast'
 
 import radixCss from '@radix-ui/themes/styles.css?url'
 import interCss from '@fontsource/inter/latin.css?url'
@@ -77,10 +79,13 @@ function RootComponent() {
               <QueryProvider>
                 <AuthProvider>
                   <ThemeProvider>
-                    <DataLoader>
-                      <Header />
-                      <Outlet />
-                    </DataLoader>
+                    <ToastProvider>
+                      <DataLoader>
+                        <Header />
+                        <Outlet />
+                      </DataLoader>
+                      <ToastContainer />
+                    </ToastProvider>
                   </ThemeProvider>
                 </AuthProvider>
               </QueryProvider>

@@ -1,22 +1,14 @@
-import { Flex, Text, Heading } from '@radix-ui/themes'
+// src/components/ui/EmptyState.tsx
+import { Flex } from '@radix-ui/themes'
+import { type ReactNode } from 'react'
 
 interface EmptyStateProps {
-  title: string
-  description?: string
-  action?: React.ReactNode
+  action: ReactNode
 }
 
-export function EmptyState({ title, description, action }: EmptyStateProps) {
+export function EmptyState({ action }: EmptyStateProps) {
   return (
-    <Flex direction="column" align="center" gap="3" py="9">
-      <Heading size="5" color="gray">
-        {title}
-      </Heading>
-      {description && (
-        <Text size="2" color="gray">
-          {description}
-        </Text>
-      )}
+    <Flex direction="column" align="center" py="9">
       {action}
     </Flex>
   )
