@@ -7,6 +7,7 @@ import { GolferCard } from '../../components/golfers/GolferCard'
 import { GolferForm } from '../../components/golfers/GolferForm'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardSkeleton } from '../../components/ui/Skeleton'
+import { AnimatedList } from '../../components/ui/AnimatedList'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 
 export const Route = createFileRoute('/golfers/')({
@@ -61,9 +62,11 @@ function GolfersPage() {
 
         {golfers && golfers.length > 0 ? (
           <Flex direction="column" gap="2">
-            {golfers.map((golfer) => (
-              <GolferCard key={golfer.id} golfer={golfer} />
-            ))}
+            <AnimatedList>
+              {golfers.map((golfer) => (
+                <GolferCard key={golfer.id} golfer={golfer} />
+              ))}
+            </AnimatedList>
           </Flex>
         ) : (
           <EmptyState

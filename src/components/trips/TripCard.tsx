@@ -46,7 +46,7 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
 
           <Flex gap="4">
             <Flex align="center" gap="1">
-              <Calendar size={14} style={{ color: 'var(--grass-9)' }} />
+              <Calendar size={14} className="icon-grass" />
               <Text size="2" color="gray">
                 {formatDateRange(trip.startDate, trip.endDate)}
               </Text>
@@ -54,7 +54,7 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
 
             {trip.location && (
               <Flex align="center" gap="1">
-                <MapPin size={14} style={{ color: 'var(--grass-9)' }} />
+                <MapPin size={14} className="icon-grass" />
                 <Text size="2" color="gray">
                   {trip.location}
                 </Text>
@@ -62,7 +62,7 @@ export function TripCard({ trip, golferCount = 0 }: TripCardProps) {
             )}
 
             <Flex align="center" gap="1">
-              <Users size={14} style={{ color: 'var(--grass-9)' }} />
+              <Users size={14} className="icon-grass" />
               <Text size="2" color="gray">
                 {golferCount} golfers
               </Text>

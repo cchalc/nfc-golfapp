@@ -6,6 +6,7 @@ import { CourseCard } from '../../components/courses/CourseCard'
 import { CourseSearch } from '../../components/courses/CourseSearch'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardSkeleton } from '../../components/ui/Skeleton'
+import { AnimatedList } from '../../components/ui/AnimatedList'
 import { useDialogState } from '../../hooks/useDialogState'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
 
@@ -75,13 +76,15 @@ function CoursesPage() {
 
         {sortedCourses.length > 0 ? (
           <Flex direction="column" gap="2">
-            {sortedCourses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                holeCount={holeCountByCourse.get(course.id) || 0}
-              />
-            ))}
+            <AnimatedList>
+              {sortedCourses.map((course) => (
+                <CourseCard
+                  key={course.id}
+                  course={course}
+                  holeCount={holeCountByCourse.get(course.id) || 0}
+                />
+              ))}
+            </AnimatedList>
           </Flex>
         ) : (
           <EmptyState

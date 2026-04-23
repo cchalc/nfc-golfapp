@@ -100,7 +100,7 @@ export function LeaderboardTable({
                   params={{ golferId: entry.golferId }}
                   style={{ textDecoration: 'none' }}
                 >
-                  <Flex align="center" gap="2" style={{ cursor: 'pointer' }}>
+                  <Flex align="center" gap="2">
                     <Avatar
                       size="1"
                       fallback={getInitials(entry.name)}
@@ -132,9 +132,8 @@ export function LeaderboardTable({
               <Table.Cell align="right">
                 <Text
                   weight={isExcluded ? 'regular' : 'bold'}
-                  style={isLeader ? { color: 'var(--amber-9)' } : undefined}
+                  color={isLeader ? 'amber' : isExcluded ? 'gray' : undefined}
                   size={isLeader ? '3' : '2'}
-                  color={isExcluded ? 'gray' : undefined}
                   data-testid={`score-value-${entry.golferId}`}
                 >
                   {entry.displayValue}

@@ -3,6 +3,7 @@ import { Container, Flex, Heading, Button } from '@radix-ui/themes'
 import { Link } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { TripCard } from '../../components/trips/TripCard'
+import { AnimatedList } from '../../components/ui/AnimatedList'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { CardSkeleton } from '../../components/ui/Skeleton'
 import { useRequireAuth } from '../../hooks/useRequireAuth'
@@ -53,13 +54,15 @@ function TripsPage() {
 
         {trips && trips.length > 0 ? (
           <Flex direction="column" gap="3">
-            {trips.map((trip) => (
-              <TripCard
-                key={trip.id}
-                trip={trip}
-                golferCount={golferCountByTrip.get(trip.id) || 0}
-              />
-            ))}
+            <AnimatedList>
+              {trips.map((trip) => (
+                <TripCard
+                  key={trip.id}
+                  trip={trip}
+                  golferCount={golferCountByTrip.get(trip.id) || 0}
+                />
+              ))}
+            </AnimatedList>
           </Flex>
         ) : (
           <EmptyState
