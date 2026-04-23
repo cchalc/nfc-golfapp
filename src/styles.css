@@ -378,6 +378,10 @@ body {
   color: var(--amber-9);
 }
 
+.icon-gray {
+  color: var(--gray-9);
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .stagger-item,

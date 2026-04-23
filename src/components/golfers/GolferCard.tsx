@@ -43,7 +43,7 @@ export function GolferCard({ golfer, showHandicap = true, linkToDetail = true }:
           </Badge>
         )}
         {linkToDetail && (
-          <ChevronRight size={16} style={{ color: 'var(--gray-8)' }} />
+          <ChevronRight size={16} className="icon-gray" />
         )}
       </Flex>
     </Card>

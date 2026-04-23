@@ -23,14 +23,14 @@ export function CourseCard({ course, holeCount = 0 }: CourseCardProps) {
             <Flex gap="4" wrap="wrap">
               {course.location && (
                 <Flex align="center" gap="1">
-                  <MapPin size={14} style={{ color: 'var(--grass-9)' }} />
+                  <MapPin size={14} className="icon-grass" />
                   <Text size="2" color="gray">
                     {course.location}
                   </Text>
                 </Flex>
               )}
               <Flex align="center" gap="1">
-                <Flag size={14} style={{ color: 'var(--grass-9)' }} />
+                <Flag size={14} className="icon-grass" />
                 <Text size="2" color="gray">
                   Par {course.totalPar}
                 </Text>
@@ -54,7 +54,7 @@ export function CourseCard({ course, holeCount = 0 }: CourseCardProps) {
             </Flex>
           </Flex>
 
-          <ChevronRight size={20} style={{ color: 'var(--gray-9)' }} />
+          <ChevronRight size={20} className="icon-gray" />
         </Flex>
       </Card>
     </Link>
