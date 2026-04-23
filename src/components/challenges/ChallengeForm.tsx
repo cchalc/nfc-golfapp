@@ -110,7 +110,7 @@ export function ChallengeForm({
 
     const data = {
       tripId,
-      name: result.data.name,
+      name: result.data.name || '',
       description: description || '',
       challengeType: result.data.challengeType,
       scope: result.data.scope,
@@ -193,7 +193,7 @@ export function ChallengeForm({
             <Select.Content>
               {(rounds || []).map((round) => {
                 const course = courseMap.get(round.courseId)
-                const dateStr = round.date ? new Date(round.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+                const dateStr = round.roundDate ? new Date(round.roundDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
                 return (
                   <Select.Item key={round.id} value={round.id}>
                     R{round.roundNumber}: {course?.name || 'Unknown'} {dateStr && `(${dateStr})`}

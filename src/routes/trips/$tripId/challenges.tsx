@@ -178,24 +178,6 @@ function ChallengesPage() {
 					winnerValue = `${agg.totalBirdies} birdies`;
 				}
 			}
-		} else if (challenge.challengeType === "best_net") {
-			let bestNet = Infinity;
-			for (const [golferId, agg] of aggregates) {
-				if (agg.bestNet < bestNet) {
-					bestNet = agg.bestNet;
-					winnerId = golferId;
-					winnerValue = `${agg.bestNet}`;
-				}
-			}
-		} else if (challenge.challengeType === "best_stableford") {
-			let maxPts = -1;
-			for (const [golferId, agg] of aggregates) {
-				if (agg.totalStableford > maxPts) {
-					maxPts = agg.totalStableford;
-					winnerId = golferId;
-					winnerValue = `${agg.totalStableford} pts`;
-				}
-			}
 		}
 
 		const winner = winnerId ? golferMap.get(winnerId) : null;

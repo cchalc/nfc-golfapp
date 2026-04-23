@@ -1,12 +1,27 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getDb, wrapMutation } from './db'
 import type { Golfer } from '../../db/collections'
+import { getSession } from '../auth/mutations'
 
 type GolferInput = Omit<Golfer, 'createdAt'> & { createdAt?: Date }
+
+// Helper to check if user can modify a golfer profile
+async function requireGolferAccess(golferId: string): Promise<void> {
+  const session = await getSession()
+  if (!session) throw new Error('Not authenticated')
+
+  // Users can only modify their own profile
+  // (Admins adding golfers don't need auth - they create new records)
+  if (session.golferId !== golferId) {
+    throw new Error('Unauthorized: can only modify your own profile')
+  }
+}
 
 export const insertGolfer = createServerFn({ method: 'POST' })
   .inputValidator((data: GolferInput) => data)
   .handler(async ({ data: golfer }): Promise<{ id: string }> => {
+    // Insert is allowed - admins can create golfer profiles
+    // The golfer will be linked to an identity when they log in
     return wrapMutation('insertGolfer', async () => {
       const sql = getDb()
 
@@ -31,6 +46,9 @@ export const insertGolfer = createServerFn({ method: 'POST' })
 export const updateGolfer = createServerFn({ method: 'POST' })
   .inputValidator((data: { id: string; changes: Partial<Omit<Golfer, 'id' | 'createdAt'>> }) => data)
   .handler(async ({ data: { id, changes } }): Promise<{ id: string }> => {
+    // Check authorization - users can only update their own profile
+    await requireGolferAccess(id)
+
     return wrapMutation('updateGolfer', async () => {
       const sql = getDb()
 
@@ -51,6 +69,9 @@ export const updateGolfer = createServerFn({ method: 'POST' })
 export const deleteGolfer = createServerFn({ method: 'POST' })
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data: { id } }): Promise<{ id: string }> => {
+    // Check authorization - users can only delete their own profile
+    await requireGolferAccess(id)
+
     return wrapMutation('deleteGolfer', async () => {
       const sql = getDb()
 

@@ -48,8 +48,8 @@ export function useCreateRoundSummary() {
 export function useUpdateRoundSummary() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, changes }: { id: string; changes: Partial<Omit<RoundSummary, 'id'>>; roundId: string }) =>
-      updateRoundSummary({ data: { id, changes } }),
+    mutationFn: ({ id, roundId, changes }: { id: string; roundId: string; changes: Partial<Omit<RoundSummary, 'id'>> }) =>
+      updateRoundSummary({ data: { id, roundId, changes } }),
     onSuccess: (_, { roundId }) => {
       queryClient.invalidateQueries({ queryKey: roundSummaryKeys.lists() })
       queryClient.invalidateQueries({ queryKey: roundSummaryKeys.byRound(roundId) })

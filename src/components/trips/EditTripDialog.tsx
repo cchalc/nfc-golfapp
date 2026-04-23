@@ -1,4 +1,4 @@
-import { Button, Dialog, Flex, Text, TextField } from "@radix-ui/themes";
+import { Button, Dialog, Flex, Text, TextArea, TextField } from "@radix-ui/themes";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import type { Trip } from "../../db/collections";
@@ -12,6 +12,7 @@ interface EditTripDialogProps {
 export function EditTripDialog({ trip }: EditTripDialogProps) {
 	const [open, setOpen] = useState(false);
 	const [name, setName] = useState(trip.name);
+	const [description, setDescription] = useState(trip.description);
 	const [location, setLocation] = useState(trip.location);
 	const updateTrip = useUpdateTrip();
 	const { showToast } = useToast();
@@ -22,7 +23,11 @@ export function EditTripDialog({ trip }: EditTripDialogProps) {
 		try {
 			await updateTrip.mutateAsync({
 				id: trip.id,
-				changes: { name: name.trim(), location: location.trim() },
+				changes: {
+					name: name.trim(),
+					description: description.trim(),
+					location: location.trim(),
+				},
 			});
 			showToast("Trip updated", "success");
 			setOpen(false);
@@ -35,6 +40,7 @@ export function EditTripDialog({ trip }: EditTripDialogProps) {
 	const handleOpenChange = (isOpen: boolean) => {
 		if (isOpen) {
 			setName(trip.name);
+			setDescription(trip.description);
 			setLocation(trip.location);
 		}
 		setOpen(isOpen);
@@ -59,6 +65,17 @@ export function EditTripDialog({ trip }: EditTripDialogProps) {
 							value={name}
 							onChange={(e) => setName(e.target.value)}
 							placeholder="Trip name"
+						/>
+					</Flex>
+					<Flex direction="column" gap="2">
+						<Text as="label" size="2" weight="medium">
+							Description
+						</Text>
+						<TextArea
+							value={description}
+							onChange={(e) => setDescription(e.target.value)}
+							placeholder="Trip description (optional)"
+							rows={3}
 						/>
 					</Flex>
 					<Flex direction="column" gap="2">
