@@ -11,6 +11,24 @@
 
 ## Recently Completed
 
+### Session 2026-04-23: Challenges by Round + Per-Round Leaderboards
+
+#### Challenges Page Redesign
+- [x] Replaced Active/Completed grouping with round-based sections
+- [x] Added Trip-Wide section (Globe icon) for challenges without a roundId
+- [x] Added round sections with R# badge, course name, and date
+- [x] Passed `getWinnerInfo` function to handle both manual and auto-calculated challenge winners
+
+#### Leaderboards Page Redesign
+- [x] Added SegmentedControl for round selection (Trip Total, R1, R2, etc.)
+- [x] Trip Total shows aggregated standings across all rounds (existing behavior)
+- [x] Individual round selection shows that round's standings without aggregation
+- [x] All metric tabs work for both views: Stableford, Best Net, Birdies, KPs
+
+#### Files Modified
+- `src/routes/trips/$tripId/challenges.tsx` - Round-based grouping
+- `src/routes/trips/$tripId/leaderboards.tsx` - Round selector
+
 ### Session 2026-04-05: Performance Optimization
 
 #### Loading States & Skeletons

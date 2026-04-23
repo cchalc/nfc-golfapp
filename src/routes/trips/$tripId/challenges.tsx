@@ -1,5 +1,6 @@
 import {
 	AlertDialog,
+	Badge,
 	Button,
 	Container,
 	Dialog,
@@ -8,13 +9,13 @@ import {
 	Text,
 } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Trophy } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Plus, Globe } from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
 import { ChallengeCard } from "../../../components/challenges/ChallengeCard";
 import { ChallengeForm } from "../../../components/challenges/ChallengeForm";
 import { ChallengeResultEntry } from "../../../components/challenges/ChallengeResultEntry";
 import { EmptyState } from "../../../components/ui/EmptyState";
-import type { Challenge, ChallengeResult, Hole } from "../../../db/collections";
+import type { Challenge, ChallengeResult, Course, Golfer, Hole, Round } from "../../../db/collections";
 import {
 	useChallengeResultsByTripId,
 	useChallengesByTripId,
@@ -265,18 +266,29 @@ function ChallengesPage() {
 		);
 	}
 
-	// Separate active (no winner yet) and completed challenges
-	const activeChallenges: Challenge[] = [];
-	const completedChallenges: Challenge[] = [];
+	// Group challenges by roundId
+	const challengesByRound = useMemo(() => {
+		const tripWide: Challenge[] = [];
+		const byRound = new Map<string, Challenge[]>();
 
-	for (const challenge of challenges || []) {
-		const { winner } = getWinnerInfo(challenge);
-		if (winner) {
-			completedChallenges.push(challenge);
-		} else {
-			activeChallenges.push(challenge);
+		for (const challenge of challenges || []) {
+			if (!challenge.roundId) {
+				tripWide.push(challenge);
+			} else {
+				const existing = byRound.get(challenge.roundId) || [];
+				existing.push(challenge);
+				byRound.set(challenge.roundId, existing);
+			}
 		}
-	}
+
+		return { tripWide, byRound };
+	}, [challenges]);
+
+	// Sort rounds by roundNumber
+	const sortedRounds = useMemo(
+		() => [...(rounds || [])].sort((a, b) => a.roundNumber - b.roundNumber),
+		[rounds],
+	);
 
 	const hasChallenges = (challenges || []).length > 0;
 
@@ -315,12 +327,15 @@ function ChallengesPage() {
 
 				{hasChallenges ? (
 					<Flex direction="column" gap="6">
-						{/* Active Challenges */}
-						{activeChallenges.length > 0 && (
-							<Flex direction="column" gap="3" data-testid="challenges-active">
-								<Heading size="4">Active</Heading>
+						{/* Trip-Wide Challenges */}
+						{challengesByRound.tripWide.length > 0 && (
+							<Flex direction="column" gap="3" data-testid="challenges-trip-wide">
+								<Flex align="center" gap="2">
+									<Globe size={18} style={{ color: "var(--blue-9)" }} />
+									<Heading size="4">Trip-Wide</Heading>
+								</Flex>
 								<Flex direction="column" gap="3">
-									{activeChallenges.map((challenge) => (
+									{challengesByRound.tripWide.map((challenge) => (
 										<ChallengeCardWithDialogs
 											key={challenge.id}
 											tripId={tripId}
@@ -329,9 +344,9 @@ function ChallengesPage() {
 											holeMap={holeMap}
 											courseMap={courseMap}
 											holesByCourseId={holesByCourseId}
-											golferMap={golferMap}
 											tripGolferList={tripGolferList}
 											results={resultsByChallengeId.get(challenge.id) || []}
+											getWinnerInfo={getWinnerInfo}
 											onDelete={() => handleDeleteChallenge(challenge.id)}
 											canManage={canManage}
 										/>
@@ -340,37 +355,54 @@ function ChallengesPage() {
 							</Flex>
 						)}
 
-						{/* Completed Challenges */}
-						{completedChallenges.length > 0 && (
-							<Flex
-								direction="column"
-								gap="3"
-								data-testid="challenges-completed"
-							>
-								<Flex align="center" gap="2">
-									<Trophy size={18} style={{ color: "var(--amber-9)" }} />
-									<Heading size="4">Completed</Heading>
+						{/* Round-specific Challenges */}
+						{sortedRounds.map((round) => {
+							const roundChallenges = challengesByRound.byRound.get(round.id) || [];
+							if (roundChallenges.length === 0) return null;
+
+							const course = courseMap.get(round.courseId);
+							const dateStr = new Date(round.roundDate).toLocaleDateString("en-US", {
+								month: "short",
+								day: "numeric",
+							});
+
+							return (
+								<Flex
+									key={round.id}
+									direction="column"
+									gap="3"
+									data-testid={`challenges-round-${round.roundNumber}`}
+								>
+									<Flex align="center" gap="2">
+										<Badge size="2" color="gray">
+											R{round.roundNumber}
+										</Badge>
+										<Heading size="4">{course?.name || "Unknown Course"}</Heading>
+										<Text size="2" color="gray">
+											{dateStr}
+										</Text>
+									</Flex>
+									<Flex direction="column" gap="3">
+										{roundChallenges.map((challenge) => (
+											<ChallengeCardWithDialogs
+												key={challenge.id}
+												tripId={tripId}
+												challenge={challenge}
+												roundMap={roundMap}
+												holeMap={holeMap}
+												courseMap={courseMap}
+												holesByCourseId={holesByCourseId}
+												tripGolferList={tripGolferList}
+												results={resultsByChallengeId.get(challenge.id) || []}
+												getWinnerInfo={getWinnerInfo}
+												onDelete={() => handleDeleteChallenge(challenge.id)}
+												canManage={canManage}
+											/>
+										))}
+									</Flex>
 								</Flex>
-								<Flex direction="column" gap="3">
-									{completedChallenges.map((challenge) => (
-										<ChallengeCardWithDialogs
-											key={challenge.id}
-											tripId={tripId}
-											challenge={challenge}
-											roundMap={roundMap}
-											holeMap={holeMap}
-											courseMap={courseMap}
-											holesByCourseId={holesByCourseId}
-											golferMap={golferMap}
-											tripGolferList={tripGolferList}
-											results={resultsByChallengeId.get(challenge.id) || []}
-											onDelete={() => handleDeleteChallenge(challenge.id)}
-											canManage={canManage}
-										/>
-									))}
-								</Flex>
-							</Flex>
-						)}
+							);
+						})}
 					</Flex>
 				) : (
 					<EmptyState
@@ -409,47 +441,16 @@ function ChallengesPage() {
 interface ChallengeCardWithDialogsProps {
 	tripId: string;
 	challenge: Challenge;
-	roundMap: Map<
-		string,
-		{
-			id: string;
-			tripId: string;
-			courseId: string;
-			date: Date;
-			format: string;
-			description: string;
-		}
-	>;
+	roundMap: Map<string, Round>;
 	holeMap: Map<string, Hole>;
-	courseMap: Map<
-		string,
-		{
-			id: string;
-			name: string;
-			city: string | null;
-			state: string | null;
-			country: string | null;
-		}
-	>;
+	courseMap: Map<string, Course>;
 	holesByCourseId: Map<string, Hole[]>;
-	golferMap: Map<
-		string,
-		{
-			id: string;
-			name: string;
-			email: string;
-			handicap: number | null;
-			createdAt: Date;
-		}
-	>;
-	tripGolferList: Array<{
-		id: string;
-		name: string;
-		email: string;
-		handicap: number | null;
-		createdAt: Date;
-	}>;
+	tripGolferList: Golfer[];
 	results: ChallengeResult[];
+	getWinnerInfo: (challenge: Challenge) => {
+		winner: Golfer | null;
+		winnerValue: string | undefined;
+	};
 	onDelete: () => void;
 	canManage: boolean;
 }
@@ -461,9 +462,9 @@ function ChallengeCardWithDialogs({
 	holeMap,
 	courseMap,
 	holesByCourseId,
-	golferMap,
 	tripGolferList,
 	results,
+	getWinnerInfo,
 	onDelete,
 	canManage,
 }: ChallengeCardWithDialogsProps) {
@@ -483,9 +484,8 @@ function ChallengeCardWithDialogs({
 		? holesByCourseId.get(round.courseId)
 		: undefined;
 
-	// Find winner from results
-	const winnerResult = results.find((r) => r.isWinner);
-	const winner = winnerResult ? golferMap.get(winnerResult.golferId) : null;
+	// Get winner using the passed-in function (handles both manual and auto-calculated challenges)
+	const { winner, winnerValue } = getWinnerInfo(challenge);
 
 	const handleConfirmDelete = () => {
 		onDelete();
@@ -506,7 +506,7 @@ function ChallengeCardWithDialogs({
 			<ChallengeCard
 				challenge={challenge}
 				winner={winner}
-				winnerValue={winnerResult?.resultValue}
+				winnerValue={winnerValue}
 				round={round}
 				hole={hole}
 				course={course}

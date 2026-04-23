@@ -11,6 +11,7 @@ import {
   Button,
   Switch,
   Spinner,
+  SegmentedControl,
 } from '@radix-ui/themes'
 import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
 import { useState, useMemo, useCallback } from 'react'
@@ -97,6 +98,9 @@ function LeaderboardsPage() {
   // State for round selection dialog
   const [selectedGolferId, setSelectedGolferId] = useState<string | null>(null)
 
+  // State for round selector (null = trip total)
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null)
+
   // Get rounds
   const { data: allRounds } = useRoundsByTripId(tripId)
 
@@ -136,6 +140,18 @@ function LeaderboardsPage() {
     [allSummaries, includedRoundIds]
   )
 
+  // Filter summaries based on selected round (for per-round leaderboards)
+  const displaySummaries = useMemo(() => {
+    if (selectedRoundId === null) {
+      // Trip total - use aggregated tripSummaries
+      return tripSummaries
+    }
+    // Single round - filter to just that round
+    return (allSummaries || []).filter(
+      (s) => s.roundId === selectedRoundId && s.includedInScoring !== false
+    )
+  }, [selectedRoundId, tripSummaries, allSummaries])
+
   // Get summaries for selected golfer (for round selection dialog)
   const selectedGolferSummaries = useMemo(
     () => selectedGolferId
@@ -156,8 +172,17 @@ function LeaderboardsPage() {
 
   // Aggregate Stableford data
   const stablefordData = useMemo(() => {
+    if (selectedRoundId) {
+      // Single round - no aggregation needed
+      return displaySummaries.map(s => ({
+        golferId: s.golferId,
+        totalPoints: s.totalStableford,
+        rounds: 1,
+      })).sort((a, b) => b.totalPoints - a.totalPoints)
+    }
+    // Trip total - aggregate across rounds
     const byGolfer = new Map<string, { totalPoints: number; rounds: number }>()
-    for (const summary of tripSummaries) {
+    for (const summary of displaySummaries) {
       const existing = byGolfer.get(summary.golferId) || { totalPoints: 0, rounds: 0 }
       byGolfer.set(summary.golferId, {
         totalPoints: existing.totalPoints + summary.totalStableford,
@@ -167,12 +192,21 @@ function LeaderboardsPage() {
     return Array.from(byGolfer.entries())
       .map(([golferId, data]) => ({ golferId, ...data }))
       .sort((a, b) => b.totalPoints - a.totalPoints)
-  }, [tripSummaries])
+  }, [displaySummaries, selectedRoundId])
 
   // Aggregate Net data (best net)
   const netData = useMemo(() => {
+    if (selectedRoundId) {
+      // Single round - no aggregation needed
+      return displaySummaries.map(s => ({
+        golferId: s.golferId,
+        bestNet: s.totalNet,
+        rounds: 1,
+      })).sort((a, b) => a.bestNet - b.bestNet)
+    }
+    // Trip total - find best net across rounds
     const byGolfer = new Map<string, { bestNet: number; rounds: number }>()
-    for (const summary of tripSummaries) {
+    for (const summary of displaySummaries) {
       const existing = byGolfer.get(summary.golferId)
       if (!existing || summary.totalNet < existing.bestNet) {
         byGolfer.set(summary.golferId, {
@@ -189,12 +223,21 @@ function LeaderboardsPage() {
     return Array.from(byGolfer.entries())
       .map(([golferId, data]) => ({ golferId, ...data }))
       .sort((a, b) => a.bestNet - b.bestNet)
-  }, [tripSummaries])
+  }, [displaySummaries, selectedRoundId])
 
   // Aggregate Birdies data
   const birdiesData = useMemo(() => {
+    if (selectedRoundId) {
+      // Single round - no aggregation needed
+      return displaySummaries.map(s => ({
+        golferId: s.golferId,
+        totalBirdies: s.birdiesOrBetter,
+        rounds: 1,
+      })).sort((a, b) => b.totalBirdies - a.totalBirdies)
+    }
+    // Trip total - aggregate across rounds
     const byGolfer = new Map<string, { totalBirdies: number; rounds: number }>()
-    for (const summary of tripSummaries) {
+    for (const summary of displaySummaries) {
       const existing = byGolfer.get(summary.golferId) || { totalBirdies: 0, rounds: 0 }
       byGolfer.set(summary.golferId, {
         totalBirdies: existing.totalBirdies + summary.birdiesOrBetter,
@@ -204,12 +247,21 @@ function LeaderboardsPage() {
     return Array.from(byGolfer.entries())
       .map(([golferId, data]) => ({ golferId, ...data }))
       .sort((a, b) => b.totalBirdies - a.totalBirdies)
-  }, [tripSummaries])
+  }, [displaySummaries, selectedRoundId])
 
   // Aggregate KPs data
   const kpsData = useMemo(() => {
+    if (selectedRoundId) {
+      // Single round - no aggregation needed
+      return displaySummaries.map(s => ({
+        golferId: s.golferId,
+        totalKps: s.kps,
+        rounds: 1,
+      })).sort((a, b) => b.totalKps - a.totalKps)
+    }
+    // Trip total - aggregate across rounds
     const byGolfer = new Map<string, { totalKps: number; rounds: number }>()
-    for (const summary of tripSummaries) {
+    for (const summary of displaySummaries) {
       const existing = byGolfer.get(summary.golferId) || { totalKps: 0, rounds: 0 }
       byGolfer.set(summary.golferId, {
         totalKps: existing.totalKps + summary.kps,
@@ -219,7 +271,7 @@ function LeaderboardsPage() {
     return Array.from(byGolfer.entries())
       .map(([golferId, data]) => ({ golferId, ...data }))
       .sort((a, b) => b.totalKps - a.totalKps)
-  }, [tripSummaries])
+  }, [displaySummaries, selectedRoundId])
 
   // Teams
   const { data: teams } = useTeamsByTripId(tripId)
@@ -411,6 +463,21 @@ function LeaderboardsPage() {
           <Heading size="7">Leaderboards</Heading>
           <Text color="gray">{trip.name}</Text>
         </Flex>
+
+        {/* Round Selector */}
+        {sortedRounds.length > 0 && (
+          <SegmentedControl.Root
+            value={selectedRoundId || 'trip'}
+            onValueChange={(value) => setSelectedRoundId(value === 'trip' ? null : value)}
+          >
+            <SegmentedControl.Item value="trip">Trip Total</SegmentedControl.Item>
+            {sortedRounds.map((round) => (
+              <SegmentedControl.Item key={round.id} value={round.id}>
+                R{round.roundNumber}
+              </SegmentedControl.Item>
+            ))}
+          </SegmentedControl.Root>
+        )}
 
         {hasData ? (
           <Tabs.Root defaultValue="stableford">
