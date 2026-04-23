@@ -1,6 +1,35 @@
 :root {
   --heading-font: 'Playfair Display', serif;
   --body-font: Lato, sans-serif;
+
+  /* Design tokens */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 48px;
+
+  /* Animation durations */
+  --duration-fast: 0.1s;
+  --duration-normal: 0.2s;
+  --duration-slow: 0.3s;
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Card styling */
+  --card-bg: linear-gradient(135deg, var(--gray-2) 0%, var(--gray-1) 100%);
+  --card-border: var(--gray-4);
+  --card-border-hover: var(--grass-6);
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* Interactive */
+  --focus-ring: 0 0 0 2px var(--grass-6);
 }
 
 body {
@@ -258,5 +287,110 @@ body {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Scale in for dialogs */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Shake for errors */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+/* Pulse for loading */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Checkmark success */
+@keyframes checkmark {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* Toast slide in */
+@keyframes toastSlide {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Toast slide in mobile (from top) */
+@keyframes toastSlideTop {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover lift utility */
+.hover-lift {
+  transition: transform var(--duration-normal) ease-out,
+              box-shadow var(--duration-normal) ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* Button press effect */
+.button-press:active {
+  transform: scale(0.98);
+}
+
+/* Stagger animation item */
+.stagger-item {
+  animation: fadeSlideUp var(--duration-slow) ease-out forwards;
+  animation-delay: calc(var(--stagger-index, 0) * 50ms);
+  opacity: 0;
+}
+
+/* Icon color utility */
+.icon-grass {
+  color: var(--grass-9);
+}
+
+.icon-amber {
+  color: var(--amber-9);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-item,
+  .animate-reveal,
+  .animate-reveal-1,
+  .animate-reveal-2,
+  .animate-reveal-3,
+  .animate-reveal-4 {
+    animation: none;
+    opacity: 1;
+  }
+
+  .hover-lift:hover {
+    transform: none;
   }
 }
