@@ -30,7 +30,6 @@ import {
 } from '../../../hooks/queries'
 import type { TripGolfer } from '../../../db/collections'
 import { GolferCard } from '../../../components/golfers/GolferCard'
-import { EmptyState } from '../../../components/ui/EmptyState'
 import {
   getPlayingHandicap,
   getHandicapStrokes,
@@ -410,10 +409,9 @@ function TripGolfersPage() {
         )}
 
         {(!globalGolfers || globalGolfers.length === 0) && (
-          <EmptyState
-            title="No golfers in directory"
-            description="Add golfers to your directory first"
-          />
+          <Flex direction="column" align="center" py="9">
+            <Text color="gray">No golfers in directory</Text>
+          </Flex>
         )}
       </Flex>
     </Container>

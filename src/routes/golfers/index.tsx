@@ -67,8 +67,6 @@ function GolfersPage() {
           </Flex>
         ) : (
           <EmptyState
-            title="No golfers yet"
-            description="Add golfers to start tracking scores"
             action={
               <Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                 <Dialog.Trigger>

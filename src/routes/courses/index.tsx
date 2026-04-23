@@ -85,8 +85,6 @@ function CoursesPage() {
           </Flex>
         ) : (
           <EmptyState
-            title="No courses yet"
-            description="Add courses to use when creating rounds"
             action={
               <Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                 <Dialog.Trigger>

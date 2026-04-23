@@ -374,8 +374,6 @@ function ChallengesPage() {
 					</Flex>
 				) : (
 					<EmptyState
-						title="No challenges yet"
-						description="Create challenges like Closest to Pin or Longest Drive"
 						action={
 							canManage ? (
 								<Dialog.Root

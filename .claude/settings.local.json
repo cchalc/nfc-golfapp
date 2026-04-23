@@ -135,7 +135,8 @@
       "mcp__chrome-devtools__click",
       "mcp__chrome-devtools__list_network_requests",
       "Bash(/Users/christopher.chalcraft/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh:*)",
-      "Bash(pnpm tsx:*)"
+      "Bash(pnpm tsx:*)",
+      "Bash(pnpm exec biome check:*)"
     ]
   },
   "enabledPlugins": {

@@ -32,7 +32,6 @@ import {
   LeaderboardTable,
   type LeaderboardEntry,
 } from '../../../components/leaderboards/LeaderboardTable'
-import { EmptyState } from '../../../components/ui/EmptyState'
 
 export const Route = createFileRoute('/trips/$tripId/leaderboards')({
   ssr: false,
@@ -506,10 +505,9 @@ function LeaderboardsPage() {
             )}
           </Tabs.Root>
         ) : (
-          <EmptyState
-            title="No scores yet"
-            description="Start entering scores to see the leaderboards"
-          />
+          <Flex direction="column" align="center" py="9">
+            <Text color="gray">No scores yet</Text>
+          </Flex>
         )}
       </Flex>
 

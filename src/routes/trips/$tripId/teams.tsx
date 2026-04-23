@@ -293,8 +293,6 @@ function TeamsPage() {
           </Flex>
         ) : (
           <EmptyState
-            title="No teams yet"
-            description="Create teams to track team competitions"
             action={
               canManage ? (
                 <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>

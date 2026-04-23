@@ -63,8 +63,6 @@ function TripsPage() {
           </Flex>
         ) : (
           <EmptyState
-            title="No trips yet"
-            description="Create your first golf trip to get started"
             action={
               <Link to="/trips/new">
                 <Button color="grass">
