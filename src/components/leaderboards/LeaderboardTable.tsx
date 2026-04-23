@@ -1,6 +1,8 @@
 import { Table, Text, Badge, Flex, Avatar, Switch, Tooltip } from '@radix-ui/themes'
 import { Link } from '@tanstack/react-router'
 import { Trophy, Calculator } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { MobileCard } from '../ui/MobileCard'
 
 export interface LeaderboardEntry {
   rank: number
@@ -36,6 +38,19 @@ function getTrophyClass(rank: number): string {
   return 'trophy-bronze'
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  return isMobile
+}
+
 export function LeaderboardTable({
   entries,
   valueLabel,
@@ -45,6 +60,30 @@ export function LeaderboardTable({
   onClickRounds,
 }: LeaderboardTableProps) {
   const showToggle = !!onToggleGolfer
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return (
+      <Flex direction="column" gap="2">
+        {entries.map((entry) => {
+          const isExcluded = entry.included === false
+          return (
+            <MobileCard
+              key={entry.golferId}
+              rank={isExcluded ? 0 : entry.rank}
+              name={entry.name}
+              score={entry.displayValue}
+              subtitle={showRounds ? `${entry.rounds} rounds` : undefined}
+              highlight={entry.rank === 1 && !isExcluded}
+              onClick={() => {
+                window.location.href = `/golfers/${entry.golferId}`
+              }}
+            />
+          )
+        })}
+      </Flex>
+    )
+  }
 
   return (
     <div className="table-scroll-mobile">
