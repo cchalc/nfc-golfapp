@@ -136,7 +136,12 @@
       "mcp__chrome-devtools__list_network_requests",
       "Bash(/Users/christopher.chalcraft/.claude/plugins/cache/superpowers-marketplace/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh:*)",
       "Bash(pnpm tsx:*)",
-      "Bash(pnpm exec biome check:*)"
+      "Bash(pnpm exec biome check:*)",
+      "WebFetch(domain:robelest.com)",
+      "WebFetch(domain:v3.nitro.build)",
+      "WebFetch(domain:nitro.build)",
+      "Bash(vite build:*)",
+      "Bash(./node_modules/.bin/vite build:*)"
     ]
   },
   "enabledPlugins": {

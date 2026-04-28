@@ -15,6 +15,7 @@ import { ClientOnly } from '../components/ClientOnly'
 import { ErrorBoundary } from '../components/ui/ErrorBoundary'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ToastContainer } from '../components/ui/Toast'
+import { ServiceWorkerRegistration } from '../components/ServiceWorkerRegistration'
 
 import radixCss from '@radix-ui/themes/styles.css?url'
 import interCss from '@fontsource/inter/latin.css?url'
@@ -26,17 +27,24 @@ import playfairCss from '@fontsource/playfair-display/latin.css?url'
 import latoCss from '@fontsource/lato/latin.css?url'
 import frauncesCss from '@fontsource/fraunces/latin.css?url'
 import figtreeCss from '@fontsource/figtree/latin.css?url'
-import typographyCss from '/typography.css?url'
+const typographyCss = '/typography.css'
 import appCss from '../styles.css?url'
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
       { title: 'Golf Trip' },
+      { name: 'description', content: 'Plan and manage your golf trips with friends' },
+      { name: 'theme-color', content: '#46a758' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+      { name: 'apple-mobile-web-app-title', content: 'Golf Trip' },
     ],
     links: [
+      { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.svg' },
       { rel: 'stylesheet', href: radixCss },
       { rel: 'stylesheet', href: interCss },
       { rel: 'stylesheet', href: sourceSerifCss },
@@ -85,6 +93,7 @@ function RootComponent() {
                         <Outlet />
                       </DataLoader>
                       <ToastContainer />
+                      <ServiceWorkerRegistration />
                     </ToastProvider>
                   </ThemeProvider>
                 </AuthProvider>

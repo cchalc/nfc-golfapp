@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && pnpm generate-sw",
+    "generate-sw": "tsx scripts/generate-sw.ts",
     "preview": "vite preview",
     "format": "biome format",
     "lint": "biome lint",
@@ -37,11 +38,14 @@
     "@tanstack/react-start": "^1.166.2",
     "@tanstack/router-plugin": "^1.166.2",
     "drizzle-orm": "^0.39.3",
+    "h3": "2.0.1-rc.20",
     "lucide-react": "^0.561.0",
+    "nitro": "3.0.260415-beta",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "vite-plugin-capsize-radix": "^0.2.4",
     "vite-tsconfig-paths": "^6.1.1",
+    "workbox-build": "^7.4.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -59,6 +63,7 @@
     "drizzle-kit": "^0.30.4",
     "happy-dom": "^20.8.4",
     "tidewave": "^0.6.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vite": "^7.1.7",
     "vitest": "^4.1.0"

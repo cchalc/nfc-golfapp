@@ -3,7 +3,8 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import viteTsConfigPaths from "vite-tsconfig-paths";
 import tidewave from "tidewave/vite-plugin";
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
+import { nitro } from "nitro/vite";
 
 import { capsizeRadixPlugin } from "vite-plugin-capsize-radix";
 import playfairDisplay from "@capsizecss/metrics/playfairDisplay";
@@ -107,6 +108,9 @@ const config = defineConfig({
       defaultFontStack: [lato, arial],
     }),
     tanstackStart(),
+    nitro({
+      scanDirs: ["./server/routes"],
+    }),
     viteReact(),
   ],
   server: {
