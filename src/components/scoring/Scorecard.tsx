@@ -23,7 +23,7 @@ interface ScorecardProps {
 	slopeRating: number | null;
 	coursePar: number;
 	scores: HoleScore[];
-	onScoreChange: (holeId: string, grossScore: number) => void;
+	onScoreChange: (holeId: string, grossScore: number | null) => void;
 	handicapOverride?: number | null; // Trip-level handicap override
 	readOnly?: boolean; // Disable score editing
 }

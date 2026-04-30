@@ -29,6 +29,7 @@ import {
 	useCourse,
 	useCreateRoundSummary,
 	useCreateScore,
+	useDeleteScore,
 	useGolfers,
 	useHolesByCourseId,
 	useRound,
@@ -82,6 +83,7 @@ function ScorecardPage() {
 	// Mutations
 	const createScore = useCreateScore();
 	const updateScore = useUpdateScore();
+	const deleteScoreMutation = useDeleteScore();
 	const createRoundSummary = useCreateRoundSummary();
 	const updateRoundSummaryMutation = useUpdateRoundSummary();
 
@@ -210,11 +212,26 @@ function ScorecardPage() {
 	]);
 
 	const handleScoreChange = useCallback(
-		(holeId: string, grossScore: number) => {
+		(holeId: string, grossScore: number | null) => {
 			if (!golfer || !holes || !course) return;
 
 			const hole = holes.find((h: Hole) => h.id === holeId);
 			if (!hole) return;
+
+			const existingScore = scores.find((s: Score) => s.holeId === holeId);
+
+			// Handle score deletion
+			if (grossScore === null) {
+				if (existingScore) {
+					deleteScoreMutation.mutate(
+						{ id: existingScore.id, roundId },
+						{
+							onSuccess: () => updateRoundSummaryFn(),
+						},
+					);
+				}
+				return;
+			}
 
 			// Use trip handicap override if set
 			const tripGolfer = tripGolferMap.get(golferId);
@@ -233,8 +250,6 @@ function ScorecardPage() {
 			);
 			const netScore = calculateNetScore(grossScore, handicapStrokes);
 			const stablefordPoints = calculateStablefordPoints(netScore, hole.par);
-
-			const existingScore = scores.find((s: Score) => s.holeId === holeId);
 
 			if (existingScore) {
 				updateScore.mutate(
@@ -280,6 +295,7 @@ function ScorecardPage() {
 			tripGolferMap,
 			updateScore,
 			createScore,
+			deleteScoreMutation,
 			updateRoundSummaryFn,
 		],
 	);

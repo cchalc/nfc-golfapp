@@ -7,7 +7,7 @@ interface ScoreEntryProps {
 	handicapStrokes: number;
 	netScore: number | null;
 	stablefordPoints: number | null;
-	onChange: (grossScore: number) => void;
+	onChange: (grossScore: number | null) => void;
 	compact?: boolean;
 	readOnly?: boolean;
 }
@@ -55,9 +55,14 @@ export function ScoreEntry({
 					max="15"
 					value={grossScore ?? ""}
 					onChange={(e) => {
-						const val = parseInt(e.target.value);
-						if (!isNaN(val) && val >= 1) {
-							onChange(val);
+						const value = e.target.value;
+						if (value === "") {
+							onChange(null);
+						} else {
+							const val = parseInt(value, 10);
+							if (!isNaN(val) && val >= 1) {
+								onChange(val);
+							}
 						}
 					}}
 					style={{ width: "40px", textAlign: "center" }}
@@ -115,9 +120,14 @@ export function ScoreEntry({
 					max="15"
 					value={grossScore ?? ""}
 					onChange={(e) => {
-						const val = parseInt(e.target.value);
-						if (!isNaN(val) && val >= 1) {
-							onChange(val);
+						const value = e.target.value;
+						if (value === "") {
+							onChange(null);
+						} else {
+							const val = parseInt(value, 10);
+							if (!isNaN(val) && val >= 1) {
+								onChange(val);
+							}
 						}
 					}}
 					style={{ width: "56px", textAlign: "center" }}
