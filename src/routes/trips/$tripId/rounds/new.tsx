@@ -17,6 +17,7 @@ import {
 	useCourses,
 	useCreateRound,
 	useRoundsByTripId,
+	useTeeBoxesByCourseId,
 	useTrip,
 } from "../../../../hooks/queries";
 import { useTripRole } from "../../../../hooks/useTripRole";
@@ -31,6 +32,7 @@ function NewRoundPage() {
 	const navigate = useNavigate();
 	const [addCourseDialogOpen, setAddCourseDialogOpen] = useState(false);
 	const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+	const [selectedTeeBoxId, setSelectedTeeBoxId] = useState<string>("");
 	const { canManage, isLoading: roleLoading } = useTripRole(tripId);
 
 	// Redirect non-organizers (only after role is loaded)
@@ -43,7 +45,13 @@ function NewRoundPage() {
 	const { data: trip } = useTrip(tripId);
 	const { data: courses } = useCourses();
 	const { data: existingRounds } = useRoundsByTripId(tripId);
+	const { data: teeBoxes } = useTeeBoxesByCourseId(selectedCourseId);
 	const createRound = useCreateRound();
+
+	// Reset tee box selection when course changes
+	useEffect(() => {
+		setSelectedTeeBoxId("");
+	}, [selectedCourseId]);
 
 	const sortedCourses = courses
 		?.slice()
@@ -68,6 +76,7 @@ function NewRoundPage() {
 				id: roundId,
 				tripId,
 				courseId: selectedCourseId,
+				teeBoxId: selectedTeeBoxId || null,
 				roundDate,
 				roundNumber: nextRoundNumber,
 				notes,
@@ -169,6 +178,33 @@ function NewRoundPage() {
 								</Text>
 							)}
 						</Flex>
+
+						{/* Tee Box Selection - only show when course has tee boxes */}
+						{selectedCourseId && teeBoxes && teeBoxes.length > 0 && (
+							<Flex direction="column" gap="1">
+								<Text as="label" size="2" weight="medium">
+									Tee Box (optional)
+								</Text>
+								<Select.Root
+									value={selectedTeeBoxId}
+									onValueChange={setSelectedTeeBoxId}
+								>
+									<Select.Trigger placeholder="Select a tee box" />
+									<Select.Content>
+										{teeBoxes.map((teeBox) => (
+											<Select.Item key={teeBox.id} value={teeBox.id}>
+												{teeBox.teeName} ({teeBox.gender === "male" ? "M" : "F"}{" "}
+												- {teeBox.totalYards} yds, CR {teeBox.courseRating}/
+												{teeBox.slopeRating})
+											</Select.Item>
+										))}
+									</Select.Content>
+								</Select.Root>
+								<Text size="1" color="gray">
+									Used for handicap calculations. Can be changed later.
+								</Text>
+							</Flex>
+						)}
 
 						<Flex direction="column" gap="1">
 							<Text as="label" size="2" weight="medium" htmlFor="roundDate">
