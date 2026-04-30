@@ -152,7 +152,10 @@
       "Bash(xargs ls:*)",
       "Bash(jj absorb:*)",
       "Bash(jj resolve:*)",
-      "Bash(agent-browser:*)"
+      "Bash(agent-browser:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr close:*)",
+      "Bash(gh pr merge:*)"
     ]
   },
   "enabledPlugins": {
