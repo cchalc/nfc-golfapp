@@ -22,7 +22,7 @@ import {
 import { CourseForm } from "./CourseForm";
 
 interface CourseSearchProps {
-	onSuccess?: () => void;
+	onSuccess?: (courseId?: string) => void;
 }
 
 export function CourseSearch({ onSuccess }: CourseSearchProps) {
@@ -148,7 +148,7 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
 			setImportedId(apiCourse.id);
 			// Brief delay before closing dialog
 			setTimeout(() => {
-				onSuccess?.();
+				onSuccess?.(courseId);
 			}, 500);
 		} catch (error) {
 			console.error("Failed to import course:", error);

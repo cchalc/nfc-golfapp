@@ -8,7 +8,7 @@ import { FormField } from "../ui/FormField";
 interface CourseFormProps {
 	courseId?: string;
 	initialData?: Partial<Course>;
-	onSuccess?: () => void;
+	onSuccess?: (courseId?: string) => void;
 }
 
 export function CourseForm({
@@ -60,13 +60,14 @@ export function CourseForm({
 					},
 				},
 				{
-					onSuccess: () => onSuccess?.(),
+					onSuccess: () => onSuccess?.(courseId),
 				},
 			);
 		} else {
 			// Create new
+			const newCourseId = crypto.randomUUID();
 			const newCourse: Course = {
-				id: crypto.randomUUID(),
+				id: newCourseId,
 				apiId: null,
 				name: result.data.name,
 				clubName: result.data.name,
@@ -83,7 +84,7 @@ export function CourseForm({
 			};
 
 			createCourse.mutate(newCourse, {
-				onSuccess: () => onSuccess?.(),
+				onSuccess: () => onSuccess?.(newCourseId),
 			});
 		}
 	}

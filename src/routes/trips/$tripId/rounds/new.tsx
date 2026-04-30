@@ -157,7 +157,12 @@ function NewRoundPage() {
 											Search for a course or add one manually
 										</Dialog.Description>
 										<CourseSearch
-											onSuccess={() => setAddCourseDialogOpen(false)}
+											onSuccess={(courseId) => {
+												if (courseId) {
+													setSelectedCourseId(courseId);
+												}
+												setAddCourseDialogOpen(false);
+											}}
 										/>
 									</Dialog.Content>
 								</Dialog.Root>
