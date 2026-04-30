@@ -1,8 +1,8 @@
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/trips/$tripId')({
-  component: TripLayout,
-})
+export const Route = createFileRoute("/trips/$tripId")({
+	component: TripLayout,
+});
 
 /**
  * Trip Layout - Wraps all trip pages
@@ -11,5 +11,5 @@ export const Route = createFileRoute('/trips/$tripId')({
  * via TanStack Query hooks.
  */
 function TripLayout() {
-  return <Outlet />
+	return <Outlet />;
 }

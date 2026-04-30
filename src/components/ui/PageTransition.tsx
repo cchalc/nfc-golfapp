@@ -1,10 +1,10 @@
 // src/components/ui/PageTransition.tsx
-import { type ReactNode } from 'react'
+import type { ReactNode } from "react";
 
 interface PageTransitionProps {
-  children: ReactNode
+	children: ReactNode;
 }
 
 export function PageTransition({ children }: PageTransitionProps) {
-  return <div className="animate-reveal">{children}</div>
+	return <div className="animate-reveal">{children}</div>;
 }

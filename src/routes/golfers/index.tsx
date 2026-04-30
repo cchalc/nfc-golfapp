@@ -1,94 +1,94 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { Container, Flex, Heading, Button, Dialog } from '@radix-ui/themes'
-import { Plus } from 'lucide-react'
-import { useDialogState } from '../../hooks/useDialogState'
-import { useGolfers } from '../../hooks/queries'
-import { GolferCard } from '../../components/golfers/GolferCard'
-import { GolferForm } from '../../components/golfers/GolferForm'
-import { EmptyState } from '../../components/ui/EmptyState'
-import { CardSkeleton } from '../../components/ui/Skeleton'
-import { AnimatedList } from '../../components/ui/AnimatedList'
-import { useRequireAuth } from '../../hooks/useRequireAuth'
+import { Button, Container, Dialog, Flex, Heading } from "@radix-ui/themes";
+import { createFileRoute } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
+import { GolferCard } from "../../components/golfers/GolferCard";
+import { GolferForm } from "../../components/golfers/GolferForm";
+import { AnimatedList } from "../../components/ui/AnimatedList";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { CardSkeleton } from "../../components/ui/Skeleton";
+import { useGolfers } from "../../hooks/queries";
+import { useDialogState } from "../../hooks/useDialogState";
+import { useRequireAuth } from "../../hooks/useRequireAuth";
 
-export const Route = createFileRoute('/golfers/')({
-  ssr: false,
-  component: GolfersPage,
-})
+export const Route = createFileRoute("/golfers/")({
+	ssr: false,
+	component: GolfersPage,
+});
 
 function GolfersPage() {
-  useRequireAuth()
-  const [addDialogOpen, setAddDialogOpen] = useDialogState('add-golfer')
+	useRequireAuth();
+	const [addDialogOpen, setAddDialogOpen] = useDialogState("add-golfer");
 
-  const { data: golfers, isLoading } = useGolfers()
+	const { data: golfers, isLoading } = useGolfers();
 
-  if (isLoading) {
-    return (
-      <Container size="2" py="6">
-        <Flex direction="column" gap="4">
-          <Heading size="7">Golfers</Heading>
-          <Flex direction="column" gap="3">
-            <CardSkeleton />
-            <CardSkeleton />
-            <CardSkeleton />
-          </Flex>
-        </Flex>
-      </Container>
-    )
-  }
+	if (isLoading) {
+		return (
+			<Container size="2" py="6">
+				<Flex direction="column" gap="4">
+					<Heading size="7">Golfers</Heading>
+					<Flex direction="column" gap="3">
+						<CardSkeleton />
+						<CardSkeleton />
+						<CardSkeleton />
+					</Flex>
+				</Flex>
+			</Container>
+		);
+	}
 
-  return (
-    <Container size="2" py="6">
-      <Flex direction="column" gap="4">
-        <Flex justify="between" align="center">
-          <Heading size="7">Golfers</Heading>
-          <Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-            <Dialog.Trigger>
-              <Button color="grass">
-                <Plus size={16} />
-                Add Golfer
-              </Button>
-            </Dialog.Trigger>
-            <Dialog.Content maxWidth="400px">
-              <Dialog.Title>Add Golfer</Dialog.Title>
-              <Dialog.Description size="2" color="gray">
-                Add a new golfer to your directory
-              </Dialog.Description>
-              <Flex direction="column" gap="4" pt="4">
-                <GolferForm onSuccess={() => setAddDialogOpen(false)} />
-              </Flex>
-            </Dialog.Content>
-          </Dialog.Root>
-        </Flex>
+	return (
+		<Container size="2" py="6">
+			<Flex direction="column" gap="4">
+				<Flex justify="between" align="center">
+					<Heading size="7">Golfers</Heading>
+					<Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+						<Dialog.Trigger>
+							<Button color="grass">
+								<Plus size={16} />
+								Add Golfer
+							</Button>
+						</Dialog.Trigger>
+						<Dialog.Content maxWidth="400px">
+							<Dialog.Title>Add Golfer</Dialog.Title>
+							<Dialog.Description size="2" color="gray">
+								Add a new golfer to your directory
+							</Dialog.Description>
+							<Flex direction="column" gap="4" pt="4">
+								<GolferForm onSuccess={() => setAddDialogOpen(false)} />
+							</Flex>
+						</Dialog.Content>
+					</Dialog.Root>
+				</Flex>
 
-        {golfers && golfers.length > 0 ? (
-          <Flex direction="column" gap="2">
-            <AnimatedList>
-              {golfers.map((golfer) => (
-                <GolferCard key={golfer.id} golfer={golfer} />
-              ))}
-            </AnimatedList>
-          </Flex>
-        ) : (
-          <EmptyState
-            action={
-              <Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-                <Dialog.Trigger>
-                  <Button color="grass">
-                    <Plus size={16} />
-                    Add Golfer
-                  </Button>
-                </Dialog.Trigger>
-                <Dialog.Content maxWidth="400px">
-                  <Dialog.Title>Add Golfer</Dialog.Title>
-                  <Flex direction="column" gap="4" pt="4">
-                    <GolferForm onSuccess={() => setAddDialogOpen(false)} />
-                  </Flex>
-                </Dialog.Content>
-              </Dialog.Root>
-            }
-          />
-        )}
-      </Flex>
-    </Container>
-  )
+				{golfers && golfers.length > 0 ? (
+					<Flex direction="column" gap="2">
+						<AnimatedList>
+							{golfers.map((golfer) => (
+								<GolferCard key={golfer.id} golfer={golfer} />
+							))}
+						</AnimatedList>
+					</Flex>
+				) : (
+					<EmptyState
+						action={
+							<Dialog.Root open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+								<Dialog.Trigger>
+									<Button color="grass">
+										<Plus size={16} />
+										Add Golfer
+									</Button>
+								</Dialog.Trigger>
+								<Dialog.Content maxWidth="400px">
+									<Dialog.Title>Add Golfer</Dialog.Title>
+									<Flex direction="column" gap="4" pt="4">
+										<GolferForm onSuccess={() => setAddDialogOpen(false)} />
+									</Flex>
+								</Dialog.Content>
+							</Dialog.Root>
+						}
+					/>
+				)}
+			</Flex>
+		</Container>
+	);
 }

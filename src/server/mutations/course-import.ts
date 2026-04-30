@@ -1,33 +1,33 @@
-import { createServerFn } from '@tanstack/react-start'
-import { neon } from '@neondatabase/serverless'
-import { wrapMutation } from './db'
-import type { Course, TeeBox, Hole } from '../../db/collections'
+import { neon } from "@neondatabase/serverless";
+import { createServerFn } from "@tanstack/react-start";
+import type { Course, Hole, TeeBox } from "../../db/collections";
+import { wrapMutation } from "./db";
 
 /**
  * Input type for batched course import.
  * Includes course data plus all tee boxes and holes.
  */
 interface CourseImportData {
-  course: Course
-  teeBoxes: TeeBox[]
-  holes: Hole[]
+	course: Course;
+	teeBoxes: TeeBox[];
+	holes: Hole[];
 }
 
 /**
  * Import a complete course with all tee boxes and holes in a single transaction.
  */
-export const importCourseWithDetails = createServerFn({ method: 'POST' })
-  .inputValidator((data: CourseImportData) => data)
-  .handler(async ({ data: { course, teeBoxes, holes } }) => {
-    return wrapMutation('importCourseWithDetails', async () => {
-      const sql = neon(process.env.DATABASE_URL!)
+export const importCourseWithDetails = createServerFn({ method: "POST" })
+	.inputValidator((data: CourseImportData) => data)
+	.handler(async ({ data: { course, teeBoxes, holes } }) => {
+		return wrapMutation("importCourseWithDetails", async () => {
+			const sql = neon(process.env.DATABASE_URL!);
 
-      // Build all statements for the transaction
-      await sql.transaction((txn) => {
-        const queries = []
+			// Build all statements for the transaction
+			await sql.transaction((txn) => {
+				const queries = [];
 
-        // Insert course
-        queries.push(txn`
+				// Insert course
+				queries.push(txn`
           INSERT INTO courses (id, api_id, name, club_name, location, address, city, state, country, latitude, longitude, course_rating, slope_rating, total_par)
           VALUES (
             ${course.id},
@@ -45,11 +45,11 @@ export const importCourseWithDetails = createServerFn({ method: 'POST' })
             ${course.slopeRating},
             ${course.totalPar}
           )
-        `)
+        `);
 
-        // Insert all tee boxes
-        for (const tee of teeBoxes) {
-          queries.push(txn`
+				// Insert all tee boxes
+				for (const tee of teeBoxes) {
+					queries.push(txn`
             INSERT INTO tee_boxes (id, course_id, tee_name, gender, course_rating, slope_rating, total_yards, par_total)
             VALUES (
               ${tee.id},
@@ -61,12 +61,12 @@ export const importCourseWithDetails = createServerFn({ method: 'POST' })
               ${tee.totalYards},
               ${tee.parTotal}
             )
-          `)
-        }
+          `);
+				}
 
-        // Insert all holes
-        for (const hole of holes) {
-          queries.push(txn`
+				// Insert all holes
+				for (const hole of holes) {
+					queries.push(txn`
             INSERT INTO holes (id, course_id, hole_number, par, stroke_index, yardage)
             VALUES (
               ${hole.id},
@@ -76,46 +76,46 @@ export const importCourseWithDetails = createServerFn({ method: 'POST' })
               ${hole.strokeIndex},
               ${hole.yardage}
             )
-          `)
-        }
+          `);
+				}
 
-        return queries
-      })
+				return queries;
+			});
 
-      return {
-        courseId: course.id,
-        teeBoxCount: teeBoxes.length,
-        holeCount: holes.length,
-      }
-    })
-  })
+			return {
+				courseId: course.id,
+				teeBoxCount: teeBoxes.length,
+				holeCount: holes.length,
+			};
+		});
+	});
 
 /**
  * Input type for course resync.
  * Updates course info and replaces all tee boxes and holes.
  */
 interface CourseResyncData {
-  courseId: string
-  courseUpdates: Partial<Omit<Course, 'id'>>
-  teeBoxes: TeeBox[]
-  holes: Hole[]
+	courseId: string;
+	courseUpdates: Partial<Omit<Course, "id">>;
+	teeBoxes: TeeBox[];
+	holes: Hole[];
 }
 
 /**
  * Resync a course by updating its info and replacing tee boxes/holes in a single transaction.
  * Deletes existing tee boxes and holes, then inserts new ones.
  */
-export const resyncCourseDetails = createServerFn({ method: 'POST' })
-  .inputValidator((data: CourseResyncData) => data)
-  .handler(async ({ data: { courseId, courseUpdates, teeBoxes, holes } }) => {
-    return wrapMutation('resyncCourseDetails', async () => {
-      const sql = neon(process.env.DATABASE_URL!)
+export const resyncCourseDetails = createServerFn({ method: "POST" })
+	.inputValidator((data: CourseResyncData) => data)
+	.handler(async ({ data: { courseId, courseUpdates, teeBoxes, holes } }) => {
+		return wrapMutation("resyncCourseDetails", async () => {
+			const sql = neon(process.env.DATABASE_URL!);
 
-      await sql.transaction((txn) => {
-        const queries = []
+			await sql.transaction((txn) => {
+				const queries = [];
 
-        // Update course info
-        queries.push(txn`
+				// Update course info
+				queries.push(txn`
           UPDATE courses
           SET name = COALESCE(${courseUpdates.name ?? null}, name),
               club_name = COALESCE(${courseUpdates.clubName ?? null}, club_name),
@@ -123,15 +123,15 @@ export const resyncCourseDetails = createServerFn({ method: 'POST' })
               slope_rating = COALESCE(${courseUpdates.slopeRating ?? null}, slope_rating),
               total_par = COALESCE(${courseUpdates.totalPar ?? null}, total_par)
           WHERE id = ${courseId}
-        `)
+        `);
 
-        // Delete existing tee boxes and holes (cascade will handle related data)
-        queries.push(txn`DELETE FROM tee_boxes WHERE course_id = ${courseId}`)
-        queries.push(txn`DELETE FROM holes WHERE course_id = ${courseId}`)
+				// Delete existing tee boxes and holes (cascade will handle related data)
+				queries.push(txn`DELETE FROM tee_boxes WHERE course_id = ${courseId}`);
+				queries.push(txn`DELETE FROM holes WHERE course_id = ${courseId}`);
 
-        // Insert new tee boxes
-        for (const tee of teeBoxes) {
-          queries.push(txn`
+				// Insert new tee boxes
+				for (const tee of teeBoxes) {
+					queries.push(txn`
             INSERT INTO tee_boxes (id, course_id, tee_name, gender, course_rating, slope_rating, total_yards, par_total)
             VALUES (
               ${tee.id},
@@ -143,12 +143,12 @@ export const resyncCourseDetails = createServerFn({ method: 'POST' })
               ${tee.totalYards},
               ${tee.parTotal}
             )
-          `)
-        }
+          `);
+				}
 
-        // Insert new holes
-        for (const hole of holes) {
-          queries.push(txn`
+				// Insert new holes
+				for (const hole of holes) {
+					queries.push(txn`
             INSERT INTO holes (id, course_id, hole_number, par, stroke_index, yardage)
             VALUES (
               ${hole.id},
@@ -158,16 +158,16 @@ export const resyncCourseDetails = createServerFn({ method: 'POST' })
               ${hole.strokeIndex},
               ${hole.yardage}
             )
-          `)
-        }
+          `);
+				}
 
-        return queries
-      })
+				return queries;
+			});
 
-      return {
-        courseId,
-        teeBoxCount: teeBoxes.length,
-        holeCount: holes.length,
-      }
-    })
-  })
+			return {
+				courseId,
+				teeBoxCount: teeBoxes.length,
+				holeCount: holes.length,
+			};
+		});
+	});

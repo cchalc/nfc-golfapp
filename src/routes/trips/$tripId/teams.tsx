@@ -1,326 +1,341 @@
-import { createFileRoute } from '@tanstack/react-router'
 import {
-  Container,
-  Flex,
-  Heading,
-  Text,
-  Card,
-  Badge,
-  Button,
-  TextField,
-  Dialog,
-  Avatar,
-} from '@radix-ui/themes'
-import { Plus, X } from 'lucide-react'
-import { useDialogState } from '../../../hooks/useDialogState'
-import { EmptyState } from '../../../components/ui/EmptyState'
-import { useTripRole } from '../../../hooks/useTripRole'
+	Avatar,
+	Badge,
+	Button,
+	Card,
+	Container,
+	Dialog,
+	Flex,
+	Heading,
+	Text,
+	TextField,
+} from "@radix-ui/themes";
+import { createFileRoute } from "@tanstack/react-router";
+import { Plus, X } from "lucide-react";
+import { EmptyState } from "../../../components/ui/EmptyState";
 import {
-  useTrip,
-  useGolfers,
-  useTripGolfersByTripId,
-  useTeamsByTripId,
-  useTeamMembersByTripId,
-  useCreateTeam,
-  useDeleteTeam,
-  useCreateTeamMember,
-  useDeleteTeamMember,
-} from '../../../hooks/queries'
+	useCreateTeam,
+	useCreateTeamMember,
+	useDeleteTeam,
+	useDeleteTeamMember,
+	useGolfers,
+	useTeamMembersByTripId,
+	useTeamsByTripId,
+	useTrip,
+	useTripGolfersByTripId,
+} from "../../../hooks/queries";
+import { useDialogState } from "../../../hooks/useDialogState";
+import { useTripRole } from "../../../hooks/useTripRole";
 
-export const Route = createFileRoute('/trips/$tripId/teams')({
-  ssr: false,
-  component: TeamsPage,
-})
+export const Route = createFileRoute("/trips/$tripId/teams")({
+	ssr: false,
+	component: TeamsPage,
+});
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+	return name
+		.split(" ")
+		.map((n) => n[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
 }
 
 const TEAM_COLORS = [
-  { name: 'Red', value: '#ef4444' },
-  { name: 'Blue', value: '#3b82f6' },
-  { name: 'Green', value: '#22c55e' },
-  { name: 'Purple', value: '#a855f7' },
-  { name: 'Orange', value: '#f97316' },
-  { name: 'Teal', value: '#14b8a6' },
-]
+	{ name: "Red", value: "#ef4444" },
+	{ name: "Blue", value: "#3b82f6" },
+	{ name: "Green", value: "#22c55e" },
+	{ name: "Purple", value: "#a855f7" },
+	{ name: "Orange", value: "#f97316" },
+	{ name: "Teal", value: "#14b8a6" },
+];
 
 function TeamsPage() {
-  const { tripId } = Route.useParams()
-  const { canManage } = useTripRole(tripId)
-  const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState(`add-team-${tripId}`)
+	const { tripId } = Route.useParams();
+	const { canManage } = useTripRole(tripId);
+	const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState(
+		`add-team-${tripId}`,
+	);
 
-  const { data: trip } = useTrip(tripId)
-  const { data: golfers } = useGolfers()
-  const { data: tripGolfers } = useTripGolfersByTripId(tripId)
-  const { data: teams } = useTeamsByTripId(tripId)
-  const { data: teamMembers } = useTeamMembersByTripId(tripId)
+	const { data: trip } = useTrip(tripId);
+	const { data: golfers } = useGolfers();
+	const { data: tripGolfers } = useTripGolfersByTripId(tripId);
+	const { data: teams } = useTeamsByTripId(tripId);
+	const { data: teamMembers } = useTeamMembersByTripId(tripId);
 
-  const createTeam = useCreateTeam()
-  const deleteTeamMutation = useDeleteTeam()
-  const createTeamMember = useCreateTeamMember()
-  const deleteTeamMemberMutation = useDeleteTeamMember()
+	const createTeam = useCreateTeam();
+	const deleteTeamMutation = useDeleteTeam();
+	const createTeamMember = useCreateTeamMember();
+	const deleteTeamMemberMutation = useDeleteTeamMember();
 
-  const golferMap = new Map((golfers || []).map((g) => [g.id, g]))
+	const golferMap = new Map((golfers || []).map((g) => [g.id, g]));
 
-  const acceptedTripGolfers = (tripGolfers || []).filter((tg) => tg.status === 'accepted')
+	const acceptedTripGolfers = (tripGolfers || []).filter(
+		(tg) => tg.status === "accepted",
+	);
 
-  const membersByTeam = new Map<string, string[]>()
-  const assignedGolferIds = new Set<string>()
+	const membersByTeam = new Map<string, string[]>();
+	const assignedGolferIds = new Set<string>();
 
-  for (const tm of teamMembers || []) {
-    const members = membersByTeam.get(tm.teamId) || []
-    members.push(tm.golferId)
-    membersByTeam.set(tm.teamId, members)
-    assignedGolferIds.add(tm.golferId)
-  }
+	for (const tm of teamMembers || []) {
+		const members = membersByTeam.get(tm.teamId) || [];
+		members.push(tm.golferId);
+		membersByTeam.set(tm.teamId, members);
+		assignedGolferIds.add(tm.golferId);
+	}
 
-  const tripGolferIds = acceptedTripGolfers.map((tg) => tg.golferId)
-  const unassignedGolfers = tripGolferIds
-    .filter((id) => !assignedGolferIds.has(id))
-    .map((id) => golferMap.get(id))
-    .filter((g): g is NonNullable<typeof g> => !!g)
+	const tripGolferIds = acceptedTripGolfers.map((tg) => tg.golferId);
+	const unassignedGolfers = tripGolferIds
+		.filter((id) => !assignedGolferIds.has(id))
+		.map((id) => golferMap.get(id))
+		.filter((g): g is NonNullable<typeof g> => !!g);
 
-  const sortedTeams = [...(teams || [])].sort((a, b) => a.name.localeCompare(b.name))
+	const sortedTeams = [...(teams || [])].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	);
 
-  function handleCreateTeam(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const name = formData.get('name') as string
-    const color = formData.get('color') as string
+	function handleCreateTeam(e: React.FormEvent<HTMLFormElement>) {
+		e.preventDefault();
+		const formData = new FormData(e.currentTarget);
+		const name = formData.get("name") as string;
+		const color = formData.get("color") as string;
 
-    createTeam.mutate({
-      id: crypto.randomUUID(),
-      tripId,
-      name,
-      color: color || TEAM_COLORS[teams?.length || 0]?.value || '#3b82f6',
-    })
+		createTeam.mutate({
+			id: crypto.randomUUID(),
+			tripId,
+			name,
+			color: color || TEAM_COLORS[teams?.length || 0]?.value || "#3b82f6",
+		});
 
-    setAddTeamDialogOpen(false)
-  }
+		setAddTeamDialogOpen(false);
+	}
 
-  function addToTeam(teamId: string, golferId: string) {
-    createTeamMember.mutate({
-      id: crypto.randomUUID(),
-      teamId,
-      golferId,
-      tripId,
-    })
-  }
+	function addToTeam(teamId: string, golferId: string) {
+		createTeamMember.mutate({
+			id: crypto.randomUUID(),
+			teamId,
+			golferId,
+			tripId,
+		});
+	}
 
-  function removeFromTeam(golferId: string) {
-    const member = (teamMembers || []).find((tm) => tm.golferId === golferId)
-    if (member) {
-      deleteTeamMemberMutation.mutate({ id: member.id, tripId })
-    }
-  }
+	function removeFromTeam(golferId: string) {
+		const member = (teamMembers || []).find((tm) => tm.golferId === golferId);
+		if (member) {
+			deleteTeamMemberMutation.mutate({ id: member.id, tripId });
+		}
+	}
 
-  function deleteTeam(teamId: string) {
-    // Remove all members first
-    const members = (teamMembers || []).filter((tm) => tm.teamId === teamId)
-    for (const m of members) {
-      deleteTeamMemberMutation.mutate({ id: m.id, tripId })
-    }
-    deleteTeamMutation.mutate({ id: teamId, tripId })
-  }
+	function deleteTeam(teamId: string) {
+		// Remove all members first
+		const members = (teamMembers || []).filter((tm) => tm.teamId === teamId);
+		for (const m of members) {
+			deleteTeamMemberMutation.mutate({ id: m.id, tripId });
+		}
+		deleteTeamMutation.mutate({ id: teamId, tripId });
+	}
 
-  if (!trip) {
-    return (
-      <Container size="2" py="6">
-        <Text>Trip not found</Text>
-      </Container>
-    )
-  }
+	if (!trip) {
+		return (
+			<Container size="2" py="6">
+				<Text>Trip not found</Text>
+			</Container>
+		);
+	}
 
-  return (
-    <Container size="2" py="6">
-      <Flex direction="column" gap="5">
-        <Flex justify="between" align="center">
-          <Flex direction="column" gap="3">
-            <Heading size="7">Teams</Heading>
-            <Text color="gray">{trip.name}</Text>
-          </Flex>
+	return (
+		<Container size="2" py="6">
+			<Flex direction="column" gap="5">
+				<Flex justify="between" align="center">
+					<Flex direction="column" gap="3">
+						<Heading size="7">Teams</Heading>
+						<Text color="gray">{trip.name}</Text>
+					</Flex>
 
-          {canManage && (
-            <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
-              <Dialog.Trigger>
-                <Button>
-                  <Plus size={16} />
-                  Add Team
-                </Button>
-              </Dialog.Trigger>
-              <Dialog.Content maxWidth="350px">
-                <Dialog.Title>Create Team</Dialog.Title>
-                <form onSubmit={handleCreateTeam}>
-                  <Flex direction="column" gap="4" pt="2">
-                    <Flex direction="column" gap="1">
-                      <Text as="label" size="2" weight="medium">
-                        Team Name
-                      </Text>
-                      <TextField.Root
-                        name="name"
-                        placeholder="Team Alpha"
-                        required
-                      />
-                    </Flex>
+					{canManage && (
+						<Dialog.Root
+							open={addTeamDialogOpen}
+							onOpenChange={setAddTeamDialogOpen}
+						>
+							<Dialog.Trigger>
+								<Button>
+									<Plus size={16} />
+									Add Team
+								</Button>
+							</Dialog.Trigger>
+							<Dialog.Content maxWidth="350px">
+								<Dialog.Title>Create Team</Dialog.Title>
+								<form onSubmit={handleCreateTeam}>
+									<Flex direction="column" gap="4" pt="2">
+										<Flex direction="column" gap="1">
+											<Text as="label" size="2" weight="medium">
+												Team Name
+											</Text>
+											<TextField.Root
+												name="name"
+												placeholder="Team Alpha"
+												required
+											/>
+										</Flex>
 
-                    <Flex direction="column" gap="2">
-                      <Text size="2" weight="medium">
-                        Color
-                      </Text>
-                      <Flex gap="2" wrap="wrap">
-                        {TEAM_COLORS.map((color, idx) => (
-                          <label key={color.value}>
-                            <input
-                              type="radio"
-                              name="color"
-                              value={color.value}
-                              defaultChecked={idx === (teams?.length || 0) % TEAM_COLORS.length}
-                              style={{ display: 'none' }}
-                            />
-                            <Badge
-                              size="2"
-                              style={{
-                                backgroundColor: color.value,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {color.name}
-                            </Badge>
-                          </label>
-                        ))}
-                      </Flex>
-                    </Flex>
+										<Flex direction="column" gap="2">
+											<Text size="2" weight="medium">
+												Color
+											</Text>
+											<Flex gap="2" wrap="wrap">
+												{TEAM_COLORS.map((color, idx) => (
+													<label key={color.value}>
+														<input
+															type="radio"
+															name="color"
+															value={color.value}
+															defaultChecked={
+																idx ===
+																(teams?.length || 0) % TEAM_COLORS.length
+															}
+															style={{ display: "none" }}
+														/>
+														<Badge
+															size="2"
+															style={{
+																backgroundColor: color.value,
+																cursor: "pointer",
+															}}
+														>
+															{color.name}
+														</Badge>
+													</label>
+												))}
+											</Flex>
+										</Flex>
 
-                    <Button type="submit">Create Team</Button>
-                  </Flex>
-                </form>
-              </Dialog.Content>
-            </Dialog.Root>
-          )}
-        </Flex>
+										<Button type="submit">Create Team</Button>
+									</Flex>
+								</form>
+							</Dialog.Content>
+						</Dialog.Root>
+					)}
+				</Flex>
 
-        {sortedTeams && sortedTeams.length > 0 ? (
-          <Flex direction="column" gap="4">
-            {sortedTeams.map((team) => {
-              const members = membersByTeam.get(team.id) || []
-              return (
-                <Card key={team.id}>
-                  <Flex direction="column" gap="3">
-                    <Flex justify="between" align="center">
-                      <Flex align="center" gap="2">
-                        <Badge size="2" style={{ backgroundColor: team.color }}>
-                          {team.name}
-                        </Badge>
-                        <Text size="2" color="gray">
-                          {members.length} members
-                        </Text>
-                      </Flex>
-                      {canManage && (
-                        <Button
-                          variant="ghost"
-                          color="red"
-                          size="1"
-                          onClick={() => deleteTeam(team.id)}
-                        >
-                          Delete
-                        </Button>
-                      )}
-                    </Flex>
+				{sortedTeams && sortedTeams.length > 0 ? (
+					<Flex direction="column" gap="4">
+						{sortedTeams.map((team) => {
+							const members = membersByTeam.get(team.id) || [];
+							return (
+								<Card key={team.id}>
+									<Flex direction="column" gap="3">
+										<Flex justify="between" align="center">
+											<Flex align="center" gap="2">
+												<Badge size="2" style={{ backgroundColor: team.color }}>
+													{team.name}
+												</Badge>
+												<Text size="2" color="gray">
+													{members.length} members
+												</Text>
+											</Flex>
+											{canManage && (
+												<Button
+													variant="ghost"
+													color="red"
+													size="1"
+													onClick={() => deleteTeam(team.id)}
+												>
+													Delete
+												</Button>
+											)}
+										</Flex>
 
-                    {members.length > 0 ? (
-                      <Flex gap="2" wrap="wrap">
-                        {members.map((golferId) => {
-                          const golfer = golferMap.get(golferId)
-                          if (!golfer) return null
-                          return (
-                            <Badge key={golferId} variant="soft" size="2">
-                              <Flex align="center" gap="1">
-                                <Avatar
-                                  size="1"
-                                  fallback={getInitials(golfer.name)}
-                                  radius="full"
-                                />
-                                {golfer.name}
-                                {canManage && (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeFromTeam(golferId)}
-                                    style={{
-                                      all: 'unset',
-                                      cursor: 'pointer',
-                                      display: 'flex',
-                                    }}
-                                  >
-                                    <X size={12} />
-                                  </button>
-                                )}
-                              </Flex>
-                            </Badge>
-                          )
-                        })}
-                      </Flex>
-                    ) : (
-                      <Text size="2" color="gray">
-                        No members yet
-                      </Text>
-                    )}
+										{members.length > 0 ? (
+											<Flex gap="2" wrap="wrap">
+												{members.map((golferId) => {
+													const golfer = golferMap.get(golferId);
+													if (!golfer) return null;
+													return (
+														<Badge key={golferId} variant="soft" size="2">
+															<Flex align="center" gap="1">
+																<Avatar
+																	size="1"
+																	fallback={getInitials(golfer.name)}
+																	radius="full"
+																/>
+																{golfer.name}
+																{canManage && (
+																	<button
+																		type="button"
+																		onClick={() => removeFromTeam(golferId)}
+																		style={{
+																			all: "unset",
+																			cursor: "pointer",
+																			display: "flex",
+																		}}
+																	>
+																		<X size={12} />
+																	</button>
+																)}
+															</Flex>
+														</Badge>
+													);
+												})}
+											</Flex>
+										) : (
+											<Text size="2" color="gray">
+												No members yet
+											</Text>
+										)}
 
-                    {canManage && unassignedGolfers.length > 0 && (
-                      <Flex gap="2" wrap="wrap">
-                        {unassignedGolfers.map((golfer) => (
-                          <Button
-                            key={golfer.id}
-                            variant="soft"
-                            size="1"
-                            onClick={() => addToTeam(team.id, golfer.id)}
-                          >
-                            <Plus size={12} />
-                            {golfer.name}
-                          </Button>
-                        ))}
-                      </Flex>
-                    )}
-                  </Flex>
-                </Card>
-              )
-            })}
-          </Flex>
-        ) : (
-          <EmptyState
-            action={
-              canManage ? (
-                <Dialog.Root open={addTeamDialogOpen} onOpenChange={setAddTeamDialogOpen}>
-                  <Dialog.Trigger>
-                    <Button>
-                      <Plus size={16} />
-                      Create Team
-                    </Button>
-                  </Dialog.Trigger>
-                  <Dialog.Content maxWidth="350px">
-                    <Dialog.Title>Create Team</Dialog.Title>
-                    <form onSubmit={handleCreateTeam}>
-                      <Flex direction="column" gap="4" pt="2">
-                        <TextField.Root
-                          name="name"
-                          placeholder="Team Name"
-                          required
-                        />
-                        <Button type="submit">Create Team</Button>
-                      </Flex>
-                    </form>
-                  </Dialog.Content>
-                </Dialog.Root>
-              ) : undefined
-            }
-          />
-        )}
-      </Flex>
-    </Container>
-  )
+										{canManage && unassignedGolfers.length > 0 && (
+											<Flex gap="2" wrap="wrap">
+												{unassignedGolfers.map((golfer) => (
+													<Button
+														key={golfer.id}
+														variant="soft"
+														size="1"
+														onClick={() => addToTeam(team.id, golfer.id)}
+													>
+														<Plus size={12} />
+														{golfer.name}
+													</Button>
+												))}
+											</Flex>
+										)}
+									</Flex>
+								</Card>
+							);
+						})}
+					</Flex>
+				) : (
+					<EmptyState
+						action={
+							canManage ? (
+								<Dialog.Root
+									open={addTeamDialogOpen}
+									onOpenChange={setAddTeamDialogOpen}
+								>
+									<Dialog.Trigger>
+										<Button>
+											<Plus size={16} />
+											Create Team
+										</Button>
+									</Dialog.Trigger>
+									<Dialog.Content maxWidth="350px">
+										<Dialog.Title>Create Team</Dialog.Title>
+										<form onSubmit={handleCreateTeam}>
+											<Flex direction="column" gap="4" pt="2">
+												<TextField.Root
+													name="name"
+													placeholder="Team Name"
+													required
+												/>
+												<Button type="submit">Create Team</Button>
+											</Flex>
+										</form>
+									</Dialog.Content>
+								</Dialog.Root>
+							) : undefined
+						}
+					/>
+				)}
+			</Flex>
+		</Container>
+	);
 }

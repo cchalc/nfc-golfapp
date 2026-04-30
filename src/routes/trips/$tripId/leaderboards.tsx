@@ -1,642 +1,720 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
 import {
-  Container,
-  Flex,
-  Heading,
-  Text,
-  Tabs,
-  Card,
-  Badge,
-  Dialog,
-  Button,
-  Switch,
-  Spinner,
-  SegmentedControl,
-} from '@radix-ui/themes'
-import { ArrowLeft, Users, Flag, Target } from 'lucide-react'
-import { useState, useMemo, useCallback } from 'react'
-import { useRequireAuth } from '../../../hooks/useRequireAuth'
-import { useTripRole } from '../../../hooks/useTripRole'
+	Badge,
+	Button,
+	Card,
+	Container,
+	Dialog,
+	Flex,
+	Heading,
+	SegmentedControl,
+	Spinner,
+	Switch,
+	Tabs,
+	Text,
+} from "@radix-ui/themes";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, Flag, Target, Users } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  useTrip,
-  useGolfers,
-  useTripGolfersByTripId,
-  useRoundsByTripId,
-  useCourses,
-  useRoundSummariesByTripId,
-  useTeamsByTripId,
-  useTeamMembersByTripId,
-  useUpdateTripGolfer,
-  useUpdateRoundSummary,
-} from '../../../hooks/queries'
+	type LeaderboardEntry,
+	LeaderboardTable,
+} from "../../../components/leaderboards/LeaderboardTable";
 import {
-  LeaderboardTable,
-  type LeaderboardEntry,
-} from '../../../components/leaderboards/LeaderboardTable'
+	useCourses,
+	useGolfers,
+	useRoundSummariesByTripId,
+	useRoundsByTripId,
+	useTeamMembersByTripId,
+	useTeamsByTripId,
+	useTrip,
+	useTripGolfersByTripId,
+	useUpdateRoundSummary,
+	useUpdateTripGolfer,
+} from "../../../hooks/queries";
+import { useRequireAuth } from "../../../hooks/useRequireAuth";
+import { useTripRole } from "../../../hooks/useTripRole";
 
-export const Route = createFileRoute('/trips/$tripId/leaderboards')({
-  ssr: false,
-  component: LeaderboardsPage,
-})
+export const Route = createFileRoute("/trips/$tripId/leaderboards")({
+	ssr: false,
+	component: LeaderboardsPage,
+});
 
 function LeaderboardsPage() {
-  const { tripId } = Route.useParams()
+	const { tripId } = Route.useParams();
 
-  useRequireAuth()
-  const { role, isLoading: roleLoading } = useTripRole(tripId)
+	useRequireAuth();
+	const { role, isLoading: roleLoading } = useTripRole(tripId);
 
-  // Fetch trip data
-  const { data: trip } = useTrip(tripId)
+	// Fetch trip data
+	const { data: trip } = useTrip(tripId);
 
-  // Fetch all golfers
-  const { data: golfers } = useGolfers()
+	// Fetch all golfers
+	const { data: golfers } = useGolfers();
 
-  // Memoize lookup tables
-  const golferMap = useMemo(
-    () => new Map((golfers || []).map((g) => [g.id, g])),
-    [golfers]
-  )
+	// Memoize lookup tables
+	const golferMap = useMemo(
+		() => new Map((golfers || []).map((g) => [g.id, g])),
+		[golfers],
+	);
 
-  // Fetch trip golfers
-  const { data: allTripGolfers } = useTripGolfersByTripId(tripId)
+	// Fetch trip golfers
+	const { data: allTripGolfers } = useTripGolfersByTripId(tripId);
 
-  // Filter to accepted trip golfers
-  const tripGolfers = useMemo(
-    () => (allTripGolfers || []).filter((tg) => tg.status === 'accepted'),
-    [allTripGolfers]
-  )
+	// Filter to accepted trip golfers
+	const tripGolfers = useMemo(
+		() => (allTripGolfers || []).filter((tg) => tg.status === "accepted"),
+		[allTripGolfers],
+	);
 
-  const tripGolferIds = useMemo(
-    () => new Set((tripGolfers || []).map((tg) => tg.golferId)),
-    [tripGolfers]
-  )
+	const tripGolferIds = useMemo(
+		() => new Set((tripGolfers || []).map((tg) => tg.golferId)),
+		[tripGolfers],
+	);
 
-  const includedGolferIds = useMemo(
-    () => new Set((tripGolfers || []).filter((tg) => tg.includedInScoring).map((tg) => tg.golferId)),
-    [tripGolfers]
-  )
+	const includedGolferIds = useMemo(
+		() =>
+			new Set(
+				(tripGolfers || [])
+					.filter((tg) => tg.includedInScoring)
+					.map((tg) => tg.golferId),
+			),
+		[tripGolfers],
+	);
 
-  const tripGolferMap = useMemo(
-    () => new Map((tripGolfers || []).map((tg) => [tg.golferId, tg])),
-    [tripGolfers]
-  )
+	const tripGolferMap = useMemo(
+		() => new Map((tripGolfers || []).map((tg) => [tg.golferId, tg])),
+		[tripGolfers],
+	);
 
-  // Mutations
-  const updateTripGolfer = useUpdateTripGolfer()
-  const updateRoundSummary = useUpdateRoundSummary()
+	// Mutations
+	const updateTripGolfer = useUpdateTripGolfer();
+	const updateRoundSummary = useUpdateRoundSummary();
 
-  const toggleGolferScoring = useCallback((golferId: string) => {
-    const tg = tripGolferMap.get(golferId)
-    if (tg) {
-      updateTripGolfer.mutate({
-        id: tg.id,
-        changes: { includedInScoring: !tg.includedInScoring },
-      })
-    }
-  }, [tripGolferMap, updateTripGolfer])
+	const toggleGolferScoring = useCallback(
+		(golferId: string) => {
+			const tg = tripGolferMap.get(golferId);
+			if (tg) {
+				updateTripGolfer.mutate({
+					id: tg.id,
+					changes: { includedInScoring: !tg.includedInScoring },
+				});
+			}
+		},
+		[tripGolferMap, updateTripGolfer],
+	);
 
-  // State for round selection dialog
-  const [selectedGolferId, setSelectedGolferId] = useState<string | null>(null)
+	// State for round selection dialog
+	const [selectedGolferId, setSelectedGolferId] = useState<string | null>(null);
 
-  // State for round selector (null = trip total)
-  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null)
+	// State for round selector (null = trip total)
+	const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null);
 
-  // Get rounds
-  const { data: allRounds } = useRoundsByTripId(tripId)
+	// Get rounds
+	const { data: allRounds } = useRoundsByTripId(tripId);
 
-  // Sort rounds by round number
-  const sortedRounds = useMemo(
-    () => [...(allRounds || [])].sort((a, b) => a.roundNumber - b.roundNumber),
-    [allRounds]
-  )
+	// Sort rounds by round number
+	const sortedRounds = useMemo(
+		() => [...(allRounds || [])].sort((a, b) => a.roundNumber - b.roundNumber),
+		[allRounds],
+	);
 
-  const roundMap = useMemo(
-    () => new Map((sortedRounds || []).map((r) => [r.id, r])),
-    [sortedRounds]
-  )
+	const roundMap = useMemo(
+		() => new Map((sortedRounds || []).map((r) => [r.id, r])),
+		[sortedRounds],
+	);
 
-  // Get included rounds (trip-level)
-  const includedRoundIds = useMemo(
-    () => new Set((sortedRounds || []).filter((r) => r.includedInScoring).map((r) => r.id)),
-    [sortedRounds]
-  )
+	// Get included rounds (trip-level)
+	const includedRoundIds = useMemo(
+		() =>
+			new Set(
+				(sortedRounds || [])
+					.filter((r) => r.includedInScoring)
+					.map((r) => r.id),
+			),
+		[sortedRounds],
+	);
 
-  // Get courses for round names
-  const { data: courses } = useCourses()
+	// Get courses for round names
+	const { data: courses } = useCourses();
 
-  const courseMap = useMemo(
-    () => new Map((courses || []).map((c) => [c.id, c])),
-    [courses]
-  )
+	const courseMap = useMemo(
+		() => new Map((courses || []).map((c) => [c.id, c])),
+		[courses],
+	);
 
-  // Get round summaries
-  const { data: allSummaries } = useRoundSummariesByTripId(tripId)
+	// Get round summaries
+	const { data: allSummaries } = useRoundSummariesByTripId(tripId);
 
-  // Filter summaries to only included rounds AND where summary.includedInScoring is true
-  const tripSummaries = useMemo(
-    () => (allSummaries || []).filter(
-      (s) => includedRoundIds.has(s.roundId) && s.includedInScoring !== false
-    ),
-    [allSummaries, includedRoundIds]
-  )
+	// Filter summaries to only included rounds AND where summary.includedInScoring is true
+	const tripSummaries = useMemo(
+		() =>
+			(allSummaries || []).filter(
+				(s) => includedRoundIds.has(s.roundId) && s.includedInScoring !== false,
+			),
+		[allSummaries, includedRoundIds],
+	);
 
-  // Filter summaries based on selected round (for per-round leaderboards)
-  const displaySummaries = useMemo(() => {
-    if (selectedRoundId === null) {
-      // Trip total - use aggregated tripSummaries
-      return tripSummaries
-    }
-    // Single round - filter to just that round
-    return (allSummaries || []).filter(
-      (s) => s.roundId === selectedRoundId && s.includedInScoring !== false
-    )
-  }, [selectedRoundId, tripSummaries, allSummaries])
+	// Filter summaries based on selected round (for per-round leaderboards)
+	const displaySummaries = useMemo(() => {
+		if (selectedRoundId === null) {
+			// Trip total - use aggregated tripSummaries
+			return tripSummaries;
+		}
+		// Single round - filter to just that round
+		return (allSummaries || []).filter(
+			(s) => s.roundId === selectedRoundId && s.includedInScoring !== false,
+		);
+	}, [selectedRoundId, tripSummaries, allSummaries]);
 
-  // Get summaries for selected golfer (for round selection dialog)
-  const selectedGolferSummaries = useMemo(
-    () => selectedGolferId
-      ? (allSummaries || []).filter(
-          (s) => s.golferId === selectedGolferId && includedRoundIds.has(s.roundId)
-        )
-      : [],
-    [selectedGolferId, allSummaries, includedRoundIds]
-  )
+	// Get summaries for selected golfer (for round selection dialog)
+	const selectedGolferSummaries = useMemo(
+		() =>
+			selectedGolferId
+				? (allSummaries || []).filter(
+						(s) =>
+							s.golferId === selectedGolferId &&
+							includedRoundIds.has(s.roundId),
+					)
+				: [],
+		[selectedGolferId, allSummaries, includedRoundIds],
+	);
 
-  const toggleRoundForGolfer = useCallback((summaryId: string, roundId: string, currentValue: boolean) => {
-    updateRoundSummary.mutate({
-      id: summaryId,
-      roundId,
-      changes: { includedInScoring: !currentValue },
-    })
-  }, [updateRoundSummary])
+	const toggleRoundForGolfer = useCallback(
+		(summaryId: string, roundId: string, currentValue: boolean) => {
+			updateRoundSummary.mutate({
+				id: summaryId,
+				roundId,
+				changes: { includedInScoring: !currentValue },
+			});
+		},
+		[updateRoundSummary],
+	);
 
-  // Aggregate Stableford data
-  const stablefordData = useMemo(() => {
-    if (selectedRoundId) {
-      // Single round - no aggregation needed
-      return displaySummaries.map(s => ({
-        golferId: s.golferId,
-        totalPoints: s.totalStableford,
-        rounds: 1,
-      })).sort((a, b) => b.totalPoints - a.totalPoints)
-    }
-    // Trip total - aggregate across rounds
-    const byGolfer = new Map<string, { totalPoints: number; rounds: number }>()
-    for (const summary of displaySummaries) {
-      const existing = byGolfer.get(summary.golferId) || { totalPoints: 0, rounds: 0 }
-      byGolfer.set(summary.golferId, {
-        totalPoints: existing.totalPoints + summary.totalStableford,
-        rounds: existing.rounds + 1,
-      })
-    }
-    return Array.from(byGolfer.entries())
-      .map(([golferId, data]) => ({ golferId, ...data }))
-      .sort((a, b) => b.totalPoints - a.totalPoints)
-  }, [displaySummaries, selectedRoundId])
+	// Aggregate Stableford data
+	const stablefordData = useMemo(() => {
+		if (selectedRoundId) {
+			// Single round - no aggregation needed
+			return displaySummaries
+				.map((s) => ({
+					golferId: s.golferId,
+					totalPoints: s.totalStableford,
+					rounds: 1,
+				}))
+				.sort((a, b) => b.totalPoints - a.totalPoints);
+		}
+		// Trip total - aggregate across rounds
+		const byGolfer = new Map<string, { totalPoints: number; rounds: number }>();
+		for (const summary of displaySummaries) {
+			const existing = byGolfer.get(summary.golferId) || {
+				totalPoints: 0,
+				rounds: 0,
+			};
+			byGolfer.set(summary.golferId, {
+				totalPoints: existing.totalPoints + summary.totalStableford,
+				rounds: existing.rounds + 1,
+			});
+		}
+		return Array.from(byGolfer.entries())
+			.map(([golferId, data]) => ({ golferId, ...data }))
+			.sort((a, b) => b.totalPoints - a.totalPoints);
+	}, [displaySummaries, selectedRoundId]);
 
-  // Aggregate Net data (best net)
-  const netData = useMemo(() => {
-    if (selectedRoundId) {
-      // Single round - no aggregation needed
-      return displaySummaries.map(s => ({
-        golferId: s.golferId,
-        bestNet: s.totalNet,
-        rounds: 1,
-      })).sort((a, b) => a.bestNet - b.bestNet)
-    }
-    // Trip total - find best net across rounds
-    const byGolfer = new Map<string, { bestNet: number; rounds: number }>()
-    for (const summary of displaySummaries) {
-      const existing = byGolfer.get(summary.golferId)
-      if (!existing || summary.totalNet < existing.bestNet) {
-        byGolfer.set(summary.golferId, {
-          bestNet: summary.totalNet,
-          rounds: (existing?.rounds || 0) + 1,
-        })
-      } else {
-        byGolfer.set(summary.golferId, {
-          ...existing,
-          rounds: existing.rounds + 1,
-        })
-      }
-    }
-    return Array.from(byGolfer.entries())
-      .map(([golferId, data]) => ({ golferId, ...data }))
-      .sort((a, b) => a.bestNet - b.bestNet)
-  }, [displaySummaries, selectedRoundId])
+	// Aggregate Net data (best net)
+	const netData = useMemo(() => {
+		if (selectedRoundId) {
+			// Single round - no aggregation needed
+			return displaySummaries
+				.map((s) => ({
+					golferId: s.golferId,
+					bestNet: s.totalNet,
+					rounds: 1,
+				}))
+				.sort((a, b) => a.bestNet - b.bestNet);
+		}
+		// Trip total - find best net across rounds
+		const byGolfer = new Map<string, { bestNet: number; rounds: number }>();
+		for (const summary of displaySummaries) {
+			const existing = byGolfer.get(summary.golferId);
+			if (!existing || summary.totalNet < existing.bestNet) {
+				byGolfer.set(summary.golferId, {
+					bestNet: summary.totalNet,
+					rounds: (existing?.rounds || 0) + 1,
+				});
+			} else {
+				byGolfer.set(summary.golferId, {
+					...existing,
+					rounds: existing.rounds + 1,
+				});
+			}
+		}
+		return Array.from(byGolfer.entries())
+			.map(([golferId, data]) => ({ golferId, ...data }))
+			.sort((a, b) => a.bestNet - b.bestNet);
+	}, [displaySummaries, selectedRoundId]);
 
-  // Aggregate Birdies data
-  const birdiesData = useMemo(() => {
-    if (selectedRoundId) {
-      // Single round - no aggregation needed
-      return displaySummaries.map(s => ({
-        golferId: s.golferId,
-        totalBirdies: s.birdiesOrBetter,
-        rounds: 1,
-      })).sort((a, b) => b.totalBirdies - a.totalBirdies)
-    }
-    // Trip total - aggregate across rounds
-    const byGolfer = new Map<string, { totalBirdies: number; rounds: number }>()
-    for (const summary of displaySummaries) {
-      const existing = byGolfer.get(summary.golferId) || { totalBirdies: 0, rounds: 0 }
-      byGolfer.set(summary.golferId, {
-        totalBirdies: existing.totalBirdies + summary.birdiesOrBetter,
-        rounds: existing.rounds + 1,
-      })
-    }
-    return Array.from(byGolfer.entries())
-      .map(([golferId, data]) => ({ golferId, ...data }))
-      .sort((a, b) => b.totalBirdies - a.totalBirdies)
-  }, [displaySummaries, selectedRoundId])
+	// Aggregate Birdies data
+	const birdiesData = useMemo(() => {
+		if (selectedRoundId) {
+			// Single round - no aggregation needed
+			return displaySummaries
+				.map((s) => ({
+					golferId: s.golferId,
+					totalBirdies: s.birdiesOrBetter,
+					rounds: 1,
+				}))
+				.sort((a, b) => b.totalBirdies - a.totalBirdies);
+		}
+		// Trip total - aggregate across rounds
+		const byGolfer = new Map<
+			string,
+			{ totalBirdies: number; rounds: number }
+		>();
+		for (const summary of displaySummaries) {
+			const existing = byGolfer.get(summary.golferId) || {
+				totalBirdies: 0,
+				rounds: 0,
+			};
+			byGolfer.set(summary.golferId, {
+				totalBirdies: existing.totalBirdies + summary.birdiesOrBetter,
+				rounds: existing.rounds + 1,
+			});
+		}
+		return Array.from(byGolfer.entries())
+			.map(([golferId, data]) => ({ golferId, ...data }))
+			.sort((a, b) => b.totalBirdies - a.totalBirdies);
+	}, [displaySummaries, selectedRoundId]);
 
-  // Aggregate KPs data
-  const kpsData = useMemo(() => {
-    if (selectedRoundId) {
-      // Single round - no aggregation needed
-      return displaySummaries.map(s => ({
-        golferId: s.golferId,
-        totalKps: s.kps,
-        rounds: 1,
-      })).sort((a, b) => b.totalKps - a.totalKps)
-    }
-    // Trip total - aggregate across rounds
-    const byGolfer = new Map<string, { totalKps: number; rounds: number }>()
-    for (const summary of displaySummaries) {
-      const existing = byGolfer.get(summary.golferId) || { totalKps: 0, rounds: 0 }
-      byGolfer.set(summary.golferId, {
-        totalKps: existing.totalKps + summary.kps,
-        rounds: existing.rounds + 1,
-      })
-    }
-    return Array.from(byGolfer.entries())
-      .map(([golferId, data]) => ({ golferId, ...data }))
-      .sort((a, b) => b.totalKps - a.totalKps)
-  }, [displaySummaries, selectedRoundId])
+	// Aggregate KPs data
+	const kpsData = useMemo(() => {
+		if (selectedRoundId) {
+			// Single round - no aggregation needed
+			return displaySummaries
+				.map((s) => ({
+					golferId: s.golferId,
+					totalKps: s.kps,
+					rounds: 1,
+				}))
+				.sort((a, b) => b.totalKps - a.totalKps);
+		}
+		// Trip total - aggregate across rounds
+		const byGolfer = new Map<string, { totalKps: number; rounds: number }>();
+		for (const summary of displaySummaries) {
+			const existing = byGolfer.get(summary.golferId) || {
+				totalKps: 0,
+				rounds: 0,
+			};
+			byGolfer.set(summary.golferId, {
+				totalKps: existing.totalKps + summary.kps,
+				rounds: existing.rounds + 1,
+			});
+		}
+		return Array.from(byGolfer.entries())
+			.map(([golferId, data]) => ({ golferId, ...data }))
+			.sort((a, b) => b.totalKps - a.totalKps);
+	}, [displaySummaries, selectedRoundId]);
 
-  // Teams
-  const { data: teams } = useTeamsByTripId(tripId)
+	// Teams
+	const { data: teams } = useTeamsByTripId(tripId);
 
-  const { data: teamMembers } = useTeamMembersByTripId(tripId)
+	const { data: teamMembers } = useTeamMembersByTripId(tripId);
 
-  const buildLeaderboard = useCallback(<T extends { golferId: string; rounds: number }>(
-    data: T[],
-    getValue: (d: T) => number,
-    formatValue: (d: T) => string,
-    sortAsc: boolean = false
-  ): LeaderboardEntry[] => {
-    // Filter to trip golfers only
-    const tripData = data.filter((d) => tripGolferIds.has(d.golferId))
+	const buildLeaderboard = useCallback(
+		<T extends { golferId: string; rounds: number }>(
+			data: T[],
+			getValue: (d: T) => number,
+			formatValue: (d: T) => string,
+			sortAsc: boolean = false,
+		): LeaderboardEntry[] => {
+			// Filter to trip golfers only
+			const tripData = data.filter((d) => tripGolferIds.has(d.golferId));
 
-    // Separate included and excluded golfers
-    const includedData = tripData.filter((d) => includedGolferIds.has(d.golferId))
-    const excludedData = tripData.filter((d) => !includedGolferIds.has(d.golferId))
+			// Separate included and excluded golfers
+			const includedData = tripData.filter((d) =>
+				includedGolferIds.has(d.golferId),
+			);
+			const excludedData = tripData.filter(
+				(d) => !includedGolferIds.has(d.golferId),
+			);
 
-    // Sort included golfers for ranking
-    const sortedIncluded = [...includedData].sort((a, b) => {
-      const diff = getValue(a) - getValue(b)
-      return sortAsc ? diff : -diff
-    })
+			// Sort included golfers for ranking
+			const sortedIncluded = [...includedData].sort((a, b) => {
+				const diff = getValue(a) - getValue(b);
+				return sortAsc ? diff : -diff;
+			});
 
-    let rank = 0
-    let lastValue: number | null = null
+			let rank = 0;
+			let lastValue: number | null = null;
 
-    const includedEntries: LeaderboardEntry[] = sortedIncluded.map((d, idx) => {
-      const value = getValue(d)
-      if (value !== lastValue) {
-        rank = idx + 1
-        lastValue = value
-      }
+			const includedEntries: LeaderboardEntry[] = sortedIncluded.map(
+				(d, idx) => {
+					const value = getValue(d);
+					if (value !== lastValue) {
+						rank = idx + 1;
+						lastValue = value;
+					}
 
-      const golfer = golferMap.get(d.golferId)
-      return {
-        rank,
-        golferId: d.golferId,
-        name: golfer?.name || 'Unknown',
-        value,
-        displayValue: formatValue(d),
-        rounds: d.rounds,
-        included: true,
-      }
-    })
+					const golfer = golferMap.get(d.golferId);
+					return {
+						rank,
+						golferId: d.golferId,
+						name: golfer?.name || "Unknown",
+						value,
+						displayValue: formatValue(d),
+						rounds: d.rounds,
+						included: true,
+					};
+				},
+			);
 
-    // Add excluded golfers at the end with no rank
-    const excludedEntries: LeaderboardEntry[] = excludedData.map((d) => {
-      const golfer = golferMap.get(d.golferId)
-      return {
-        rank: 0,
-        golferId: d.golferId,
-        name: golfer?.name || 'Unknown',
-        value: getValue(d),
-        displayValue: formatValue(d),
-        rounds: d.rounds,
-        included: false,
-      }
-    })
+			// Add excluded golfers at the end with no rank
+			const excludedEntries: LeaderboardEntry[] = excludedData.map((d) => {
+				const golfer = golferMap.get(d.golferId);
+				return {
+					rank: 0,
+					golferId: d.golferId,
+					name: golfer?.name || "Unknown",
+					value: getValue(d),
+					displayValue: formatValue(d),
+					rounds: d.rounds,
+					included: false,
+				};
+			});
 
-    return [...includedEntries, ...excludedEntries]
-  }, [tripGolferIds, includedGolferIds, golferMap])
+			return [...includedEntries, ...excludedEntries];
+		},
+		[tripGolferIds, includedGolferIds, golferMap],
+	);
 
-  const stablefordLeaderboard = useMemo(() =>
-    buildLeaderboard(
-      stablefordData,
-      (d) => d.totalPoints,
-      (d) => `${d.totalPoints} pts`
-    ),
-    [stablefordData, buildLeaderboard]
-  )
+	const stablefordLeaderboard = useMemo(
+		() =>
+			buildLeaderboard(
+				stablefordData,
+				(d) => d.totalPoints,
+				(d) => `${d.totalPoints} pts`,
+			),
+		[stablefordData, buildLeaderboard],
+	);
 
-  const netLeaderboard = useMemo(() =>
-    buildLeaderboard(
-      netData,
-      (d) => d.bestNet,
-      (d) => `${d.bestNet}`,
-      true
-    ),
-    [netData, buildLeaderboard]
-  )
+	const netLeaderboard = useMemo(
+		() =>
+			buildLeaderboard(
+				netData,
+				(d) => d.bestNet,
+				(d) => `${d.bestNet}`,
+				true,
+			),
+		[netData, buildLeaderboard],
+	);
 
-  const birdiesLeaderboard = useMemo(() =>
-    buildLeaderboard(
-      birdiesData,
-      (d) => d.totalBirdies,
-      (d) => `${d.totalBirdies}`
-    ),
-    [birdiesData, buildLeaderboard]
-  )
+	const birdiesLeaderboard = useMemo(
+		() =>
+			buildLeaderboard(
+				birdiesData,
+				(d) => d.totalBirdies,
+				(d) => `${d.totalBirdies}`,
+			),
+		[birdiesData, buildLeaderboard],
+	);
 
-  const kpsLeaderboard = useMemo(() =>
-    buildLeaderboard(
-      kpsData,
-      (d) => d.totalKps,
-      (d) => `${d.totalKps}`
-    ),
-    [kpsData, buildLeaderboard]
-  )
+	const kpsLeaderboard = useMemo(
+		() =>
+			buildLeaderboard(
+				kpsData,
+				(d) => d.totalKps,
+				(d) => `${d.totalKps}`,
+			),
+		[kpsData, buildLeaderboard],
+	);
 
-  // Team leaderboard
-  const teamLeaderboard = useMemo(() =>
-    (teams || [])
-      .map((team) => {
-        const members = (teamMembers || []).filter((tm) => tm.teamId === team.id)
-        const memberIds = members.map((m) => m.golferId)
+	// Team leaderboard
+	const teamLeaderboard = useMemo(
+		() =>
+			(teams || [])
+				.map((team) => {
+					const members = (teamMembers || []).filter(
+						(tm) => tm.teamId === team.id,
+					);
+					const memberIds = members.map((m) => m.golferId);
 
-        const memberPoints = (stablefordData || [])
-          .filter((d) => memberIds.includes(d.golferId))
-          .reduce((sum, d) => sum + d.totalPoints, 0)
+					const memberPoints = (stablefordData || [])
+						.filter((d) => memberIds.includes(d.golferId))
+						.reduce((sum, d) => sum + d.totalPoints, 0);
 
-        return {
-          team,
-          totalPoints: memberPoints,
-          memberCount: members.length,
-        }
-      })
-      .sort((a, b) => b.totalPoints - a.totalPoints),
-    [teams, teamMembers, stablefordData]
-  )
+					return {
+						team,
+						totalPoints: memberPoints,
+						memberCount: members.length,
+					};
+				})
+				.sort((a, b) => b.totalPoints - a.totalPoints),
+		[teams, teamMembers, stablefordData],
+	);
 
-  // Show loading while role is being determined
-  if (roleLoading) {
-    return (
-      <Container size="2" py="6">
-        <Flex justify="center" align="center" style={{ minHeight: '200px' }}>
-          <Spinner size="3" />
-        </Flex>
-      </Container>
-    )
-  }
+	// Show loading while role is being determined
+	if (roleLoading) {
+		return (
+			<Container size="2" py="6">
+				<Flex justify="center" align="center" style={{ minHeight: "200px" }}>
+					<Spinner size="3" />
+				</Flex>
+			</Container>
+		);
+	}
 
-  if (role === 'none') {
-    return (
-      <Container size="2" py="6">
-        <Flex direction="column" gap="3" align="center" style={{ minHeight: '200px' }} justify="center">
-          <Text size="5" weight="medium">Access Denied</Text>
-          <Text color="gray">You don't have permission to view this trip.</Text>
-        </Flex>
-      </Container>
-    )
-  }
+	if (role === "none") {
+		return (
+			<Container size="2" py="6">
+				<Flex
+					direction="column"
+					gap="3"
+					align="center"
+					style={{ minHeight: "200px" }}
+					justify="center"
+				>
+					<Text size="5" weight="medium">
+						Access Denied
+					</Text>
+					<Text color="gray">You don't have permission to view this trip.</Text>
+				</Flex>
+			</Container>
+		);
+	}
 
-  if (!trip) {
-    return (
-      <Container size="2" py="6">
-        <Text>Trip not found</Text>
-      </Container>
-    )
-  }
+	if (!trip) {
+		return (
+			<Container size="2" py="6">
+				<Text>Trip not found</Text>
+			</Container>
+		);
+	}
 
-  const hasData = stablefordLeaderboard.length > 0
+	const hasData = stablefordLeaderboard.length > 0;
 
-  return (
-    <Container size="2" py="6">
-      <Flex direction="column" gap="5">
-        {/* Navigation */}
-        <Flex justify="between" align="center" wrap="wrap" gap="2">
-          <Link to="/trips/$tripId" params={{ tripId }}>
-            <Button variant="ghost" size="1">
-              <ArrowLeft size={16} />
-              Back to Trip
-            </Button>
-          </Link>
-          <Flex gap="2">
-            <Link to="/trips/$tripId/golfers" params={{ tripId }}>
-              <Button variant="soft" size="1">
-                <Users size={14} />
-                Golfers
-              </Button>
-            </Link>
-            <Link to="/trips/$tripId/teams" params={{ tripId }}>
-              <Button variant="soft" size="1">
-                <Flag size={14} />
-                Teams
-              </Button>
-            </Link>
-            <Link to="/trips/$tripId/challenges" params={{ tripId }}>
-              <Button variant="soft" size="1">
-                <Target size={14} />
-                Challenges
-              </Button>
-            </Link>
-          </Flex>
-        </Flex>
+	return (
+		<Container size="2" py="6">
+			<Flex direction="column" gap="5">
+				{/* Navigation */}
+				<Flex justify="between" align="center" wrap="wrap" gap="2">
+					<Link to="/trips/$tripId" params={{ tripId }}>
+						<Button variant="ghost" size="1">
+							<ArrowLeft size={16} />
+							Back to Trip
+						</Button>
+					</Link>
+					<Flex gap="2">
+						<Link to="/trips/$tripId/golfers" params={{ tripId }}>
+							<Button variant="soft" size="1">
+								<Users size={14} />
+								Golfers
+							</Button>
+						</Link>
+						<Link to="/trips/$tripId/teams" params={{ tripId }}>
+							<Button variant="soft" size="1">
+								<Flag size={14} />
+								Teams
+							</Button>
+						</Link>
+						<Link to="/trips/$tripId/challenges" params={{ tripId }}>
+							<Button variant="soft" size="1">
+								<Target size={14} />
+								Challenges
+							</Button>
+						</Link>
+					</Flex>
+				</Flex>
 
-        <Flex direction="column" gap="3">
-          <Heading size="7">Leaderboards</Heading>
-          <Text color="gray">{trip.name}</Text>
-        </Flex>
+				<Flex direction="column" gap="3">
+					<Heading size="7">Leaderboards</Heading>
+					<Text color="gray">{trip.name}</Text>
+				</Flex>
 
-        {/* Round Selector */}
-        {sortedRounds.length > 0 && (
-          <SegmentedControl.Root
-            value={selectedRoundId || 'trip'}
-            onValueChange={(value) => setSelectedRoundId(value === 'trip' ? null : value)}
-          >
-            <SegmentedControl.Item value="trip">Trip Total</SegmentedControl.Item>
-            {sortedRounds.map((round) => (
-              <SegmentedControl.Item key={round.id} value={round.id}>
-                R{round.roundNumber}
-              </SegmentedControl.Item>
-            ))}
-          </SegmentedControl.Root>
-        )}
+				{/* Round Selector */}
+				{sortedRounds.length > 0 && (
+					<SegmentedControl.Root
+						value={selectedRoundId || "trip"}
+						onValueChange={(value) =>
+							setSelectedRoundId(value === "trip" ? null : value)
+						}
+					>
+						<SegmentedControl.Item value="trip">
+							Trip Total
+						</SegmentedControl.Item>
+						{sortedRounds.map((round) => (
+							<SegmentedControl.Item key={round.id} value={round.id}>
+								R{round.roundNumber}
+							</SegmentedControl.Item>
+						))}
+					</SegmentedControl.Root>
+				)}
 
-        {hasData ? (
-          <Tabs.Root defaultValue="stableford">
-            <Tabs.List>
-              <Tabs.Trigger value="stableford">Stableford</Tabs.Trigger>
-              <Tabs.Trigger value="net">Best Net</Tabs.Trigger>
-              <Tabs.Trigger value="birdies">Birdies</Tabs.Trigger>
-              <Tabs.Trigger value="kps">KPs</Tabs.Trigger>
-              {teams && teams.length > 0 && (
-                <Tabs.Trigger value="teams">Teams</Tabs.Trigger>
-              )}
-            </Tabs.List>
+				{hasData ? (
+					<Tabs.Root defaultValue="stableford">
+						<Tabs.List>
+							<Tabs.Trigger value="stableford">Stableford</Tabs.Trigger>
+							<Tabs.Trigger value="net">Best Net</Tabs.Trigger>
+							<Tabs.Trigger value="birdies">Birdies</Tabs.Trigger>
+							<Tabs.Trigger value="kps">KPs</Tabs.Trigger>
+							{teams && teams.length > 0 && (
+								<Tabs.Trigger value="teams">Teams</Tabs.Trigger>
+							)}
+						</Tabs.List>
 
-            <Tabs.Content value="stableford">
-              <Card mt="4">
-                <LeaderboardTable
-                  entries={stablefordLeaderboard}
-                  valueLabel="Total Points"
-                  showRounds
-                  onToggleGolfer={toggleGolferScoring}
-                  onClickRounds={setSelectedGolferId}
-                />
-              </Card>
-            </Tabs.Content>
+						<Tabs.Content value="stableford">
+							<Card mt="4">
+								<LeaderboardTable
+									entries={stablefordLeaderboard}
+									valueLabel="Total Points"
+									showRounds
+									onToggleGolfer={toggleGolferScoring}
+									onClickRounds={setSelectedGolferId}
+								/>
+							</Card>
+						</Tabs.Content>
 
-            <Tabs.Content value="net">
-              <Card mt="4">
-                <LeaderboardTable
-                  entries={netLeaderboard}
-                  valueLabel="Best Net"
-                  showRounds
-                  onToggleGolfer={toggleGolferScoring}
-                  onClickRounds={setSelectedGolferId}
-                />
-              </Card>
-            </Tabs.Content>
+						<Tabs.Content value="net">
+							<Card mt="4">
+								<LeaderboardTable
+									entries={netLeaderboard}
+									valueLabel="Best Net"
+									showRounds
+									onToggleGolfer={toggleGolferScoring}
+									onClickRounds={setSelectedGolferId}
+								/>
+							</Card>
+						</Tabs.Content>
 
-            <Tabs.Content value="birdies">
-              <Card mt="4">
-                <LeaderboardTable
-                  entries={birdiesLeaderboard}
-                  valueLabel="Total Birdies"
-                  showRounds
-                  onToggleGolfer={toggleGolferScoring}
-                  onClickRounds={setSelectedGolferId}
-                />
-              </Card>
-            </Tabs.Content>
+						<Tabs.Content value="birdies">
+							<Card mt="4">
+								<LeaderboardTable
+									entries={birdiesLeaderboard}
+									valueLabel="Total Birdies"
+									showRounds
+									onToggleGolfer={toggleGolferScoring}
+									onClickRounds={setSelectedGolferId}
+								/>
+							</Card>
+						</Tabs.Content>
 
-            <Tabs.Content value="kps">
-              <Card mt="4">
-                <LeaderboardTable
-                  entries={kpsLeaderboard}
-                  valueLabel="Total KPs"
-                  showRounds
-                  onToggleGolfer={toggleGolferScoring}
-                  onClickRounds={setSelectedGolferId}
-                />
-              </Card>
-            </Tabs.Content>
+						<Tabs.Content value="kps">
+							<Card mt="4">
+								<LeaderboardTable
+									entries={kpsLeaderboard}
+									valueLabel="Total KPs"
+									showRounds
+									onToggleGolfer={toggleGolferScoring}
+									onClickRounds={setSelectedGolferId}
+								/>
+							</Card>
+						</Tabs.Content>
 
-            {teams && teams.length > 0 && (
-              <Tabs.Content value="teams">
-                <Card mt="4">
-                  <Flex direction="column" gap="3">
-                    {teamLeaderboard.map((item, idx) => (
-                      <Card key={item.team.id}>
-                        <Flex justify="between" align="center">
-                          <Flex align="center" gap="3">
-                            <Badge
-                              size="2"
-                              style={{ backgroundColor: item.team.color }}
-                            >
-                              #{idx + 1}
-                            </Badge>
-                            <Flex direction="column" gap="2">
-                              <Text weight="bold">{item.team.name}</Text>
-                              <Text size="1" color="gray">
-                                {item.memberCount} members
-                              </Text>
-                            </Flex>
-                          </Flex>
-                          <Text size="5" weight="bold" color="blue">
-                            {item.totalPoints} pts
-                          </Text>
-                        </Flex>
-                      </Card>
-                    ))}
-                  </Flex>
-                </Card>
-              </Tabs.Content>
-            )}
-          </Tabs.Root>
-        ) : (
-          <Flex direction="column" align="center" py="9">
-            <Text color="gray">No scores yet</Text>
-          </Flex>
-        )}
-      </Flex>
+						{teams && teams.length > 0 && (
+							<Tabs.Content value="teams">
+								<Card mt="4">
+									<Flex direction="column" gap="3">
+										{teamLeaderboard.map((item, idx) => (
+											<Card key={item.team.id}>
+												<Flex justify="between" align="center">
+													<Flex align="center" gap="3">
+														<Badge
+															size="2"
+															style={{ backgroundColor: item.team.color }}
+														>
+															#{idx + 1}
+														</Badge>
+														<Flex direction="column" gap="2">
+															<Text weight="bold">{item.team.name}</Text>
+															<Text size="1" color="gray">
+																{item.memberCount} members
+															</Text>
+														</Flex>
+													</Flex>
+													<Text size="5" weight="bold" color="blue">
+														{item.totalPoints} pts
+													</Text>
+												</Flex>
+											</Card>
+										))}
+									</Flex>
+								</Card>
+							</Tabs.Content>
+						)}
+					</Tabs.Root>
+				) : (
+					<Flex direction="column" align="center" py="9">
+						<Text color="gray">No scores yet</Text>
+					</Flex>
+				)}
+			</Flex>
 
-      {/* Round Selection Dialog */}
-      <Dialog.Root open={!!selectedGolferId} onOpenChange={(open) => !open && setSelectedGolferId(null)}>
-        <Dialog.Content maxWidth="400px">
-          <Dialog.Title>
-            Select Rounds for {selectedGolferId ? golferMap.get(selectedGolferId)?.name : ''}
-          </Dialog.Title>
-          <Dialog.Description size="2" color="gray">
-            Choose which rounds to include in scoring calculations
-          </Dialog.Description>
-          <Flex direction="column" gap="3" pt="4">
-            {selectedGolferSummaries.map((summary) => {
-              const round = roundMap.get(summary.roundId)
-              const course = round ? courseMap.get(round.courseId) : null
-              const isIncluded = summary.includedInScoring !== false
+			{/* Round Selection Dialog */}
+			<Dialog.Root
+				open={!!selectedGolferId}
+				onOpenChange={(open) => !open && setSelectedGolferId(null)}
+			>
+				<Dialog.Content maxWidth="400px">
+					<Dialog.Title>
+						Select Rounds for{" "}
+						{selectedGolferId ? golferMap.get(selectedGolferId)?.name : ""}
+					</Dialog.Title>
+					<Dialog.Description size="2" color="gray">
+						Choose which rounds to include in scoring calculations
+					</Dialog.Description>
+					<Flex direction="column" gap="3" pt="4">
+						{selectedGolferSummaries.map((summary) => {
+							const round = roundMap.get(summary.roundId);
+							const course = round ? courseMap.get(round.courseId) : null;
+							const isIncluded = summary.includedInScoring !== false;
 
-              return (
-                <Card key={summary.id} size="1">
-                  <Flex justify="between" align="center">
-                    <Flex direction="column" gap="1">
-                      <Flex align="center" gap="2">
-                        <Badge size="1">R{round?.roundNumber}</Badge>
-                        <Text size="2" weight="medium">
-                          {course?.name || 'Unknown Course'}
-                        </Text>
-                      </Flex>
-                      <Flex gap="3">
-                        <Text size="1" color="gray">
-                          Gross: {summary.totalGross}
-                        </Text>
-                        <Text size="1" color="gray">
-                          Net: {summary.totalNet}
-                        </Text>
-                        <Text size="1" color="gray">
-                          Pts: {summary.totalStableford}
-                        </Text>
-                      </Flex>
-                    </Flex>
-                    <Switch
-                      size="1"
-                      checked={isIncluded}
-                      onCheckedChange={() => toggleRoundForGolfer(summary.id, summary.roundId, isIncluded)}
-                    />
-                  </Flex>
-                </Card>
-              )
-            })}
-            {selectedGolferSummaries.length === 0 && (
-              <Text size="2" color="gray" align="center">
-                No rounds found for this golfer
-              </Text>
-            )}
-          </Flex>
-          <Flex justify="end" pt="4">
-            <Button variant="soft" onClick={() => setSelectedGolferId(null)}>
-              Done
-            </Button>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
-    </Container>
-  )
+							return (
+								<Card key={summary.id} size="1">
+									<Flex justify="between" align="center">
+										<Flex direction="column" gap="1">
+											<Flex align="center" gap="2">
+												<Badge size="1">R{round?.roundNumber}</Badge>
+												<Text size="2" weight="medium">
+													{course?.name || "Unknown Course"}
+												</Text>
+											</Flex>
+											<Flex gap="3">
+												<Text size="1" color="gray">
+													Gross: {summary.totalGross}
+												</Text>
+												<Text size="1" color="gray">
+													Net: {summary.totalNet}
+												</Text>
+												<Text size="1" color="gray">
+													Pts: {summary.totalStableford}
+												</Text>
+											</Flex>
+										</Flex>
+										<Switch
+											size="1"
+											checked={isIncluded}
+											onCheckedChange={() =>
+												toggleRoundForGolfer(
+													summary.id,
+													summary.roundId,
+													isIncluded,
+												)
+											}
+										/>
+									</Flex>
+								</Card>
+							);
+						})}
+						{selectedGolferSummaries.length === 0 && (
+							<Text size="2" color="gray" align="center">
+								No rounds found for this golfer
+							</Text>
+						)}
+					</Flex>
+					<Flex justify="end" pt="4">
+						<Button variant="soft" onClick={() => setSelectedGolferId(null)}>
+							Done
+						</Button>
+					</Flex>
+				</Dialog.Content>
+			</Dialog.Root>
+		</Container>
+	);
 }

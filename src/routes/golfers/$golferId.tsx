@@ -1,454 +1,516 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import {
-  Container,
-  Flex,
-  Heading,
-  Text,
-  Card,
-  Avatar,
-  Badge,
-  Button,
-  Dialog,
-  AlertDialog,
-  Separator,
-  Grid,
-} from '@radix-ui/themes'
-import { ArrowLeft, Mail, Phone, Trophy, Flag, Calendar, Edit, ChevronRight, Trash2 } from 'lucide-react'
-import { useMemo } from 'react'
-import { useDialogState } from '../../hooks/useDialogState'
-import { GolferForm } from '../../components/golfers/GolferForm'
-import { useRequireAuth } from '../../hooks/useRequireAuth'
+	AlertDialog,
+	Avatar,
+	Badge,
+	Button,
+	Card,
+	Container,
+	Dialog,
+	Flex,
+	Grid,
+	Heading,
+	Separator,
+	Text,
+} from "@radix-ui/themes";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
-  useGolfer,
-  useDeleteGolfer,
-  useTripGolfers,
-  useTrips,
-  useRoundSummaries,
-  useRounds,
-  useCourses,
-} from '../../hooks/queries'
+	ArrowLeft,
+	Calendar,
+	ChevronRight,
+	Edit,
+	Flag,
+	Mail,
+	Phone,
+	Trash2,
+	Trophy,
+} from "lucide-react";
+import { useMemo } from "react";
+import { GolferForm } from "../../components/golfers/GolferForm";
+import {
+	useCourses,
+	useDeleteGolfer,
+	useGolfer,
+	useRoundSummaries,
+	useRounds,
+	useTripGolfers,
+	useTrips,
+} from "../../hooks/queries";
+import { useDialogState } from "../../hooks/useDialogState";
+import { useRequireAuth } from "../../hooks/useRequireAuth";
 
-export const Route = createFileRoute('/golfers/$golferId')({
-  ssr: false,
-  component: GolferDetailPage,
-})
+export const Route = createFileRoute("/golfers/$golferId")({
+	ssr: false,
+	component: GolferDetailPage,
+});
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+	return name
+		.split(" ")
+		.map((n) => n[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
 }
 
 function GolferDetailPage() {
-  useRequireAuth()
-  const { golferId } = Route.useParams()
-  const navigate = useNavigate()
-  const [editDialogOpen, setEditDialogOpen] = useDialogState(`edit-golfer-${golferId}`)
+	useRequireAuth();
+	const { golferId } = Route.useParams();
+	const navigate = useNavigate();
+	const [editDialogOpen, setEditDialogOpen] = useDialogState(
+		`edit-golfer-${golferId}`,
+	);
 
-  const { data: golfer, isLoading: golferLoading } = useGolfer(golferId)
-  const { data: allTripGolfers } = useTripGolfers()
-  const { data: allTrips } = useTrips()
-  const { data: allRoundSummaries } = useRoundSummaries()
-  const { data: allRounds } = useRounds()
-  const { data: allCourses } = useCourses()
-  const deleteGolfer = useDeleteGolfer()
+	const { data: golfer, isLoading: golferLoading } = useGolfer(golferId);
+	const { data: allTripGolfers } = useTripGolfers();
+	const { data: allTrips } = useTrips();
+	const { data: allRoundSummaries } = useRoundSummaries();
+	const { data: allRounds } = useRounds();
+	const { data: allCourses } = useCourses();
+	const deleteGolfer = useDeleteGolfer();
 
-  function handleDeleteGolfer() {
-    deleteGolfer.mutate(golferId, {
-      onSuccess: () => {
-        navigate({ to: '/golfers' })
-      },
-    })
-  }
+	function handleDeleteGolfer() {
+		deleteGolfer.mutate(golferId, {
+			onSuccess: () => {
+				navigate({ to: "/golfers" });
+			},
+		});
+	}
 
-  // Get trips this golfer has participated in
-  const trips = useMemo(() => {
-    if (!allTripGolfers || !allTrips) return []
+	// Get trips this golfer has participated in
+	const trips = useMemo(() => {
+		if (!allTripGolfers || !allTrips) return [];
 
-    const tripGolfersForGolfer = allTripGolfers.filter((tg) => tg.golferId === golferId)
-    const tripsMap = new Map(allTrips.map((t) => [t.id, t]))
+		const tripGolfersForGolfer = allTripGolfers.filter(
+			(tg) => tg.golferId === golferId,
+		);
+		const tripsMap = new Map(allTrips.map((t) => [t.id, t]));
 
-    return tripGolfersForGolfer
-      .map((tg) => {
-        const trip = tripsMap.get(tg.tripId)
-        if (!trip) return null
-        return {
-          tripId: trip.id,
-          tripName: trip.name,
-          location: trip.location,
-          startDate: trip.startDate,
-          endDate: trip.endDate,
-          status: tg.status,
-        }
-      })
-      .filter((t): t is NonNullable<typeof t> => t !== null)
-  }, [allTripGolfers, allTrips, golferId])
+		return tripGolfersForGolfer
+			.map((tg) => {
+				const trip = tripsMap.get(tg.tripId);
+				if (!trip) return null;
+				return {
+					tripId: trip.id,
+					tripName: trip.name,
+					location: trip.location,
+					startDate: trip.startDate,
+					endDate: trip.endDate,
+					status: tg.status,
+				};
+			})
+			.filter((t): t is NonNullable<typeof t> => t !== null);
+	}, [allTripGolfers, allTrips, golferId]);
 
-  // Get round summaries for this golfer with trip and course info
-  const rounds = useMemo(() => {
-    if (!allRoundSummaries || !allRounds || !allTrips || !allCourses) return []
+	// Get round summaries for this golfer with trip and course info
+	const rounds = useMemo(() => {
+		if (!allRoundSummaries || !allRounds || !allTrips || !allCourses) return [];
 
-    const roundsMap = new Map(allRounds.map((r) => [r.id, r]))
-    const tripsMap = new Map(allTrips.map((t) => [t.id, t]))
-    const coursesMap = new Map(allCourses.map((c) => [c.id, c]))
+		const roundsMap = new Map(allRounds.map((r) => [r.id, r]));
+		const tripsMap = new Map(allTrips.map((t) => [t.id, t]));
+		const coursesMap = new Map(allCourses.map((c) => [c.id, c]));
 
-    const summariesForGolfer = allRoundSummaries.filter((rs) => rs.golferId === golferId)
+		const summariesForGolfer = allRoundSummaries.filter(
+			(rs) => rs.golferId === golferId,
+		);
 
-    return summariesForGolfer
-      .map((rs) => {
-        const round = roundsMap.get(rs.roundId)
-        if (!round) return null
-        const trip = tripsMap.get(round.tripId)
-        const course = coursesMap.get(round.courseId)
-        if (!trip || !course) return null
-        return {
-          roundId: rs.roundId,
-          tripId: round.tripId,
-          tripName: trip.name,
-          courseName: course.name,
-          totalGross: rs.totalGross,
-          totalNet: rs.totalNet,
-          totalStableford: rs.totalStableford,
-          birdiesOrBetter: rs.birdiesOrBetter,
-          roundDate: round.roundDate,
-          roundNumber: round.roundNumber,
-        }
-      })
-      .filter((r): r is NonNullable<typeof r> => r !== null)
-      .sort((a, b) => new Date(b.roundDate).getTime() - new Date(a.roundDate).getTime())
-  }, [allRoundSummaries, allRounds, allTrips, allCourses, golferId])
+		return summariesForGolfer
+			.map((rs) => {
+				const round = roundsMap.get(rs.roundId);
+				if (!round) return null;
+				const trip = tripsMap.get(round.tripId);
+				const course = coursesMap.get(round.courseId);
+				if (!trip || !course) return null;
+				return {
+					roundId: rs.roundId,
+					tripId: round.tripId,
+					tripName: trip.name,
+					courseName: course.name,
+					totalGross: rs.totalGross,
+					totalNet: rs.totalNet,
+					totalStableford: rs.totalStableford,
+					birdiesOrBetter: rs.birdiesOrBetter,
+					roundDate: round.roundDate,
+					roundNumber: round.roundNumber,
+				};
+			})
+			.filter((r): r is NonNullable<typeof r> => r !== null)
+			.sort(
+				(a, b) =>
+					new Date(b.roundDate).getTime() - new Date(a.roundDate).getTime(),
+			);
+	}, [allRoundSummaries, allRounds, allTrips, allCourses, golferId]);
 
-  if (golferLoading) {
-    return (
-      <Container size="2" py="6">
-        <Flex direction="column" gap="4" align="center">
-          <Text color="gray">Loading...</Text>
-        </Flex>
-      </Container>
-    )
-  }
+	if (golferLoading) {
+		return (
+			<Container size="2" py="6">
+				<Flex direction="column" gap="4" align="center">
+					<Text color="gray">Loading...</Text>
+				</Flex>
+			</Container>
+		);
+	}
 
-  if (!golfer) {
-    return (
-      <Container size="2" py="6">
-        <Flex direction="column" gap="4" align="center">
-          <Text color="gray">Golfer not found</Text>
-          <Link to="/golfers">
-            <Button variant="soft">
-              <ArrowLeft size={16} />
-              Back to Golfers
-            </Button>
-          </Link>
-        </Flex>
-      </Container>
-    )
-  }
+	if (!golfer) {
+		return (
+			<Container size="2" py="6">
+				<Flex direction="column" gap="4" align="center">
+					<Text color="gray">Golfer not found</Text>
+					<Link to="/golfers">
+						<Button variant="soft">
+							<ArrowLeft size={16} />
+							Back to Golfers
+						</Button>
+					</Link>
+				</Flex>
+			</Container>
+		);
+	}
 
-  // Calculate stats
-  const totalRounds = rounds.length
-  const avgGross =
-    totalRounds > 0
-      ? Math.round(rounds.reduce((sum, r) => sum + r.totalGross, 0) / totalRounds)
-      : null
-  const avgStableford =
-    totalRounds > 0
-      ? Math.round(rounds.reduce((sum, r) => sum + r.totalStableford, 0) / totalRounds)
-      : null
-  const totalBirdies = rounds.reduce((sum, r) => sum + r.birdiesOrBetter, 0)
+	// Calculate stats
+	const totalRounds = rounds.length;
+	const avgGross =
+		totalRounds > 0
+			? Math.round(
+					rounds.reduce((sum, r) => sum + r.totalGross, 0) / totalRounds,
+				)
+			: null;
+	const avgStableford =
+		totalRounds > 0
+			? Math.round(
+					rounds.reduce((sum, r) => sum + r.totalStableford, 0) / totalRounds,
+				)
+			: null;
+	const totalBirdies = rounds.reduce((sum, r) => sum + r.birdiesOrBetter, 0);
 
-  return (
-    <Container size="2" py="6">
-      <Flex direction="column" gap="6">
-        {/* Back button */}
-        <Link to="/golfers">
-          <Button variant="ghost" size="1">
-            <ArrowLeft size={16} />
-            Back to Golfers
-          </Button>
-        </Link>
+	return (
+		<Container size="2" py="6">
+			<Flex direction="column" gap="6">
+				{/* Back button */}
+				<Link to="/golfers">
+					<Button variant="ghost" size="1">
+						<ArrowLeft size={16} />
+						Back to Golfers
+					</Button>
+				</Link>
 
-        {/* Profile header */}
-        <Card>
-          <Flex gap="4" align="start">
-            <Avatar
-              size="6"
-              src={golfer.profileImageUrl || undefined}
-              fallback={getInitials(golfer.name)}
-              radius="full"
-              color="amber"
-            />
-            <Flex direction="column" gap="3" style={{ flex: 1 }}>
-              <Flex justify="between" align="start">
-                <Flex direction="column" gap="3">
-                  <Heading size="6">{golfer.name}</Heading>
-                  <Badge size="2" color="grass" variant="soft">
-                    HCP {golfer.handicap.toFixed(1)}
-                  </Badge>
-                </Flex>
-                <Flex gap="2">
-                  <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                    <Dialog.Trigger>
-                      <Button variant="soft" size="1">
-                        <Edit size={14} />
-                        Edit
-                      </Button>
-                    </Dialog.Trigger>
-                    <Dialog.Content maxWidth="400px">
-                      <Dialog.Title>Edit Golfer</Dialog.Title>
-                      <Flex direction="column" gap="4" pt="4">
-                        <GolferForm
-                          golferId={golfer.id}
-                          initialData={{
-                            name: golfer.name,
-                            email: golfer.email,
-                            phone: golfer.phone,
-                            handicap: golfer.handicap,
-                          }}
-                          onSuccess={() => setEditDialogOpen(false)}
-                        />
-                      </Flex>
-                    </Dialog.Content>
-                  </Dialog.Root>
-                  <AlertDialog.Root>
-                    <AlertDialog.Trigger>
-                      <Button variant="soft" color="red" size="1">
-                        <Trash2 size={14} />
-                      </Button>
-                    </AlertDialog.Trigger>
-                    <AlertDialog.Content maxWidth="450px">
-                      <AlertDialog.Title>Delete Golfer</AlertDialog.Title>
-                      <AlertDialog.Description size="2">
-                        Are you sure you want to delete {golfer.name}? This will permanently remove
-                        their profile and all associated scores. This action cannot be undone.
-                      </AlertDialog.Description>
-                      <Flex gap="3" mt="4" justify="end">
-                        <AlertDialog.Cancel>
-                          <Button variant="soft" color="gray">
-                            Cancel
-                          </Button>
-                        </AlertDialog.Cancel>
-                        <AlertDialog.Action>
-                          <Button variant="solid" color="red" onClick={handleDeleteGolfer}>
-                            Delete Golfer
-                          </Button>
-                        </AlertDialog.Action>
-                      </Flex>
-                    </AlertDialog.Content>
-                  </AlertDialog.Root>
-                </Flex>
-              </Flex>
+				{/* Profile header */}
+				<Card>
+					<Flex gap="4" align="start">
+						<Avatar
+							size="6"
+							src={golfer.profileImageUrl || undefined}
+							fallback={getInitials(golfer.name)}
+							radius="full"
+							color="amber"
+						/>
+						<Flex direction="column" gap="3" style={{ flex: 1 }}>
+							<Flex justify="between" align="start">
+								<Flex direction="column" gap="3">
+									<Heading size="6">{golfer.name}</Heading>
+									<Badge size="2" color="grass" variant="soft">
+										HCP {golfer.handicap.toFixed(1)}
+									</Badge>
+								</Flex>
+								<Flex gap="2">
+									<Dialog.Root
+										open={editDialogOpen}
+										onOpenChange={setEditDialogOpen}
+									>
+										<Dialog.Trigger>
+											<Button variant="soft" size="1">
+												<Edit size={14} />
+												Edit
+											</Button>
+										</Dialog.Trigger>
+										<Dialog.Content maxWidth="400px">
+											<Dialog.Title>Edit Golfer</Dialog.Title>
+											<Flex direction="column" gap="4" pt="4">
+												<GolferForm
+													golferId={golfer.id}
+													initialData={{
+														name: golfer.name,
+														email: golfer.email,
+														phone: golfer.phone,
+														handicap: golfer.handicap,
+													}}
+													onSuccess={() => setEditDialogOpen(false)}
+												/>
+											</Flex>
+										</Dialog.Content>
+									</Dialog.Root>
+									<AlertDialog.Root>
+										<AlertDialog.Trigger>
+											<Button variant="soft" color="red" size="1">
+												<Trash2 size={14} />
+											</Button>
+										</AlertDialog.Trigger>
+										<AlertDialog.Content maxWidth="450px">
+											<AlertDialog.Title>Delete Golfer</AlertDialog.Title>
+											<AlertDialog.Description size="2">
+												Are you sure you want to delete {golfer.name}? This will
+												permanently remove their profile and all associated
+												scores. This action cannot be undone.
+											</AlertDialog.Description>
+											<Flex gap="3" mt="4" justify="end">
+												<AlertDialog.Cancel>
+													<Button variant="soft" color="gray">
+														Cancel
+													</Button>
+												</AlertDialog.Cancel>
+												<AlertDialog.Action>
+													<Button
+														variant="solid"
+														color="red"
+														onClick={handleDeleteGolfer}
+													>
+														Delete Golfer
+													</Button>
+												</AlertDialog.Action>
+											</Flex>
+										</AlertDialog.Content>
+									</AlertDialog.Root>
+								</Flex>
+							</Flex>
 
-              {/* Contact info */}
-              <Flex gap="4" wrap="wrap">
-                {golfer.email && (
-                  <Flex align="center" gap="1">
-                    <Mail size={14} style={{ color: 'var(--gray-9)' }} />
-                    <Text size="2" color="gray">
-                      {golfer.email}
-                    </Text>
-                  </Flex>
-                )}
-                {golfer.phone && (
-                  <Flex align="center" gap="1">
-                    <Phone size={14} style={{ color: 'var(--gray-9)' }} />
-                    <Text size="2" color="gray">
-                      {golfer.phone}
-                    </Text>
-                  </Flex>
-                )}
-              </Flex>
-            </Flex>
-          </Flex>
-        </Card>
+							{/* Contact info */}
+							<Flex gap="4" wrap="wrap">
+								{golfer.email && (
+									<Flex align="center" gap="1">
+										<Mail size={14} style={{ color: "var(--gray-9)" }} />
+										<Text size="2" color="gray">
+											{golfer.email}
+										</Text>
+									</Flex>
+								)}
+								{golfer.phone && (
+									<Flex align="center" gap="1">
+										<Phone size={14} style={{ color: "var(--gray-9)" }} />
+										<Text size="2" color="gray">
+											{golfer.phone}
+										</Text>
+									</Flex>
+								)}
+							</Flex>
+						</Flex>
+					</Flex>
+				</Card>
 
-        {/* Stats summary */}
-        {totalRounds > 0 && (
-          <Grid columns={{ initial: '2', md: '4' }} gap="3">
-            <Card>
-              <Flex direction="column" align="center" gap="2">
-                <Heading size="5" style={{ color: 'var(--amber-9)' }}>
-                  {totalRounds}
-                </Heading>
-                <Text size="1" color="gray">
-                  Rounds
-                </Text>
-              </Flex>
-            </Card>
-            <Card>
-              <Flex direction="column" align="center" gap="2">
-                <Heading size="5" style={{ color: 'var(--amber-9)' }}>
-                  {avgGross}
-                </Heading>
-                <Text size="1" color="gray">
-                  Avg Gross
-                </Text>
-              </Flex>
-            </Card>
-            <Card>
-              <Flex direction="column" align="center" gap="2">
-                <Heading size="5" style={{ color: 'var(--amber-9)' }}>
-                  {avgStableford}
-                </Heading>
-                <Text size="1" color="gray">
-                  Avg Points
-                </Text>
-              </Flex>
-            </Card>
-            <Card>
-              <Flex direction="column" align="center" gap="2">
-                <Heading size="5" style={{ color: 'var(--amber-9)' }}>
-                  {totalBirdies}
-                </Heading>
-                <Text size="1" color="gray">
-                  Birdies+
-                </Text>
-              </Flex>
-            </Card>
-          </Grid>
-        )}
+				{/* Stats summary */}
+				{totalRounds > 0 && (
+					<Grid columns={{ initial: "2", md: "4" }} gap="3">
+						<Card>
+							<Flex direction="column" align="center" gap="2">
+								<Heading size="5" style={{ color: "var(--amber-9)" }}>
+									{totalRounds}
+								</Heading>
+								<Text size="1" color="gray">
+									Rounds
+								</Text>
+							</Flex>
+						</Card>
+						<Card>
+							<Flex direction="column" align="center" gap="2">
+								<Heading size="5" style={{ color: "var(--amber-9)" }}>
+									{avgGross}
+								</Heading>
+								<Text size="1" color="gray">
+									Avg Gross
+								</Text>
+							</Flex>
+						</Card>
+						<Card>
+							<Flex direction="column" align="center" gap="2">
+								<Heading size="5" style={{ color: "var(--amber-9)" }}>
+									{avgStableford}
+								</Heading>
+								<Text size="1" color="gray">
+									Avg Points
+								</Text>
+							</Flex>
+						</Card>
+						<Card>
+							<Flex direction="column" align="center" gap="2">
+								<Heading size="5" style={{ color: "var(--amber-9)" }}>
+									{totalBirdies}
+								</Heading>
+								<Text size="1" color="gray">
+									Birdies+
+								</Text>
+							</Flex>
+						</Card>
+					</Grid>
+				)}
 
-        <Separator size="4" />
+				<Separator size="4" />
 
-        {/* Trips section */}
-        <Flex direction="column" gap="3">
-          <Flex align="center" gap="2">
-            <Flag size={18} style={{ color: 'var(--grass-9)' }} />
-            <Heading size="4">Trips</Heading>
-          </Flex>
+				{/* Trips section */}
+				<Flex direction="column" gap="3">
+					<Flex align="center" gap="2">
+						<Flag size={18} style={{ color: "var(--grass-9)" }} />
+						<Heading size="4">Trips</Heading>
+					</Flex>
 
-          {trips.length > 0 ? (
-            <Flex direction="column" gap="2">
-              {trips.map((trip) => (
-                <Link
-                  key={trip.tripId}
-                  to="/trips/$tripId"
-                  params={{ tripId: trip.tripId }}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Card>
-                    <Flex justify="between" align="center">
-                      <Flex direction="column" gap="3">
-                        <Text weight="medium">{trip.tripName}</Text>
-                        <Flex align="center" gap="2">
-                          <Calendar size={12} />
-                          <Text size="1" color="gray">
-                            {trip.startDate.toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                          </Text>
-                          {trip.location && (
-                            <Text size="1" color="gray">
-                              • {trip.location}
-                            </Text>
-                          )}
-                        </Flex>
-                      </Flex>
-                      <Badge
-                        variant="soft"
-                        color={
-                          trip.status === 'accepted'
-                            ? 'grass'
-                            : trip.status === 'declined'
-                              ? 'red'
-                              : 'amber'
-                        }
-                      >
-                        {trip.status}
-                      </Badge>
-                    </Flex>
-                  </Card>
-                </Link>
-              ))}
-            </Flex>
-          ) : (
-            <Card>
-              <Flex align="center" justify="center" py="4">
-                <Text size="2" color="gray">
-                  No trips yet
-                </Text>
-              </Flex>
-            </Card>
-          )}
-        </Flex>
+					{trips.length > 0 ? (
+						<Flex direction="column" gap="2">
+							{trips.map((trip) => (
+								<Link
+									key={trip.tripId}
+									to="/trips/$tripId"
+									params={{ tripId: trip.tripId }}
+									style={{ textDecoration: "none" }}
+								>
+									<Card>
+										<Flex justify="between" align="center">
+											<Flex direction="column" gap="3">
+												<Text weight="medium">{trip.tripName}</Text>
+												<Flex align="center" gap="2">
+													<Calendar size={12} />
+													<Text size="1" color="gray">
+														{trip.startDate.toLocaleDateString("en-US", {
+															month: "short",
+															day: "numeric",
+															year: "numeric",
+														})}
+													</Text>
+													{trip.location && (
+														<Text size="1" color="gray">
+															• {trip.location}
+														</Text>
+													)}
+												</Flex>
+											</Flex>
+											<Badge
+												variant="soft"
+												color={
+													trip.status === "accepted"
+														? "grass"
+														: trip.status === "declined"
+															? "red"
+															: "amber"
+												}
+											>
+												{trip.status}
+											</Badge>
+										</Flex>
+									</Card>
+								</Link>
+							))}
+						</Flex>
+					) : (
+						<Card>
+							<Flex align="center" justify="center" py="4">
+								<Text size="2" color="gray">
+									No trips yet
+								</Text>
+							</Flex>
+						</Card>
+					)}
+				</Flex>
 
-        {/* Recent rounds section */}
-        {rounds.length > 0 && (
-          <Flex direction="column" gap="3">
-            <Flex align="center" gap="2">
-              <Trophy size={18} style={{ color: 'var(--amber-9)' }} />
-              <Heading size="4">Recent Rounds</Heading>
-            </Flex>
+				{/* Recent rounds section */}
+				{rounds.length > 0 && (
+					<Flex direction="column" gap="3">
+						<Flex align="center" gap="2">
+							<Trophy size={18} style={{ color: "var(--amber-9)" }} />
+							<Heading size="4">Recent Rounds</Heading>
+						</Flex>
 
-            <Flex direction="column" gap="2">
-              {rounds.slice(0, 5).map((round) => (
-                <Link
-                  key={round.roundId}
-                  to="/trips/$tripId/rounds/$roundId/scorecard"
-                  params={{ tripId: round.tripId, roundId: round.roundId }}
-                  search={{ golferId }}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Card style={{ cursor: 'pointer' }}>
-                    <Flex justify="between" align="center" gap="3">
-                      <Flex direction="column" gap="3">
-                        <Flex align="center" gap="2">
-                          <Badge size="1">R{round.roundNumber}</Badge>
-                          <Text weight="medium">{round.courseName}</Text>
-                        </Flex>
-                        <Flex align="center" gap="2" wrap="wrap">
-                          <Flex align="center" gap="1">
-                            <Flag size={12} style={{ color: 'var(--grass-9)' }} />
-                            <Text size="1" color="gray">
-                              {round.tripName}
-                            </Text>
-                          </Flex>
-                          <Text size="1" color="gray">•</Text>
-                          <Flex align="center" gap="1">
-                            <Calendar size={12} style={{ color: 'var(--gray-9)' }} />
-                            <Text size="1" color="gray">
-                              {round.roundDate.toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </Text>
-                          </Flex>
-                        </Flex>
-                        <Flex gap="5" wrap="wrap">
-                          <Flex direction="column" gap="1">
-                            <Text size="1" color="gray">Gross</Text>
-                            <Text size="3" weight="medium">{round.totalGross}</Text>
-                          </Flex>
-                          <Flex direction="column" gap="1">
-                            <Text size="1" color="gray">Net</Text>
-                            <Text size="3" weight="medium">{round.totalNet}</Text>
-                          </Flex>
-                          <Flex direction="column" gap="1">
-                            <Text size="1" color="gray">Pts</Text>
-                            <Text size="3" weight="medium" style={{ color: 'var(--amber-9)' }}>{round.totalStableford}</Text>
-                          </Flex>
-                          {round.birdiesOrBetter > 0 && (
-                            <Flex direction="column" gap="1">
-                              <Text size="1" color="gray">Birdies</Text>
-                              <Text size="3" weight="medium" color="grass">{round.birdiesOrBetter}</Text>
-                            </Flex>
-                          )}
-                        </Flex>
-                      </Flex>
-                      <ChevronRight size={16} style={{ color: 'var(--gray-9)', flexShrink: 0 }} />
-                    </Flex>
-                  </Card>
-                </Link>
-              ))}
-            </Flex>
-          </Flex>
-        )}
-      </Flex>
-    </Container>
-  )
+						<Flex direction="column" gap="2">
+							{rounds.slice(0, 5).map((round) => (
+								<Link
+									key={round.roundId}
+									to="/trips/$tripId/rounds/$roundId/scorecard"
+									params={{ tripId: round.tripId, roundId: round.roundId }}
+									search={{ golferId }}
+									style={{ textDecoration: "none" }}
+								>
+									<Card style={{ cursor: "pointer" }}>
+										<Flex justify="between" align="center" gap="3">
+											<Flex direction="column" gap="3">
+												<Flex align="center" gap="2">
+													<Badge size="1">R{round.roundNumber}</Badge>
+													<Text weight="medium">{round.courseName}</Text>
+												</Flex>
+												<Flex align="center" gap="2" wrap="wrap">
+													<Flex align="center" gap="1">
+														<Flag
+															size={12}
+															style={{ color: "var(--grass-9)" }}
+														/>
+														<Text size="1" color="gray">
+															{round.tripName}
+														</Text>
+													</Flex>
+													<Text size="1" color="gray">
+														•
+													</Text>
+													<Flex align="center" gap="1">
+														<Calendar
+															size={12}
+															style={{ color: "var(--gray-9)" }}
+														/>
+														<Text size="1" color="gray">
+															{round.roundDate.toLocaleDateString("en-US", {
+																month: "short",
+																day: "numeric",
+																year: "numeric",
+															})}
+														</Text>
+													</Flex>
+												</Flex>
+												<Flex gap="5" wrap="wrap">
+													<Flex direction="column" gap="1">
+														<Text size="1" color="gray">
+															Gross
+														</Text>
+														<Text size="3" weight="medium">
+															{round.totalGross}
+														</Text>
+													</Flex>
+													<Flex direction="column" gap="1">
+														<Text size="1" color="gray">
+															Net
+														</Text>
+														<Text size="3" weight="medium">
+															{round.totalNet}
+														</Text>
+													</Flex>
+													<Flex direction="column" gap="1">
+														<Text size="1" color="gray">
+															Pts
+														</Text>
+														<Text
+															size="3"
+															weight="medium"
+															style={{ color: "var(--amber-9)" }}
+														>
+															{round.totalStableford}
+														</Text>
+													</Flex>
+													{round.birdiesOrBetter > 0 && (
+														<Flex direction="column" gap="1">
+															<Text size="1" color="gray">
+																Birdies
+															</Text>
+															<Text size="3" weight="medium" color="grass">
+																{round.birdiesOrBetter}
+															</Text>
+														</Flex>
+													)}
+												</Flex>
+											</Flex>
+											<ChevronRight
+												size={16}
+												style={{ color: "var(--gray-9)", flexShrink: 0 }}
+											/>
+										</Flex>
+									</Card>
+								</Link>
+							))}
+						</Flex>
+					</Flex>
+				)}
+			</Flex>
+		</Container>
+	);
 }

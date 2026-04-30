@@ -1,15 +1,15 @@
 // src/components/ui/Toast.tsx
 import { Flex, IconButton, Text } from "@radix-ui/themes";
 import { AlertCircle, CheckCircle, X } from "lucide-react";
-import {
-	type ToastData,
-	useToastContext,
-} from "../../contexts/ToastContext";
+import { type ToastData, useToastContext } from "../../contexts/ToastContext";
 
 function ToastItem({
 	toast,
 	onDismiss,
-}: { toast: ToastData; onDismiss: () => void }) {
+}: {
+	toast: ToastData;
+	onDismiss: () => void;
+}) {
 	const Icon = toast.type === "success" ? CheckCircle : AlertCircle;
 	const color = toast.type === "success" ? "var(--grass-9)" : "var(--red-9)";
 

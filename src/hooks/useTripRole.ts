@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
-import { getTripRole, type TripRole, type TripAccess } from '../server/auth'
+import { useEffect, useState } from "react";
+import { getTripRole, type TripAccess, type TripRole } from "../server/auth";
 
-const tripRoleCache = new Map<string, TripAccess>()
-const tripRoleInFlight = new Map<string, Promise<TripAccess>>()
+const tripRoleCache = new Map<string, TripAccess>();
+const tripRoleInFlight = new Map<string, Promise<TripAccess>>();
 
 /**
  * Hook to get the current user's role for a trip.
@@ -11,62 +11,62 @@ const tripRoleInFlight = new Map<string, Promise<TripAccess>>()
  * @returns The trip access info with role
  */
 export function useTripRole(tripId: string | undefined): {
-  role: TripRole
-  isLoading: boolean
-  canManage: boolean
-  access: TripAccess | null
+	role: TripRole;
+	isLoading: boolean;
+	canManage: boolean;
+	access: TripAccess | null;
 } {
-  const [access, setAccess] = useState<TripAccess | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+	const [access, setAccess] = useState<TripAccess | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!tripId) {
-      setAccess(null)
-      setIsLoading(false)
-      return
-    }
+	useEffect(() => {
+		if (!tripId) {
+			setAccess(null);
+			setIsLoading(false);
+			return;
+		}
 
-    const cached = tripRoleCache.get(tripId)
-    if (cached) {
-      setAccess(cached)
-      setIsLoading(false)
-      return
-    }
+		const cached = tripRoleCache.get(tripId);
+		if (cached) {
+			setAccess(cached);
+			setIsLoading(false);
+			return;
+		}
 
-    setIsLoading(true)
+		setIsLoading(true);
 
-    const inFlight =
-      tripRoleInFlight.get(tripId) ??
-      getTripRole({ data: { tripId } }).then((result) => {
-        tripRoleCache.set(tripId, result)
-        return result
-      })
+		const inFlight =
+			tripRoleInFlight.get(tripId) ??
+			getTripRole({ data: { tripId } }).then((result) => {
+				tripRoleCache.set(tripId, result);
+				return result;
+			});
 
-    tripRoleInFlight.set(tripId, inFlight)
+		tripRoleInFlight.set(tripId, inFlight);
 
-    inFlight
-      .then((result) => {
-        setAccess(result)
-      })
-      .catch((error) => {
-        console.error('[useTripRole] Error:', error)
-        const fallback: TripAccess = {
-          role: 'none',
-          tripId,
-          identityId: null,
-          golferId: null,
-        }
-        tripRoleCache.set(tripId, fallback)
-        setAccess(fallback)
-      })
-      .finally(() => {
-        tripRoleInFlight.delete(tripId)
-        setIsLoading(false)
-      })
-  }, [tripId])
+		inFlight
+			.then((result) => {
+				setAccess(result);
+			})
+			.catch((error) => {
+				console.error("[useTripRole] Error:", error);
+				const fallback: TripAccess = {
+					role: "none",
+					tripId,
+					identityId: null,
+					golferId: null,
+				};
+				tripRoleCache.set(tripId, fallback);
+				setAccess(fallback);
+			})
+			.finally(() => {
+				tripRoleInFlight.delete(tripId);
+				setIsLoading(false);
+			});
+	}, [tripId]);
 
-  const role = access?.role ?? 'none'
-  const canManage = role === 'owner' || role === 'organizer'
+	const role = access?.role ?? "none";
+	const canManage = role === "owner" || role === "organizer";
 
-  return { role, isLoading, canManage, access }
+	return { role, isLoading, canManage, access };
 }

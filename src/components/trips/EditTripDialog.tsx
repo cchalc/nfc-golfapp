@@ -1,4 +1,11 @@
-import { Button, Dialog, Flex, Text, TextArea, TextField } from "@radix-ui/themes";
+import {
+	Button,
+	Dialog,
+	Flex,
+	Text,
+	TextArea,
+	TextField,
+} from "@radix-ui/themes";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
 import type { Trip } from "../../db/collections";

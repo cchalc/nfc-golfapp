@@ -9,13 +9,20 @@ import {
 	Text,
 } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
-import { Plus, Globe } from "lucide-react";
+import { Globe, Plus } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { ChallengeCard } from "../../../components/challenges/ChallengeCard";
 import { ChallengeForm } from "../../../components/challenges/ChallengeForm";
 import { ChallengeResultEntry } from "../../../components/challenges/ChallengeResultEntry";
 import { EmptyState } from "../../../components/ui/EmptyState";
-import type { Challenge, ChallengeResult, Course, Golfer, Hole, Round } from "../../../db/collections";
+import type {
+	Challenge,
+	ChallengeResult,
+	Course,
+	Golfer,
+	Hole,
+	Round,
+} from "../../../db/collections";
 import {
 	useChallengeResultsByTripId,
 	useChallengesByTripId,
@@ -311,7 +318,11 @@ function ChallengesPage() {
 					<Flex direction="column" gap="6">
 						{/* Trip-Wide Challenges */}
 						{challengesByRound.tripWide.length > 0 && (
-							<Flex direction="column" gap="3" data-testid="challenges-trip-wide">
+							<Flex
+								direction="column"
+								gap="3"
+								data-testid="challenges-trip-wide"
+							>
 								<Flex align="center" gap="2">
 									<Globe size={18} style={{ color: "var(--blue-9)" }} />
 									<Heading size="4">Trip-Wide</Heading>
@@ -339,14 +350,18 @@ function ChallengesPage() {
 
 						{/* Round-specific Challenges */}
 						{sortedRounds.map((round) => {
-							const roundChallenges = challengesByRound.byRound.get(round.id) || [];
+							const roundChallenges =
+								challengesByRound.byRound.get(round.id) || [];
 							if (roundChallenges.length === 0) return null;
 
 							const course = courseMap.get(round.courseId);
-							const dateStr = new Date(round.roundDate).toLocaleDateString("en-US", {
-								month: "short",
-								day: "numeric",
-							});
+							const dateStr = new Date(round.roundDate).toLocaleDateString(
+								"en-US",
+								{
+									month: "short",
+									day: "numeric",
+								},
+							);
 
 							return (
 								<Flex
@@ -359,7 +374,9 @@ function ChallengesPage() {
 										<Badge size="2" color="gray">
 											R{round.roundNumber}
 										</Badge>
-										<Heading size="4">{course?.name || "Unknown Course"}</Heading>
+										<Heading size="4">
+											{course?.name || "Unknown Course"}
+										</Heading>
 										<Text size="2" color="gray">
 											{dateStr}
 										</Text>

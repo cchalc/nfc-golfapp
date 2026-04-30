@@ -141,7 +141,14 @@
       "WebFetch(domain:v3.nitro.build)",
       "WebFetch(domain:nitro.build)",
       "Bash(vite build:*)",
-      "Bash(./node_modules/.bin/vite build:*)"
+      "Bash(./node_modules/.bin/vite build:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh secret:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel link:*)",
+      "Bash(vercel env add:*)",
+      "Bash(vercel env:*)",
+      "Bash(vercel:*)"
     ]
   },
   "enabledPlugins": {

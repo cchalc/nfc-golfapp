@@ -1,65 +1,67 @@
-import { Card, Flex, Text, Avatar, Badge } from '@radix-ui/themes'
-import { Link } from '@tanstack/react-router'
-import { ChevronRight } from 'lucide-react'
-import type { Golfer } from '../../db/collections'
+import { Avatar, Badge, Card, Flex, Text } from "@radix-ui/themes";
+import { Link } from "@tanstack/react-router";
+import { ChevronRight } from "lucide-react";
+import type { Golfer } from "../../db/collections";
 
 interface GolferCardProps {
-  golfer: Golfer
-  showHandicap?: boolean
-  linkToDetail?: boolean
+	golfer: Golfer;
+	showHandicap?: boolean;
+	linkToDetail?: boolean;
 }
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+	return name
+		.split(" ")
+		.map((n) => n[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2);
 }
 
-export function GolferCard({ golfer, showHandicap = true, linkToDetail = true }: GolferCardProps) {
-  const CardContent = (
-    <Card>
-      <Flex align="center" gap="3">
-        <Avatar
-          size="3"
-          src={golfer.profileImageUrl || undefined}
-          fallback={getInitials(golfer.name)}
-          radius="full"
-          color="amber"
-        />
-        <Flex direction="column" gap="3" style={{ flex: 1 }}>
-          <Text weight="medium">{golfer.name}</Text>
-          {golfer.email && (
-            <Text size="1" color="gray">
-              {golfer.email}
-            </Text>
-          )}
-        </Flex>
-        {showHandicap && (
-          <Badge variant="soft" color="grass">
-            HCP {golfer.handicap.toFixed(1)}
-          </Badge>
-        )}
-        {linkToDetail && (
-          <ChevronRight size={16} className="icon-gray" />
-        )}
-      </Flex>
-    </Card>
-  )
+export function GolferCard({
+	golfer,
+	showHandicap = true,
+	linkToDetail = true,
+}: GolferCardProps) {
+	const CardContent = (
+		<Card>
+			<Flex align="center" gap="3">
+				<Avatar
+					size="3"
+					src={golfer.profileImageUrl || undefined}
+					fallback={getInitials(golfer.name)}
+					radius="full"
+					color="amber"
+				/>
+				<Flex direction="column" gap="3" style={{ flex: 1 }}>
+					<Text weight="medium">{golfer.name}</Text>
+					{golfer.email && (
+						<Text size="1" color="gray">
+							{golfer.email}
+						</Text>
+					)}
+				</Flex>
+				{showHandicap && (
+					<Badge variant="soft" color="grass">
+						HCP {golfer.handicap.toFixed(1)}
+					</Badge>
+				)}
+				{linkToDetail && <ChevronRight size={16} className="icon-gray" />}
+			</Flex>
+		</Card>
+	);
 
-  if (linkToDetail) {
-    return (
-      <Link
-        to="/golfers/$golferId"
-        params={{ golferId: golfer.id }}
-        className="golfer-card-link"
-      >
-        {CardContent}
-      </Link>
-    )
-  }
+	if (linkToDetail) {
+		return (
+			<Link
+				to="/golfers/$golferId"
+				params={{ golferId: golfer.id }}
+				className="golfer-card-link"
+			>
+				{CardContent}
+			</Link>
+		);
+	}
 
-  return CardContent
+	return CardContent;
 }

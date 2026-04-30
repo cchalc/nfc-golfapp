@@ -1,108 +1,122 @@
+import alegreyaCss from "@fontsource/alegreya/latin.css?url";
+import alegreyaSansCss from "@fontsource/alegreya-sans/latin.css?url";
+import figtreeCss from "@fontsource/figtree/latin.css?url";
+import frauncesCss from "@fontsource/fraunces/latin.css?url";
+import interCss from "@fontsource/inter/latin.css?url";
+import latoCss from "@fontsource/lato/latin.css?url";
+import playfairCss from "@fontsource/playfair-display/latin.css?url";
+import sourceSansCss from "@fontsource/source-sans-3/latin.css?url";
+import sourceSerifCss from "@fontsource/source-serif-4/latin.css?url";
+import { Container, Flex, Heading, Text, Theme } from "@radix-ui/themes";
+import radixCss from "@radix-ui/themes/styles.css?url";
 import {
-  HeadContent,
-  Outlet,
-  Scripts,
-  createRootRoute,
-} from '@tanstack/react-router'
-import { Theme, Container, Heading, Text, Flex } from '@radix-ui/themes'
+	createRootRoute,
+	HeadContent,
+	Outlet,
+	Scripts,
+} from "@tanstack/react-router";
+import { ClientOnly } from "../components/ClientOnly";
+import { DataLoader } from "../components/DataLoader";
+import { Header } from "../components/Header";
+import { ServiceWorkerRegistration } from "../components/ServiceWorkerRegistration";
+import { ErrorBoundary } from "../components/ui/ErrorBoundary";
+import { ToastContainer } from "../components/ui/Toast";
+import { AuthProvider } from "../contexts/AuthContext";
+import { QueryProvider } from "../contexts/QueryContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
+import { ToastProvider } from "../contexts/ToastContext";
 
-import { Header } from '../components/Header'
-import { ThemeProvider } from '../contexts/ThemeContext'
-import { AuthProvider } from '../contexts/AuthContext'
-import { QueryProvider } from '../contexts/QueryContext'
-import { DataLoader } from '../components/DataLoader'
-import { ClientOnly } from '../components/ClientOnly'
-import { ErrorBoundary } from '../components/ui/ErrorBoundary'
-import { ToastProvider } from '../contexts/ToastContext'
-import { ToastContainer } from '../components/ui/Toast'
-import { ServiceWorkerRegistration } from '../components/ServiceWorkerRegistration'
+const typographyCss = "/typography.css";
 
-import radixCss from '@radix-ui/themes/styles.css?url'
-import interCss from '@fontsource/inter/latin.css?url'
-import sourceSerifCss from '@fontsource/source-serif-4/latin.css?url'
-import sourceSansCss from '@fontsource/source-sans-3/latin.css?url'
-import alegreyaCss from '@fontsource/alegreya/latin.css?url'
-import alegreyaSansCss from '@fontsource/alegreya-sans/latin.css?url'
-import playfairCss from '@fontsource/playfair-display/latin.css?url'
-import latoCss from '@fontsource/lato/latin.css?url'
-import frauncesCss from '@fontsource/fraunces/latin.css?url'
-import figtreeCss from '@fontsource/figtree/latin.css?url'
-const typographyCss = '/typography.css'
-import appCss from '../styles.css?url'
+import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-      { title: 'Golf Trip' },
-      { name: 'description', content: 'Plan and manage your golf trips with friends' },
-      { name: 'theme-color', content: '#46a758' },
-      { name: 'apple-mobile-web-app-capable', content: 'yes' },
-      { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-      { name: 'apple-mobile-web-app-title', content: 'Golf Trip' },
-    ],
-    links: [
-      { rel: 'manifest', href: '/manifest.json' },
-      { rel: 'apple-touch-icon', href: '/apple-touch-icon.svg' },
-      { rel: 'stylesheet', href: radixCss },
-      { rel: 'stylesheet', href: interCss },
-      { rel: 'stylesheet', href: sourceSerifCss },
-      { rel: 'stylesheet', href: sourceSansCss },
-      { rel: 'stylesheet', href: alegreyaCss },
-      { rel: 'stylesheet', href: alegreyaSansCss },
-      { rel: 'stylesheet', href: playfairCss },
-      { rel: 'stylesheet', href: latoCss },
-      { rel: 'stylesheet', href: frauncesCss },
-      { rel: 'stylesheet', href: figtreeCss },
-      { rel: 'stylesheet', href: typographyCss },
-      { rel: 'stylesheet', href: appCss },
-    ],
-  }),
-  component: RootComponent,
-  notFoundComponent: NotFound,
-})
+	head: () => ({
+		meta: [
+			{ charSet: "utf-8" },
+			{
+				name: "viewport",
+				content: "width=device-width, initial-scale=1, viewport-fit=cover",
+			},
+			{ title: "Golf Trip" },
+			{
+				name: "description",
+				content: "Plan and manage your golf trips with friends",
+			},
+			{ name: "theme-color", content: "#46a758" },
+			{ name: "apple-mobile-web-app-capable", content: "yes" },
+			{
+				name: "apple-mobile-web-app-status-bar-style",
+				content: "black-translucent",
+			},
+			{ name: "apple-mobile-web-app-title", content: "Golf Trip" },
+		],
+		links: [
+			{ rel: "manifest", href: "/manifest.json" },
+			{ rel: "apple-touch-icon", href: "/apple-touch-icon.svg" },
+			{ rel: "stylesheet", href: radixCss },
+			{ rel: "stylesheet", href: interCss },
+			{ rel: "stylesheet", href: sourceSerifCss },
+			{ rel: "stylesheet", href: sourceSansCss },
+			{ rel: "stylesheet", href: alegreyaCss },
+			{ rel: "stylesheet", href: alegreyaSansCss },
+			{ rel: "stylesheet", href: playfairCss },
+			{ rel: "stylesheet", href: latoCss },
+			{ rel: "stylesheet", href: frauncesCss },
+			{ rel: "stylesheet", href: figtreeCss },
+			{ rel: "stylesheet", href: typographyCss },
+			{ rel: "stylesheet", href: appCss },
+		],
+	}),
+	component: RootComponent,
+	notFoundComponent: NotFound,
+});
 
 function NotFound() {
-  return (
-    <Container size="2" py="9">
-      <Flex direction="column" gap="2" align="center">
-        <Heading size="8">404</Heading>
-        <Text color="gray">Page not found</Text>
-      </Flex>
-    </Container>
-  )
+	return (
+		<Container size="2" py="9">
+			<Flex direction="column" gap="2" align="center">
+				<Heading size="8">404</Heading>
+				<Text color="gray">Page not found</Text>
+			</Flex>
+		</Container>
+	);
 }
 
 function RootComponent() {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <Theme appearance="dark" accentColor="grass" grayColor="sage" radius="medium">
-          <ErrorBoundary>
-            <ClientOnly>
-              <QueryProvider>
-                <AuthProvider>
-                  <ThemeProvider>
-                    <ToastProvider>
-                      <DataLoader>
-                        <Header />
-                        <Outlet />
-                      </DataLoader>
-                      <ToastContainer />
-                      <ServiceWorkerRegistration />
-                    </ToastProvider>
-                  </ThemeProvider>
-                </AuthProvider>
-              </QueryProvider>
-            </ClientOnly>
-          </ErrorBoundary>
-        </Theme>
-        <Scripts />
-      </body>
-    </html>
-  )
+	return (
+		<html lang="en">
+			<head>
+				<HeadContent />
+			</head>
+			<body>
+				<Theme
+					appearance="dark"
+					accentColor="grass"
+					grayColor="sage"
+					radius="medium"
+				>
+					<ErrorBoundary>
+						<ClientOnly>
+							<QueryProvider>
+								<AuthProvider>
+									<ThemeProvider>
+										<ToastProvider>
+											<DataLoader>
+												<Header />
+												<Outlet />
+											</DataLoader>
+											<ToastContainer />
+											<ServiceWorkerRegistration />
+										</ToastProvider>
+									</ThemeProvider>
+								</AuthProvider>
+							</QueryProvider>
+						</ClientOnly>
+					</ErrorBoundary>
+				</Theme>
+				<Scripts />
+			</body>
+		</html>
+	);
 }
