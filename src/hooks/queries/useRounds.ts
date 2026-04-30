@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Round } from "../../db/collections";
-import { deleteRound, insertRound, updateRound } from "../../server/mutations";
+import { deleteRound, insertRound, reorderRounds, updateRound } from "../../server/mutations";
 import { getRound, getRounds, getRoundsByTripId } from "../../server/queries";
 import { tripKeys } from "./useTrips";
 
@@ -78,6 +78,17 @@ export function useDeleteRound() {
 			deleteRound({ data: { id } }),
 		onSuccess: (_, { tripId }) => {
 			queryClient.invalidateQueries({ queryKey: roundKeys.lists() });
+			queryClient.invalidateQueries({ queryKey: roundKeys.byTrip(tripId) });
+		},
+	});
+}
+
+export function useReorderRounds() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ tripId, roundIds }: { tripId: string; roundIds: string[] }) =>
+			reorderRounds({ data: { tripId, roundIds } }),
+		onSuccess: (_, { tripId }) => {
 			queryClient.invalidateQueries({ queryKey: roundKeys.byTrip(tripId) });
 		},
 	});

@@ -61,3 +61,24 @@ export const deleteRound = createServerFn({ method: "POST" })
 			return { id };
 		});
 	});
+
+export const reorderRounds = createServerFn({ method: "POST" })
+	.inputValidator(
+		(data: { tripId: string; roundIds: string[] }) => data,
+	)
+	.handler(async ({ data: { tripId, roundIds } }): Promise<{ success: boolean }> => {
+		return wrapMutation("reorderRounds", async () => {
+			const sql = getDb();
+
+			// Update each round's roundNumber based on its position in the array
+			for (let i = 0; i < roundIds.length; i++) {
+				await sql`
+					UPDATE rounds
+					SET round_number = ${i + 1}
+					WHERE id = ${roundIds[i]} AND trip_id = ${tripId}
+				`;
+			}
+
+			return { success: true };
+		});
+	});

@@ -148,7 +148,11 @@
       "Bash(vercel link:*)",
       "Bash(vercel env add:*)",
       "Bash(vercel env:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(xargs ls:*)",
+      "Bash(jj absorb:*)",
+      "Bash(jj resolve:*)",
+      "Bash(agent-browser:*)"
     ]
   },
   "enabledPlugins": {
