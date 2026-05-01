@@ -30,7 +30,7 @@ export const getRoundsByTripId = createServerFn({ method: "GET" })
       SELECT id, trip_id, course_id, round_date, round_number, notes, included_in_scoring
       FROM rounds
       WHERE trip_id = ${tripId}
-      ORDER BY round_date ASC, round_number ASC
+      ORDER BY round_number ASC
     `;
 		return rows.map((row) => ({
 			id: row.id as string,

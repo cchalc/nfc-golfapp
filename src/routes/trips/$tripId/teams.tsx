@@ -10,8 +10,8 @@ import {
 	Text,
 	TextField,
 } from "@radix-ui/themes";
-import { createFileRoute } from "@tanstack/react-router";
-import { Plus, X } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, Plus, X } from "lucide-react";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import {
 	useCreateTeam,
@@ -146,6 +146,12 @@ function TeamsPage() {
 	return (
 		<Container size="2" py="6">
 			<Flex direction="column" gap="5">
+				<Link to="/trips/$tripId" params={{ tripId }}>
+					<Button variant="ghost" size="1">
+						<ArrowLeft size={16} />
+						Back to Trip
+					</Button>
+				</Link>
 				<Flex justify="between" align="center">
 					<Flex direction="column" gap="3">
 						<Heading size="7">Teams</Heading>

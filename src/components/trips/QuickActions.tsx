@@ -17,7 +17,7 @@ export function QuickActions({ tripId, canManage }: QuickActionsProps) {
 				<Link to="/trips/$tripId/rounds/new" params={{ tripId }}>
 					<Button variant="solid" size="3" style={{ width: "100%" }}>
 						<Plus size={18} />
-						Add Round
+						Add Course
 					</Button>
 				</Link>
 			)}
