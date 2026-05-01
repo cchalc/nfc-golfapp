@@ -212,6 +212,10 @@ export const challenges = pgTable("challenges", {
 	roundId: uuid("round_id").references(() => rounds.id, {
 		onDelete: "set null",
 	}),
+	roundIds: text("round_ids")
+		.array()
+		.notNull()
+		.default([]),
 	holeId: uuid("hole_id").references(() => holes.id, { onDelete: "set null" }),
 	prizeDescription: text("prize_description").notNull().default(""),
 });

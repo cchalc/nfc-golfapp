@@ -1,5 +1,7 @@
 import {
+	Badge,
 	Button,
+	Checkbox,
 	Flex,
 	Select,
 	Text,
@@ -42,6 +44,14 @@ export function ChallengeForm({
 	onSuccess,
 }: ChallengeFormProps) {
 	const [errors, setErrors] = useState<Map<string, string>>(new Map());
+	// Initialize selectedRoundIds from initialData.roundIds or fallback to roundId
+	const [selectedRoundIds, setSelectedRoundIds] = useState<string[]>(
+		initialData?.roundIds?.length
+			? initialData.roundIds
+			: initialData?.roundId
+				? [initialData.roundId]
+				: [],
+	);
 
 	// Fetch rounds for this trip
 	const { data: rounds } = useRoundsByTripId(tripId);
@@ -93,17 +103,21 @@ export function ChallengeForm({
 		const description = (formData.get("description") as string).trim();
 		const challengeType = formData.get("challengeType") as ChallengeType;
 		const scope = formData.get("scope") as "hole" | "round" | "trip";
-		const roundId = formData.get("roundId") as string;
 		const holeId = formData.get("holeId") as string;
 		const prizeDescription = (
 			formData.get("prizeDescription") as string
 		).trim();
 
+		// Use selected rounds from state (multi-select)
+		const roundIds = scope !== "trip" ? selectedRoundIds : [];
+		// For backwards compatibility, also set roundId to first selected round
+		const roundId = roundIds.length > 0 ? roundIds[0] : null;
+
 		const validationData = {
 			name,
 			challengeType,
 			scope,
-			roundId: scope !== "trip" && roundId ? roundId : null,
+			roundId,
 			holeId: scope === "hole" && holeId ? holeId : null,
 			prizeDescription,
 		};
@@ -130,6 +144,7 @@ export function ChallengeForm({
 			challengeType: result.data.challengeType,
 			scope: result.data.scope,
 			roundId: result.data.roundId,
+			roundIds,
 			holeId: result.data.holeId,
 			prizeDescription: result.data.prizeDescription,
 		};
@@ -200,33 +215,62 @@ export function ChallengeForm({
 
 				<Flex
 					direction="column"
-					gap="1"
+					gap="2"
 					data-field="round"
 					style={{ display: showRoundSelector ? "flex" : "none" }}
 				>
 					<Text as="label" size="2" weight="medium">
-						Round
+						Rounds
 					</Text>
-					<Select.Root name="roundId" defaultValue={initialData?.roundId || ""}>
-						<Select.Trigger placeholder="Select round" />
-						<Select.Content>
-							{(rounds || []).map((round) => {
-								const course = courseMap.get(round.courseId);
-								const dateStr = round.roundDate
-									? new Date(round.roundDate).toLocaleDateString("en-US", {
-											month: "short",
-											day: "numeric",
-										})
-									: "";
-								return (
-									<Select.Item key={round.id} value={round.id}>
-										R{round.roundNumber}: {course?.name || "Unknown"}{" "}
-										{dateStr && `(${dateStr})`}
-									</Select.Item>
-								);
-							})}
-						</Select.Content>
-					</Select.Root>
+					<Flex direction="column" gap="2">
+						{(rounds || []).map((round) => {
+							const course = courseMap.get(round.courseId);
+							const dateStr = round.roundDate
+								? new Date(round.roundDate).toLocaleDateString("en-US", {
+										month: "short",
+										day: "numeric",
+									})
+								: "";
+							const isSelected = selectedRoundIds.includes(round.id);
+							return (
+								<label
+									key={round.id}
+									style={{ display: "flex", alignItems: "center", gap: "8px" }}
+								>
+									<Checkbox
+										checked={isSelected}
+										onCheckedChange={(checked) => {
+											if (checked) {
+												setSelectedRoundIds([...selectedRoundIds, round.id]);
+											} else {
+												setSelectedRoundIds(
+													selectedRoundIds.filter((id) => id !== round.id),
+												);
+											}
+										}}
+									/>
+									<Flex align="center" gap="2">
+										<Badge size="1" color="gray">
+											R{round.roundNumber}
+										</Badge>
+										<Text size="2">
+											{course?.name || "Unknown"}{" "}
+											{dateStr && (
+												<Text size="1" color="gray">
+													({dateStr})
+												</Text>
+											)}
+										</Text>
+									</Flex>
+								</label>
+							);
+						})}
+					</Flex>
+					{selectedRoundIds.length === 0 && (
+						<Text size="1" color="amber">
+							Select at least one round
+						</Text>
+					)}
 				</Flex>
 
 				<HoleSelectorField

@@ -142,6 +142,7 @@ export const challengeSchema = z.object({
 		.default("custom"),
 	scope: z.enum(["hole", "round", "trip"]).default("trip"),
 	roundId: z.string().nullable().default(null),
+	roundIds: z.array(z.string()).default([]),
 	holeId: z.string().nullable().default(null),
 	prizeDescription: z.string().default(""),
 });
