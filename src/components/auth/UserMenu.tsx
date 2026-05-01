@@ -44,14 +44,16 @@ export function UserMenu() {
 					</Text>
 				</DropdownMenu.Label>
 				<DropdownMenu.Separator />
-				<DropdownMenu.Item asChild>
-					<Link to="/golfers">
-						<Flex align="center" gap="2">
-							<User size={14} />
-							My Profile
-						</Flex>
-					</Link>
-				</DropdownMenu.Item>
+				{session?.golferId && (
+					<DropdownMenu.Item asChild>
+						<Link to="/golfers/$golferId" params={{ golferId: session.golferId }}>
+							<Flex align="center" gap="2">
+								<User size={14} />
+								My Profile
+							</Flex>
+						</Link>
+					</DropdownMenu.Item>
+				)}
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item color="red" onClick={signOut}>
 					<Flex align="center" gap="2">
