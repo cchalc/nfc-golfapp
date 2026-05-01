@@ -58,11 +58,29 @@ export function CourseSearch({ onSuccess }: CourseSearchProps) {
 				);
 				setResults(courses);
 				if (courses.length === 0) {
-					setSearchError(`No courses found matching "${query}"`);
+					setSearchError(
+						`No courses found matching "${query}". Try a different spelling or add the course manually below.`,
+					);
 				}
 			} catch (error) {
 				console.error("Search error:", error);
-				setSearchError("Failed to search courses. Check console for details.");
+				const errorMessage =
+					error instanceof Error ? error.message : "Unknown error";
+				if (errorMessage.includes("API key")) {
+					setSearchError(
+						"Course search is not available. Please add the course manually.",
+					);
+				} else if (errorMessage.includes("API error: 401")) {
+					setSearchError(
+						"API authentication failed. Please add the course manually.",
+					);
+				} else if (errorMessage.includes("API error: 429")) {
+					setSearchError("Too many requests. Please wait a moment and try again.");
+				} else {
+					setSearchError(
+						`Search failed: ${errorMessage}. Try adding the course manually.`,
+					);
+				}
 			} finally {
 				setIsSearching(false);
 			}
