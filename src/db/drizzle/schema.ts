@@ -134,6 +134,9 @@ export const rounds = pgTable("rounds", {
 	courseId: uuid("course_id")
 		.notNull()
 		.references(() => courses.id, { onDelete: "cascade" }),
+	teeBoxId: uuid("tee_box_id").references(() => teeBoxes.id, {
+		onDelete: "set null",
+	}),
 	roundDate: timestamp("round_date", { withTimezone: true }).notNull(),
 	roundNumber: integer("round_number").notNull().default(1),
 	notes: text("notes").notNull().default(""),

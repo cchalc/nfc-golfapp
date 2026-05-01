@@ -88,6 +88,7 @@ export const roundSchema = z.object({
 	id: z.string(),
 	tripId: z.string(),
 	courseId: z.string(),
+	teeBoxId: z.string().nullable().default(null),
 	roundDate: dateField,
 	roundNumber: z.number().default(1),
 	notes: z.string().default(""),
