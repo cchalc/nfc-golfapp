@@ -1,4 +1,5 @@
 import { Badge, Flex, Text, TextField } from "@radix-ui/themes";
+import { memo, useCallback } from "react";
 import type { Hole } from "../../db/collections";
 
 interface ScoreEntryProps {
@@ -25,7 +26,7 @@ function getScoreColor(
 	return "blue"; // Eagle or better
 }
 
-export function ScoreEntry({
+export const ScoreEntry = memo(function ScoreEntry({
 	hole,
 	grossScore,
 	handicapStrokes,
@@ -36,6 +37,21 @@ export function ScoreEntry({
 	readOnly = false,
 }: ScoreEntryProps) {
 	const scoreColor = getScoreColor(netScore, hole.par);
+
+	const handleChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const value = e.target.value;
+			if (value === "") {
+				onChange(null);
+			} else {
+				const val = parseInt(value, 10);
+				if (!Number.isNaN(val) && val >= 1) {
+					onChange(val);
+				}
+			}
+		},
+		[onChange],
+	);
 
 	if (compact) {
 		return (
@@ -54,17 +70,7 @@ export function ScoreEntry({
 					min="1"
 					max="15"
 					value={grossScore ?? ""}
-					onChange={(e) => {
-						const value = e.target.value;
-						if (value === "") {
-							onChange(null);
-						} else {
-							const val = parseInt(value, 10);
-							if (!isNaN(val) && val >= 1) {
-								onChange(val);
-							}
-						}
-					}}
+					onChange={handleChange}
 					style={{ width: "40px", textAlign: "center" }}
 					disabled={readOnly}
 				/>
@@ -119,17 +125,7 @@ export function ScoreEntry({
 					min="1"
 					max="15"
 					value={grossScore ?? ""}
-					onChange={(e) => {
-						const value = e.target.value;
-						if (value === "") {
-							onChange(null);
-						} else {
-							const val = parseInt(value, 10);
-							if (!isNaN(val) && val >= 1) {
-								onChange(val);
-							}
-						}
-					}}
+					onChange={handleChange}
 					style={{ width: "56px", textAlign: "center" }}
 					placeholder="-"
 					data-testid={`gross-score-${hole.holeNumber}`}
@@ -168,4 +164,4 @@ export function ScoreEntry({
 			</Flex>
 		</Flex>
 	);
-}
+});
