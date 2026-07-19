@@ -49,9 +49,7 @@ export const Route = createFileRoute("/trips/$tripId/challenges")({
 function ChallengesPage() {
 	const { tripId } = Route.useParams();
 	const { canManage } = useTripRole(tripId);
-	const [addChallengeDialogOpen, setAddChallengeDialogOpen] = useDialogState(
-		`add-challenge-${tripId}`,
-	);
+	const [addChallengeDialogOpen, setAddChallengeDialogOpen] = useDialogState();
 
 	// Fetch trip
 	const { data: trip } = useTrip(tripId);
@@ -473,15 +471,9 @@ function ChallengeCardWithDialogs({
 	onDelete,
 	canManage,
 }: ChallengeCardWithDialogsProps) {
-	const [resultDialogOpen, setResultDialogOpen] = useDialogState(
-		`results-${challenge.id}`,
-	);
-	const [editDialogOpen, setEditDialogOpen] = useDialogState(
-		`edit-${challenge.id}`,
-	);
-	const [deleteDialogOpen, setDeleteDialogOpen] = useDialogState(
-		`delete-${challenge.id}`,
-	);
+	const [resultDialogOpen, setResultDialogOpen] = useDialogState();
+	const [editDialogOpen, setEditDialogOpen] = useDialogState();
+	const [deleteDialogOpen, setDeleteDialogOpen] = useDialogState();
 	const round = challenge.roundId ? roundMap.get(challenge.roundId) : null;
 	const hole = challenge.holeId ? holeMap.get(challenge.holeId) : null;
 	const course = round?.courseId ? courseMap.get(round.courseId) : null;

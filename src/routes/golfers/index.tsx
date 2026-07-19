@@ -17,7 +17,7 @@ export const Route = createFileRoute("/golfers/")({
 
 function GolfersPage() {
 	useRequireAuth();
-	const [addDialogOpen, setAddDialogOpen] = useDialogState("add-golfer");
+	const [addDialogOpen, setAddDialogOpen] = useDialogState();
 
 	const { data: golfers, isLoading } = useGolfers();
 

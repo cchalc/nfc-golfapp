@@ -53,9 +53,7 @@ const TEAM_COLORS = [
 function TeamsPage() {
 	const { tripId } = Route.useParams();
 	const { canManage } = useTripRole(tripId);
-	const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState(
-		`add-team-${tripId}`,
-	);
+	const [addTeamDialogOpen, setAddTeamDialogOpen] = useDialogState();
 
 	const { data: trip } = useTrip(tripId);
 	const { data: golfers } = useGolfers();

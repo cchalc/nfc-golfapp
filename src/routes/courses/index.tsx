@@ -17,7 +17,7 @@ export const Route = createFileRoute("/courses/")({
 
 function CoursesPage() {
 	useRequireAuth();
-	const [addDialogOpen, setAddDialogOpen] = useDialogState("add-course");
+	const [addDialogOpen, setAddDialogOpen] = useDialogState();
 
 	const { data: courses, isLoading: coursesLoading } = useCourses();
 

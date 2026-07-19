@@ -52,12 +52,8 @@ function CourseDetailPage() {
 	useRequireAuth();
 	const { courseId } = Route.useParams();
 	const navigate = useNavigate();
-	const [editDialogOpen, setEditDialogOpen] = useDialogState(
-		`edit-course-${courseId}`,
-	);
-	const [addHoleDialogOpen, setAddHoleDialogOpen] = useDialogState(
-		`add-hole-${courseId}`,
-	);
+	const [editDialogOpen, setEditDialogOpen] = useDialogState();
+	const [addHoleDialogOpen, setAddHoleDialogOpen] = useDialogState();
 	const [isResyncing, setIsResyncing] = useState(false);
 
 	const { data: course } = useCourse(courseId);

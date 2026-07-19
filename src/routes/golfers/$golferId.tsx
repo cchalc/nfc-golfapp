@@ -56,9 +56,7 @@ function GolferDetailPage() {
 	useRequireAuth();
 	const { golferId } = Route.useParams();
 	const navigate = useNavigate();
-	const [editDialogOpen, setEditDialogOpen] = useDialogState(
-		`edit-golfer-${golferId}`,
-	);
+	const [editDialogOpen, setEditDialogOpen] = useDialogState();
 
 	const { data: golfer, isLoading: golferLoading } = useGolfer(golferId);
 	const { data: allTripGolfers } = useTripGolfers();
