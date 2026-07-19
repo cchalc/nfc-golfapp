@@ -10,7 +10,7 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import type { Trip } from "../../db/collections";
 import { useUpdateTrip } from "../../hooks/queries/useTrips";
-import { useToast } from "../../hooks/useToast";
+import { useToastContext } from "../../contexts/ToastContext";
 
 interface EditTripDialogProps {
 	trip: Trip;
@@ -22,7 +22,7 @@ export function EditTripDialog({ trip }: EditTripDialogProps) {
 	const [description, setDescription] = useState(trip.description);
 	const [location, setLocation] = useState(trip.location);
 	const updateTrip = useUpdateTrip();
-	const { showToast } = useToast();
+	const { showToast } = useToastContext();
 
 	const handleSave = async () => {
 		if (!name.trim()) return;
